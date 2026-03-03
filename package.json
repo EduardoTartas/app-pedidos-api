@@ -1,0 +1,93 @@
+{
+  "author": "",
+  "license": "MIT",
+  "name": "app-pedidos-api",
+  "version": "1.0.0",
+  "description": "API RESTful para aplicativo de delivery",
+  "main": "src/app.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "seed": "node src/seeds/seeds.js",
+    "start": "node server.js",
+    "test": "jest --coverage"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^10.3.0",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
+    "compression": "^1.8.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.2.2",
+    "mongoose-paginate-v2": "^1.9.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^13.0.0",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@babel/preset-env": "^7.29.0",
+    "babel-jest": "^30.2.0",
+    "babel-plugin-transform-import-meta": "^2.3.3",
+    "jest": "^30.2.0",
+    "mongodb-memory-server": "^11.0.1",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.2.2"
+  },
+  "babel": {
+    "presets": [
+      [
+        "@babel/preset-env",
+        {
+          "targets": {
+            "node": "current"
+          }
+        }
+      ]
+    ],
+    "plugins": [
+      "babel-plugin-transform-import-meta"
+    ]
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.js$": "babel-jest"
+    },
+    "testEnvironment": "node",
+    "verbose": true,
+    "transformIgnorePatterns": [
+      "/node_modules/(?!uuid)"
+    ],
+    "roots": [
+      "<rootDir>"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.js"
+    ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/src/config/dbConnect.js",
+      "/src/controllers/AuthController.js",
+      "/src/service/AuthService.js",
+      "/utils/logger.js",
+      "/utils/errors",
+      "/middlewares/",
+      "/utils/AuthHelper.js",
+      "/utils/TokenUtil.js",
+      "/utils/helpers/errorHandler.js",
+      "/utils/helpers/StatusService.js",
+      "/utils/helpers/messages.js",
+      "/utils/helpers/CommonResponse.js",
+      "/middlewares/asyncWrapper.js",
+      "utils/helpers/HttpStatusCodes.js"
+    ]
+  }
+}
