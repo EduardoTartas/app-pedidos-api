@@ -23,8 +23,8 @@ const getSwaggerOptions = async () => {
         import.meta.url).href + t)).default;
     // const categoriaPaths = (await import(new URL("../paths/categoria.js",
     //     import.meta.url).href + t)).default;
-    // const restaurantePaths = (await import(new URL("../paths/restaurante.js",
-    //     import.meta.url).href + t)).default;
+    const restaurantePaths = (await import(new URL("../paths/restaurante.js",
+        import.meta.url).href + t)).default;
     // const pratoPaths = (await import(new URL("../paths/prato.js",
     //     import.meta.url).href + t)).default;
     // const adicionalPaths = (await import(new URL("../paths/adicional.js",
@@ -43,8 +43,8 @@ const getSwaggerOptions = async () => {
         import.meta.url).href + t)).default;
     // const categoriaSchemas = (await import(new URL("../schemas/categoriaSchema.js",
     //     import.meta.url).href + t)).default;
-    // const restauranteSchemas = (await import(new URL("../schemas/restauranteSchema.js",
-    //     import.meta.url).href + t)).default;
+    const restauranteSchemas = (await import(new URL("../schemas/restauranteSchema.js",
+        import.meta.url).href + t)).default;
     // const pratoSchemas = (await import(new URL("../schemas/pratoSchema.js",
     //     import.meta.url).href + t)).default;
     // const adicionalSchemas = (await import(new URL("../schemas/adicionalSchema.js",
@@ -82,10 +82,10 @@ const getSwaggerOptions = async () => {
                 //     name: "Categorias",
                 //     description: "Rotas para o gerenciamento de categorias de restaurantes"
                 // },
-                // {
-                //     name: "Restaurantes",
-                //     description: "Rotas para o gerenciamento de restaurantes"
-                // },
+                {
+                    name: "Restaurantes",
+                    description: "Rotas para o gerenciamento de restaurantes"
+                },
                 // {
                 //     name: "Pratos",
                 //     description: "Rotas para o gerenciamento de pratos e cardápio"
@@ -111,7 +111,7 @@ const getSwaggerOptions = async () => {
                 //...authPaths,
                 ...usuarioPaths,
                 // ...categoriaPaths,
-                // ...restaurantePaths,
+                ...restaurantePaths,
                 // ...pratoPaths,
                 // ...adicionalPaths,
                 // ...pedidoPaths,
@@ -130,7 +130,7 @@ const getSwaggerOptions = async () => {
                     //...authSchemas,
                     ...usuarioSchemas,
                     // ...categoriaSchemas,
-                    // ...restauranteSchemas,
+                    ...restauranteSchemas,
                     // ...pratoSchemas,
                     // ...adicionalSchemas,
                     // ...pedidoSchemas,

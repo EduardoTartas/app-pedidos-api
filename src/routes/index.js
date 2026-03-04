@@ -12,7 +12,7 @@ import mongoose from 'mongoose';
 //import authRoutes from './authRoutes.js';
 import usuarioRoutes from './usuarioRoutes.js';
 //import categoriaRoutes from './categoriaRoutes.js';
-//import restauranteRoutes from './restauranteRoutes.js';
+import restauranteRoutes from './restauranteRoutes.js';
 //import pratoRoutes from './pratoRoutes.js';
 //import adicionalRoutes from './adicionalRoutes.js';
 //import pedidoRoutes from './pedidoRoutes.js';
@@ -56,7 +56,7 @@ const routes = (app) => {
         //authRoutes,
         usuarioRoutes,
         //categoriaRoutes,
-        //restauranteRoutes,
+        restauranteRoutes,
         //pratoRoutes,
         //adicionalRoutes,
         //pedidoRoutes,
