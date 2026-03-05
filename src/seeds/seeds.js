@@ -3,18 +3,18 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
 import seedUsuarios from './seedsUsuario.js';
-//import seedCategorias from './seedsCategoria.js';
-//import seedRestaurantes from './seedsRestaurante.js';
-//import seedPratos from './seedsPrato.js';
-//import seedAdicionais from './seedsAdicional.js';
+import seedCategorias from './seedsCategoria.js';
+import seedRestaurantes from './seedsRestaurante.js';
+import seedPratos from './seedsPrato.js';
+import seedAdicionais from './seedsAdicional.js';
 
 async function main() {
     try {
-        //await seedCategorias();
+        await seedCategorias();
         await seedUsuarios();
-        //await seedRestaurantes();
-        //await seedPratos();
-        //await seedAdicionais();
+        await seedRestaurantes();
+        await seedPratos();
+        await seedAdicionais();
 
         console.log('>>> SEED FINALIZADO COM SUCESSO! <<<');
     } catch (err) {
