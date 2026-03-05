@@ -1,0 +1,40 @@
+services:
+  mongodb:
+    container_name: mongodb-pedidos
+    image: mongo:8
+    volumes:
+      - vol-mongodb-pedidos:/data/db
+    ports:
+      - 27018:27017
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pedidos-network
+  
+  api:
+    container_name: api-pedidos
+    build: ./
+    environment:
+      - DB_URL=mongodb://mongodb-pedidos:27017/pedidos
+      - NODE_ENV=production
+    ports:
+      - 5020:5020
+    env_file:
+      - ./.env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - pedidos-network
+    restart: unless-stopped
+
+volumes:
+  vol-mongodb-pedidos:
+
+networks:
+  pedidos-network:
+    name: pedidos-network
+    driver: bridge
