@@ -14,7 +14,6 @@ import {
     CustomError,
     HttpStatusCodes
 } from '../utils/helpers/index.js';
-
 class RestauranteController {
     constructor() {
         this.service = new RestauranteService();
@@ -32,22 +31,60 @@ class RestauranteController {
         }
 
         const data = await this.service.listar(req);
-        return CommonResponse.success(res, data);
+
+        // Mensagem contextualizada para listagem
+        if (id) {
+            return CommonResponse.success(res, data, HttpStatusCodes.OK.code, 'Restaurante encontrado com sucesso.');
+        }
+
+        // Resultado paginado - verificar se há resultados
+        const totalDocs = data?.totalDocs ?? data?.docs?.length ?? 0;
+        if (totalDocs === 0) {
+            const temFiltros = query && (query.nome || query.categoria || query.status);
+            const mensagem = temFiltros
+                ? 'Nenhum restaurante encontrado com os filtros informados.'
+                : 'Nenhum restaurante cadastrado.';
+            return CommonResponse.success(res, data, HttpStatusCodes.OK.code, mensagem);
+        }
+
+        return CommonResponse.success(res, data, HttpStatusCodes.OK.code, `${totalDocs} restaurante(s) encontrado(s).`);
     }
 
     async criar(req, res) {
+        // Validar se o body não está vazio
+        if (!req.body || Object.keys(req.body).length === 0) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                errorType: 'validationError',
+                field: 'body',
+                details: [{ path: 'body', message: 'O corpo da requisição não pode ser vazio.' }],
+                customMessage: 'O corpo da requisição é obrigatório para criar um restaurante.',
+            });
+        }
+
         const parsedData = RestauranteSchema.parse(req.body);
         const data = await this.service.criar(parsedData, req);
-        return CommonResponse.created(res, data);
+        return CommonResponse.created(res, data, 'Restaurante criado com sucesso.');
     }
 
     async atualizar(req, res) {
         const { id } = req.params;
         RestauranteIdSchema.parse(id);
 
+        // Validar se o body não está vazio
+        if (!req.body || Object.keys(req.body).length === 0) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                errorType: 'validationError',
+                field: 'body',
+                details: [{ path: 'body', message: 'O corpo da requisição não pode ser vazio.' }],
+                customMessage: 'Informe pelo menos um campo para atualizar o restaurante.',
+            });
+        }
+
         const parsedData = RestauranteUpdateSchema.parse(req.body);
         const data = await this.service.atualizar(id, parsedData, req);
-        return CommonResponse.success(res, data, 200, 'Restaurante atualizado com sucesso.');
+        return CommonResponse.success(res, data, HttpStatusCodes.OK.code, 'Restaurante atualizado com sucesso.');
     }
 
     async deletar(req, res) {
@@ -55,7 +92,7 @@ class RestauranteController {
         RestauranteIdSchema.parse(id);
 
         const data = await this.service.deletar(id, req);
-        return CommonResponse.success(res, data, 200, 'Restaurante excluído com sucesso.');
+        return CommonResponse.success(res, data, HttpStatusCodes.OK.code, 'Restaurante excluído com sucesso.');
     }
 }
 

@@ -108,6 +108,15 @@ class RestauranteRepository {
 
     async deletar(id) {
         const restaurante = await this.modelRestaurante.findByIdAndDelete(id);
+        if (!restaurante) {
+            throw new CustomError({
+                statusCode: 404,
+                errorType: 'resourceNotFound',
+                field: 'Restaurante',
+                details: [],
+                customMessage: messages.error.resourceNotFound('Restaurante')
+            });
+        }
         return restaurante;
     }
 }

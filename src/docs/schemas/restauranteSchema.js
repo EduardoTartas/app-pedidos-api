@@ -4,8 +4,8 @@ const restauranteSchemas = {
     RestauranteFiltro: {
         type: "object",
         properties: {
-            nome: { type: "string", description: "Filtra por nome", example: "Burger King" },
-            status: { type: "string", enum: ["aberto", "fechado", "inativo"], description: "Filtra por status", example: "aberto" }
+            nome: { type: "string", description: "Filtra por nome" },
+            status: { type: "string", enum: ["aberto", "fechado", "inativo"], description: "Filtra por status" }
         }
     },
 

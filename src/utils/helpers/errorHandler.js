@@ -14,6 +14,12 @@ const errorHandler = (err, req, res, next) => {
     const errorId = uuidv4();
     const requestId = req.requestId || 'N/A';
 
+    // Evitar enviar resposta se os headers já foram enviados
+    if (res.headersSent) {
+        logger.error('Headers já enviados, delegando ao Express', { message: err.message, path: req.path, requestId });
+        return next(err);
+    }
+
     // Tratamento para erros de validação do Zod
     if (err instanceof ZodError) {
         const zodIssues = err.issues || err.errors || [];
@@ -76,6 +82,47 @@ const errorHandler = (err, req, res, next) => {
         );
     }
 
+    // Tratamento para CastError do Mongoose (ex: ObjectId inválido na URL)
+    if (err instanceof mongoose.Error.CastError || err.name === 'CastError') {
+        const field = err.path || 'id';
+        const value = err.value;
+        logger.warn('Erro de CastError', { field, value, path: req.path, requestId });
+        return CommonResponse.error(
+            res,
+            400,
+            'validationError',
+            field,
+            [{ path: field, message: `O valor "${value}" não é válido para o campo "${field}". Verifique o formato informado.` }],
+            `Valor inválido para o campo "${field}".`
+        );
+    }
+
+    // Tratamento para BSONError (ObjectId malformado que chega ao MongoDB)
+    if (err.name === 'BSONError' || err.name === 'BSONTypeError') {
+        logger.warn('Erro de BSON', { message: err.message, path: req.path, requestId });
+        return CommonResponse.error(
+            res,
+            400,
+            'validationError',
+            'id',
+            [{ path: 'id', message: 'Identificador inválido. Verifique o formato do ID informado.' }],
+            'Identificador com formato inválido.'
+        );
+    }
+
+    // Tratamento para StrictModeError do Mongoose (campos não permitidos no schema)
+    if (err instanceof mongoose.Error.StrictModeError || err.name === 'StrictModeError') {
+        logger.warn('Erro de campo não permitido', { message: err.message, path: req.path, requestId });
+        return CommonResponse.error(
+            res,
+            400,
+            'validationError',
+            null,
+            [{ path: err.path || 'unknown', message: `O campo "${err.path}" não é permitido.` }],
+            'A requisição contém campos não permitidos.'
+        );
+    }
+
     // Tratamento para erros de parsing JSON
     if (err.name === 'SyntaxError' || err.type === 'entity.parse.failed' || err.message?.includes('Unexpected token') || err.message?.includes('is not valid JSON')) {
         logger.warn('Erro de parsing JSON', { message: err.message, path: req.path, requestId });
@@ -86,6 +133,22 @@ const errorHandler = (err, req, res, next) => {
             'body',
             [{ path: 'body', message: 'JSON inválido. Verifique a sintaxe do corpo da requisição.' }],
             'Formato JSON inválido.'
+        );
+    }
+
+    // Tratamento para TypeError (acesso a propriedade de null/undefined)
+    if (err instanceof TypeError) {
+        logger.error(`TypeError [ID: ${errorId}]`, { message: err.message, stack: err.stack, path: req.path, requestId });
+        const detalhes = isProduction
+            ? [{ message: `Erro ao processar a requisição. Referência: ${errorId}` }]
+            : [{ message: err.message }];
+        return CommonResponse.error(
+            res,
+            400,
+            'validationError',
+            null,
+            detalhes,
+            'Erro ao processar a requisição. Verifique os dados enviados.'
         );
     }
 
