@@ -11,7 +11,7 @@ const restauranteRoutes = {
             summary: "Lista todos os restaurantes cadastrados",
             description: `
         + Caso de uso: Permitir que qualquer usuário liste os restaurantes disponíveis na plataforma.
-        
+
         + Função de Negócio:
             - Permitir ao front-end obter uma lista dos restaurantes cadastrados.
             + Recebe como query parameters (opcionais):
@@ -54,12 +54,11 @@ const restauranteRoutes = {
             summary: "Cadastra um novo restaurante",
             description: `
             + Caso de uso: Permitir que um usuário autenticado cadastre um novo restaurante.
-            
+
             + Função de Negócio:
                 - Permitir ao front-end cadastrar um restaurante.
                 + Recebe no corpo da requisição:
                     - **nome**: nome do restaurante (obrigatório).
-                    - **endereco**: endereço completo.
                     - **categoria_ids**: IDs das categorias.
                     - **secoes_cardapio**: seções do cardápio.
                     - Demais campos opcionais.
@@ -96,7 +95,7 @@ const restauranteRoutes = {
             summary: "Obtém detalhes de um restaurante",
             description: `
             + Caso de uso: Consulta de detalhes de um restaurante específico.
-            
+
             + Função de Negócio:
                 - Permitir ao front-end obter todas as informações de um restaurante.
                 + Recebe como path parameter:
@@ -127,7 +126,7 @@ const restauranteRoutes = {
             summary: "Atualiza parcialmente um restaurante",
             description: `
             + Caso de uso: Permitir que o dono atualize dados do restaurante.
-            
+
             + Função de Negócio:
                 - Permitir ao front-end atualizar um restaurante.
                 + Recebe como path parameter:
@@ -168,7 +167,7 @@ const restauranteRoutes = {
             summary: "Deleta um restaurante",
             description: `
             + Caso de uso: Permitir que o dono ou administrador exclua um restaurante.
-            
+
             + Função de Negócio:
                 - Permitir ao front-end excluir um restaurante.
                 + Recebe como path parameter:

@@ -25,6 +25,8 @@ const getSwaggerOptions = async () => {
     //     import.meta.url).href + t)).default;
     const restaurantePaths = (await import(new URL("../paths/restaurante.js",
         import.meta.url).href + t)).default;
+    const enderecoPaths = (await import(new URL("../paths/endereco.js",
+        import.meta.url).href + t)).default;
     // const pratoPaths = (await import(new URL("../paths/prato.js",
     //     import.meta.url).href + t)).default;
     // const adicionalPaths = (await import(new URL("../paths/adicional.js",
@@ -44,6 +46,8 @@ const getSwaggerOptions = async () => {
     // const categoriaSchemas = (await import(new URL("../schemas/categoriaSchema.js",
     //     import.meta.url).href + t)).default;
     const restauranteSchemas = (await import(new URL("../schemas/restauranteSchema.js",
+        import.meta.url).href + t)).default;
+    const enderecoSchemas = (await import(new URL("../schemas/enderecoSchema.js",
         import.meta.url).href + t)).default;
     // const pratoSchemas = (await import(new URL("../schemas/pratoSchema.js",
     //     import.meta.url).href + t)).default;
@@ -86,6 +90,10 @@ const getSwaggerOptions = async () => {
                     name: "Restaurantes",
                     description: "Rotas para o gerenciamento de restaurantes"
                 },
+                {
+                    name: "Endereços",
+                    description: "Rotas para o gerenciamento de endereços de usuários e restaurantes"
+                },
                 // {
                 //     name: "Pratos",
                 //     description: "Rotas para o gerenciamento de pratos e cardápio"
@@ -112,6 +120,7 @@ const getSwaggerOptions = async () => {
                 ...usuarioPaths,
                 // ...categoriaPaths,
                 ...restaurantePaths,
+                ...enderecoPaths,
                 // ...pratoPaths,
                 // ...adicionalPaths,
                 // ...pedidoPaths,
@@ -131,6 +140,7 @@ const getSwaggerOptions = async () => {
                     ...usuarioSchemas,
                     // ...categoriaSchemas,
                     ...restauranteSchemas,
+                    ...enderecoSchemas,
                     // ...pratoSchemas,
                     // ...adicionalSchemas,
                     // ...pedidoSchemas,

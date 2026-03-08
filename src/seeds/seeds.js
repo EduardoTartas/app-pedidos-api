@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import seedUsuarios from './seedsUsuario.js';
 import seedCategorias from './seedsCategoria.js';
 import seedRestaurantes from './seedsRestaurante.js';
+import seedEnderecos from './seedsEndereco.js';
 import seedPratos from './seedsPrato.js';
 import seedAdicionais from './seedsAdicional.js';
 
@@ -13,6 +14,7 @@ async function main() {
         await seedCategorias();
         await seedUsuarios();
         await seedRestaurantes();
+        await seedEnderecos();
         await seedPratos();
         await seedAdicionais();
 

@@ -36,6 +36,15 @@ class RestauranteRepository {
         return documento;
     }
 
+    async buscarPorCnpj(cnpjValue, idIgnorado = null) {
+        const filtro = { cnpj: cnpjValue };
+        if (idIgnorado) {
+            filtro._id = { $ne: idIgnorado };
+        }
+        const documento = await this.modelRestaurante.findOne(filtro);
+        return documento;
+    }
+
     async buscarPorDonoId(donoId) {
         const restaurantes = await this.modelRestaurante.find({ dono_id: donoId })
             .populate('categoria_ids');

@@ -11,7 +11,7 @@ const usuarioRoutes = {
             summary: "Lista todos os usuários cadastrados",
             description: `
         + Caso de uso: Permitir que um usuário autorizado liste todos os usuários disponíveis no sistema, com possibilidade de filtros.
-        
+
         + Função de Negócio:
             - Permitir ao front-end obter uma lista dos usuários cadastrados.
             + Recebe como query parameters (opcionais):
@@ -59,21 +59,20 @@ const usuarioRoutes = {
             summary: "Cadastro de novos usuários (admin)",
             description: `
             + Caso de uso: Permitir que o administrador cadastre um novo usuário no sistema.
-            
+
             + Função de Negócio:
                 - Permitir ao front-end cadastrar um usuário.
                 + Recebe no corpo da requisição os seguintes campos:
                     - **nome**: nome do usuário.
                     - **email**: email do usuário.
                     - **senha**: senha do usuário.
-                    - **cpf_cnpj**: CPF ou CNPJ (opcional).
+                    - **cpf**: CPF do usuário (opcional, 11 dígitos).
                     - **telefone**: telefone (opcional).
-                    - **endereco**: endereço (opcional).
 
             + Regras de Negócio:
                 - O corpo da requisição deve seguir o UsuarioSchema.
                 - Campos obrigatórios: nome, email e senha.
-                - Não deve permitir criação com email ou cpf_cnpj duplicados.
+                - Não deve permitir criação com email ou CPF duplicados.
                 - Apenas administradores podem criar outros usuários.
 
             + Resultado Esperado:
@@ -104,7 +103,7 @@ const usuarioRoutes = {
             summary: "Obtém detalhes de um usuário",
             description: `
             + Caso de uso: Consulta de detalhes de um usuário específico.
-            
+
             + Função de Negócio:
                 - Permitir ao front-end obter todas as informações de um usuário cadastrado.
                 + Recebe como path parameter:
@@ -139,7 +138,7 @@ const usuarioRoutes = {
             summary: "Atualiza parcialmente um usuário",
             description: `
             + Caso de uso: Permitir que os usuários atualizem parcialmente seus próprios dados.
-            
+
             + Função de Negócio:
                 - Permitir ao front-end atualizar um usuário.
                 + Recebe como path parameter:
@@ -181,7 +180,7 @@ const usuarioRoutes = {
             summary: "Deleta um usuário",
             description: `
             + Caso de uso: Permitir que o administrador exclua um usuário ou que o próprio usuário exclua sua conta.
-            
+
             + Função de Negócio:
                 - Permitir ao front-end excluir um usuário.
                 + Recebe como path parameter:
@@ -219,7 +218,7 @@ const usuarioRoutes = {
             summary: "Atualiza status do usuário (ativo/inativo)",
             description: `
             + Caso de uso: Permitir que o administrador ative ou desative um usuário.
-            
+
             + Função de Negócio:
                 - Atualizar o campo status do usuário entre "ativo" e "inativo".
                 + Recebe como path parameter:

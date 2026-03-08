@@ -3,11 +3,13 @@
 import {
     CustomError,
     HttpStatusCodes,
-    messages
+    messages,
+    ensurePermission
 } from '../utils/helpers/index.js';
 import RestauranteRepository from '../repository/RestauranteRepository.js';
 import UsuarioRepository from '../repository/UsuarioRepository.js';
 import Categoria from '../models/Categoria.js';
+import { cnpj } from 'cpf-cnpj-validator';
 
 class RestauranteService {
     constructor() {
@@ -21,6 +23,8 @@ class RestauranteService {
     }
 
     async criar(parsedData, req) {
+
+        //Eduardo: O Middleware já faz essa veirificação
         // Validar se user_id está presente na requisição
         if (!req.user_id) {
             throw new CustomError({
@@ -32,6 +36,7 @@ class RestauranteService {
             });
         }
 
+        //Eduardo: Essa validação não faz sentido, se o usuario logado é o dono do restaurante, não tem porque verificar se o dono existe.
         // Verificar se o usuário dono existe
         await this.ensureUsuarioExists(req.user_id);
 
@@ -41,6 +46,11 @@ class RestauranteService {
         // Verificar se as categorias informadas existem
         if (parsedData.categoria_ids && parsedData.categoria_ids.length > 0) {
             await this.ensureCategoriasExistem(parsedData.categoria_ids);
+        }
+
+        // Validar e verificar unicidade do CNPJ se fornecido
+        if (parsedData.cnpj) {
+            await this.validateCnpj(parsedData.cnpj);
         }
 
         // Definir o dono_id como o usuário logado
@@ -53,31 +63,15 @@ class RestauranteService {
     async atualizar(id, parsedData, req) {
         const restaurante = await this.ensureRestauranteExists(id);
 
-        // Validar se user_id está presente na requisição
-        if (!req.user_id) {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.UNAUTHORIZED.code,
-                errorType: 'unauthorized',
-                field: 'Autenticação',
-                details: [],
-                customMessage: 'Usuário não autenticado. Faça login para atualizar um restaurante.',
-            });
-        }
-
         // Verificar se o usuário é o dono ou admin
         const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
-        const isAdmin = usuarioLogado.isAdmin;
-        const isDono = String(restaurante.dono_id._id || restaurante.dono_id) === String(req.user_id);
-
-        if (!isAdmin && !isDono) {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.FORBIDDEN.code,
-                errorType: 'permissionError',
-                field: 'Restaurante',
-                details: [],
-                customMessage: "Você não tem permissões para editar este restaurante."
-            });
-        }
+        const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
+        ensurePermission({
+            usuarioLogado,
+            targetId: donoId,
+            field: 'Restaurante',
+            customMessage: 'Você não tem permissões para editar este restaurante.',
+        });
 
         // Verificar nome duplicado (se está tentando alterar o nome)
         if (parsedData.nome) {
@@ -87,6 +81,11 @@ class RestauranteService {
         // Verificar se as categorias informadas existem
         if (parsedData.categoria_ids && parsedData.categoria_ids.length > 0) {
             await this.ensureCategoriasExistem(parsedData.categoria_ids);
+        }
+
+        // Validar e verificar unicidade do CNPJ se fornecido
+        if (parsedData.cnpj) {
+            await this.validateCnpj(parsedData.cnpj, id);
         }
 
         // Não permitir alterar o dono_id
@@ -99,30 +98,15 @@ class RestauranteService {
     async deletar(id, req) {
         const restaurante = await this.ensureRestauranteExists(id);
 
-        // Validar se user_id está presente na requisição
-        if (!req.user_id) {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.UNAUTHORIZED.code,
-                errorType: 'unauthorized',
-                field: 'Autenticação',
-                details: [],
-                customMessage: 'Usuário não autenticado. Faça login para deletar um restaurante.',
-            });
-        }
-
+        // Verificar se o usuário é o dono ou admin
         const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
-        const isAdmin = usuarioLogado.isAdmin;
-        const isDono = String(restaurante.dono_id._id || restaurante.dono_id) === String(req.user_id);
-
-        if (!isAdmin && !isDono) {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.FORBIDDEN.code,
-                errorType: 'permissionError',
-                field: 'Restaurante',
-                details: [],
-                customMessage: "Você não tem permissões para deletar este restaurante."
-            });
-        }
+        const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
+        ensurePermission({
+            usuarioLogado,
+            targetId: donoId,
+            field: 'Restaurante',
+            customMessage: 'Você não tem permissões para deletar este restaurante.',
+        });
 
         const data = await this.repository.deletar(id);
         return data;
@@ -198,6 +182,34 @@ class RestauranteService {
                 customMessage: `${idsNaoEncontrados.length} categoria(s) informada(s) não foram encontradas.`,
             });
         }
+    }
+
+    async validateCnpj(cnpjValue, id = null) {
+        if (!this.isValidCnpj(cnpjValue)) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                errorType: 'validationError',
+                field: 'cnpj',
+                details: [{ path: 'cnpj', message: 'CNPJ inválido.' }],
+                customMessage: 'CNPJ inválido.',
+            });
+        }
+
+        const restauranteExistente = await this.repository.buscarPorCnpj(cnpjValue, id);
+        if (restauranteExistente) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.CONFLICT.code,
+                errorType: 'duplicateEntry',
+                field: 'cnpj',
+                details: [{ path: 'cnpj', message: 'CNPJ já está em uso.' }],
+                customMessage: 'CNPJ já cadastrado.',
+            });
+        }
+    }
+
+    isValidCnpj(cnpjValue) {
+        const cleaned = cnpjValue.replace(/\D/g, '');
+        return cleaned.length === 14 && cnpj.isValid(cleaned);
     }
 }
 
