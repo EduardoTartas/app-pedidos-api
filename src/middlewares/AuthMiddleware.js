@@ -1,4 +1,4 @@
- src/middlewares/AuthMiddleware.js
+ //src/middlewares/AuthMiddleware.js
 
 import jwt from 'jsonwebtoken';
 import { promisify } from 'util';
@@ -10,12 +10,6 @@ import AuthService from '../service/AuthService.js';
 class AuthMiddleware {
     constructor() {
         this.service = new AuthService();
-
-        /**
-         * Vinculação para garantir ao método handle o contexto 'this' correto.
-         * Ao usar bind(this) no método handle garantimos que independentemente de como
-         * ou onde o método é chamado, this sempre se referirá à instância atual de AuthMiddleware.
-         */
         this.handle = this.handle.bind(this);
     }
 

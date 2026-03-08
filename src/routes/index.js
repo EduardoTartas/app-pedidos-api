@@ -9,7 +9,7 @@ import getSwaggerOptions from '../docs/config/head.js';
 import mongoose from 'mongoose';
 
 // Importação das rotas
-//import authRoutes from './authRoutes.js';
+import authRoutes from './authRoutes.js';
 import usuarioRoutes from './usuarioRoutes.js';
 //import categoriaRoutes from './categoriaRoutes.js';
 import restauranteRoutes from './restauranteRoutes.js';
@@ -54,7 +54,7 @@ const routes = (app) => {
     // Registra todas as rotas
     app.use(
         express.json(),
-        //authRoutes,
+        authRoutes,
         usuarioRoutes,
         //categoriaRoutes,
         restauranteRoutes,
