@@ -18,7 +18,7 @@ async function seedUsuarios() {
             nome: 'Admin Sistema',
             email: 'admin@delivery.com',
             senha: senhaHash,
-            cpf_cnpj: '00000000000',
+            cpf: '00000000000',
             telefone: '11999999999',
             status: 'ativo',
             isAdmin: true
@@ -27,7 +27,7 @@ async function seedUsuarios() {
             nome: 'Dono Restaurante 1',
             email: 'dono1@delivery.com',
             senha: senhaHash,
-            cpf_cnpj: '11111111111',
+            cpf: '11111111111',
             telefone: '11988888888',
             status: 'ativo',
             isAdmin: false
@@ -36,7 +36,7 @@ async function seedUsuarios() {
             nome: 'Dono Restaurante 2',
             email: 'dono2@delivery.com',
             senha: senhaHash,
-            cpf_cnpj: '22222222222',
+            cpf: '22222222222',
             telefone: '11977777777',
             status: 'ativo',
             isAdmin: false
@@ -45,7 +45,7 @@ async function seedUsuarios() {
             nome: 'Cliente Teste',
             email: 'cliente@delivery.com',
             senha: senhaHash,
-            cpf_cnpj: '33333333333',
+            cpf: '33333333333',
             telefone: '11966666666',
             status: 'ativo',
             isAdmin: false
@@ -54,7 +54,7 @@ async function seedUsuarios() {
             nome: 'Cliente Inativo',
             email: 'inativo@delivery.com',
             senha: senhaHash,
-            cpf_cnpj: '44444444444',
+            cpf: '44444444444',
             telefone: '11955555555',
             status: 'inativo',
             isAdmin: false

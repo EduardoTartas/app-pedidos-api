@@ -21,7 +21,7 @@ class Usuario {
                 required: [true, "A senha é obrigatória!"],
                 select: false
             },
-            cpf_cnpj: {
+            cpf: {
                 type: String,
                 unique: true,
                 sparse: true

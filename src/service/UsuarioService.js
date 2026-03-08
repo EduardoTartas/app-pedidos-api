@@ -8,7 +8,7 @@ import {
 } from '../utils/helpers/index.js';
 import AuthHelper from '../utils/AuthHelper.js';
 import UsuarioRepository from '../repository/UsuarioRepository.js';
-import { cpf, cnpj } from 'cpf-cnpj-validator';
+import { cpf } from 'cpf-cnpj-validator';
 
 class UsuarioService {
     constructor() {
@@ -24,9 +24,9 @@ class UsuarioService {
         // Validar email único
         await this.validateEmail(parsedData.email);
 
-        // Validar cpf_cnpj único se fornecido
-        if (parsedData.cpf_cnpj) {
-            await this.validateCpfCnpj(parsedData.cpf_cnpj);
+        // Validar cpf único se fornecido
+        if (parsedData.cpf) {
+            await this.validateCpf(parsedData.cpf);
         }
 
         // Hash da senha
@@ -107,41 +107,34 @@ class UsuarioService {
         }
     }
 
-    async validateCpfCnpj(cpf_cnpj, id = null) {
-      // Validar formato do CPF/CNPJ
-      if (!this.isValidCpfCnpj(cpf_cnpj)) {
+    async validateCpf(cpfValue, id = null) {
+      // Validar formato do CPF
+      if (!this.isValidCpf(cpfValue)) {
         throw new CustomError({
           statusCode: HttpStatusCodes.BAD_REQUEST.code,
           errorType: 'validationError',
-          field: 'cpf_cnpj',
-          details: [{ path: 'cpf_cnpj', message: 'CPF/CNPJ inválido.' }],
-          customMessage: 'CPF/CNPJ inválido.',
+          field: 'cpf',
+          details: [{ path: 'cpf', message: 'CPF inválido.' }],
+          customMessage: 'CPF inválido.',
         });
       }
 
       // Validar se já existe
-      const usuarioExistente = await this.repository.buscarPorCpfCnpj(cpf_cnpj, id);
+      const usuarioExistente = await this.repository.buscarPorCpf(cpfValue, id);
       if (usuarioExistente) {
         throw new CustomError({
           statusCode: HttpStatusCodes.BAD_REQUEST.code,
           errorType: 'validationError',
-          field: 'cpf_cnpj',
-          details: [{ path: 'cpf_cnpj', message: 'CPF/CNPJ já está em uso.' }],
-          customMessage: 'CPF/CNPJ já cadastrado.',
+          field: 'cpf',
+          details: [{ path: 'cpf', message: 'CPF já está em uso.' }],
+          customMessage: 'CPF já cadastrado.',
         });
       }
     }
 
-    isValidCpfCnpj(cpf_cnpj) {
-      const cleaned = cpf_cnpj.replace(/\D/g, '');
-
-      // CPF tem 11 dígitos, CNPJ tem 14
-      if (cleaned.length === 11) {
-        return cpf.isValid(cleaned);
-      } else if (cleaned.length === 14) {
-        return cnpj.isValid(cleaned);
-      }
-      return false;
+    isValidCpf(cpfValue) {
+      const cleaned = cpfValue.replace(/\D/g, '');
+      return cleaned.length === 11 && cpf.isValid(cleaned);
     }
 
     async ensureUserExists(id) {

@@ -73,8 +73,8 @@ class UsuarioRepository {
         return documento;
     }
 
-    async buscarPorCpfCnpj(cpf_cnpj, idIgnorado = null) {
-        const filtro = { cpf_cnpj };
+    async buscarPorCpf(cpfValue, idIgnorado = null) {
+        const filtro = { cpf: cpfValue };
         if (idIgnorado) {
             filtro._id = { $ne: idIgnorado };
         }
