@@ -72,6 +72,14 @@ class EnderecoRepository {
             { principal: false }
         );
     }
+
+    async buscarPorLabel(usuarioId, label, idIgnorado = null) {
+        const filtro = { usuario_id: usuarioId, label };
+        if (idIgnorado) {
+            filtro._id = { $ne: idIgnorado };
+        }
+        return await this.modelEndereco.findOne(filtro);
+    }
 }
 
 export default EnderecoRepository;

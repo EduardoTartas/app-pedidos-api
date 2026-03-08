@@ -44,6 +44,11 @@ class EnderecoService {
 
     await this.ensureUsuarioExists(usuarioId);
 
+    // Validar label único para o usuário
+    if (parsedData.label) {
+      await this.ensureLabelUnico(usuarioId, parsedData.label);
+    }
+
     // Se marcado como principal, desmarcar os outros
     if (parsedData.principal) {
       await this.repository.desmarcarPrincipal(usuarioId);
@@ -67,6 +72,11 @@ class EnderecoService {
 
     const endereco = await this.ensureEnderecoExists(enderecoId);
     this.ensureEnderecoPertence(endereco, 'usuario_id', usuarioId);
+
+    // Validar label único para o usuário
+    if (parsedData.label) {
+      await this.ensureLabelUnico(usuarioId, parsedData.label, enderecoId);
+    }
 
     // Se marcado como principal, desmarcar os outros
     if (parsedData.principal) {
@@ -228,6 +238,19 @@ class EnderecoService {
       });
     }
     return restaurante;
+  }
+
+  async ensureLabelUnico(usuarioId, label, idIgnorado = null) {
+    const existente = await this.repository.buscarPorLabel(usuarioId, label, idIgnorado);
+    if (existente) {
+      throw new CustomError({
+        statusCode: HttpStatusCodes.CONFLICT.code,
+        errorType: 'duplicateEntry',
+        field: 'label',
+        details: [{ path: 'label', message: `Você já possui um endereço com o nome "${label}".` }],
+        customMessage: `Já existe um endereço com o nome "${label}" para este usuário.`,
+      });
+    }
   }
 
   ensureEnderecoPertence(endereco, campo, id) {
