@@ -212,3 +212,5 @@ class RestauranteService {
         return cleaned.length === 14 && cnpj.isValid(cleaned);
     }
 }
+
+export default RestauranteService;
