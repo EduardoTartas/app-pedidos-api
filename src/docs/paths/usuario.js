@@ -66,13 +66,13 @@ const usuarioRoutes = {
                     - **nome**: nome do usuário.
                     - **email**: email do usuário.
                     - **senha**: senha do usuário.
-                    - **cpf_cnpj**: CPF ou CNPJ (opcional).
+                    - **cpf**: CPF do usuário (opcional, 11 dígitos).
                     - **telefone**: telefone (opcional).
 
             + Regras de Negócio:
                 - O corpo da requisição deve seguir o UsuarioSchema.
                 - Campos obrigatórios: nome, email e senha.
-                - Não deve permitir criação com email ou cpf_cnpj duplicados.
+                - Não deve permitir criação com email ou CPF duplicados.
                 - Apenas administradores podem criar outros usuários.
 
             + Resultado Esperado:
