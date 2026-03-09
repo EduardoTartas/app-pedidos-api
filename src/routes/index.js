@@ -16,7 +16,7 @@ import restauranteRoutes from './restauranteRoutes.js';
 import enderecoRoutes from './enderecoRoutes.js';
 //import pratoRoutes from './pratoRoutes.js';
 //import adicionalRoutes from './adicionalRoutes.js';
-//import pedidoRoutes from './pedidoRoutes.js';
+import pedidoRoutes from './pedidoRoutes.js';
 //import avaliacaoRoutes from './avaliacaoRoutes.js';
 //import notificacaoRoutes from './notificacaoRoutes.js';
 
@@ -61,7 +61,7 @@ const routes = (app) => {
         enderecoRoutes,
         //pratoRoutes,
         //adicionalRoutes,
-        //pedidoRoutes,
+        pedidoRoutes,
         //avaliacaoRoutes,
         //notificacaoRoutes
     );
