@@ -1,6 +1,7 @@
 // src/repository/PratoRepository.js
 
 import Prato from '../models/Prato.js';
+import '../models/AdicionalGrupo.js';
 import {
     CustomError,
     messages
