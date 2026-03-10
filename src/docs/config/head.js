@@ -27,8 +27,8 @@ const getSwaggerOptions = async () => {
         import.meta.url).href + t)).default;
     const enderecoPaths = (await import(new URL("../paths/endereco.js",
         import.meta.url).href + t)).default;
-    // const pratoPaths = (await import(new URL("../paths/prato.js",
-    //     import.meta.url).href + t)).default;
+    const pratoPaths = (await import(new URL("../paths/prato.js",
+        import.meta.url).href + t)).default;
     // const adicionalPaths = (await import(new URL("../paths/adicional.js",
     //     import.meta.url).href + t)).default;
     const pedidoPaths = (await import(new URL("../paths/pedido.js",
@@ -49,8 +49,8 @@ const getSwaggerOptions = async () => {
         import.meta.url).href + t)).default;
     const enderecoSchemas = (await import(new URL("../schemas/enderecoSchema.js",
         import.meta.url).href + t)).default;
-    // const pratoSchemas = (await import(new URL("../schemas/pratoSchema.js",
-    //     import.meta.url).href + t)).default;
+    const pratoSchemas = (await import(new URL("../schemas/pratoSchema.js",
+        import.meta.url).href + t)).default;
     // const adicionalSchemas = (await import(new URL("../schemas/adicionalSchema.js",
     //     import.meta.url).href + t)).default;
     const pedidoSchemas = (await import(new URL("../schemas/pedidoSchema.js",
@@ -94,10 +94,10 @@ const getSwaggerOptions = async () => {
                     name: "Endereços",
                     description: "Rotas para o gerenciamento de endereços de usuários e restaurantes"
                 },
-                // {
-                //     name: "Pratos",
-                //     description: "Rotas para o gerenciamento de pratos e cardápio"
-                // },
+                {
+                    name: "Pratos",
+                    description: "Rotas para o gerenciamento de pratos e cardápio"
+                },
                 // {
                 //     name: "Adicionais",
                 //     description: "Rotas para gestão de grupos e opções de adicionais"
@@ -121,7 +121,7 @@ const getSwaggerOptions = async () => {
                 // ...categoriaPaths,
                 ...restaurantePaths,
                 ...enderecoPaths,
-                // ...pratoPaths,
+                ...pratoPaths,
                 // ...adicionalPaths,
                 ...pedidoPaths,
                 // ...avaliacaoPaths,
@@ -141,7 +141,7 @@ const getSwaggerOptions = async () => {
                     // ...categoriaSchemas,
                     ...restauranteSchemas,
                     ...enderecoSchemas,
-                    // ...pratoSchemas,
+                    ...pratoSchemas,
                     // ...adicionalSchemas,
                     ...pedidoSchemas,
                     // ...avaliacaoSchemas,
