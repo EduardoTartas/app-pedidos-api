@@ -17,8 +17,8 @@ const getSwaggerOptions = async () => {
     const t = process.env.NODE_ENV === 'development' ? `?t=${Date.now()}` : '';
 
     // Paths
-    //const authPaths = (await import(new URL("../paths/auth.js",
-    //    import.meta.url).href + t)).default;
+    const authPaths = (await import(new URL("../paths/auth.js",
+        import.meta.url).href + t)).default;
     const usuarioPaths = (await import(new URL("../paths/usuario.js",
         import.meta.url).href + t)).default;
     // const categoriaPaths = (await import(new URL("../paths/categoria.js",
@@ -39,8 +39,8 @@ const getSwaggerOptions = async () => {
     //     import.meta.url).href + t)).default;
 
     // Schemas
-    //const authSchemas = (await import(new URL("../schemas/authSchema.js",
-    //    import.meta.url).href + t)).default;
+    const authSchemas = (await import(new URL("../schemas/authSchema.js",
+        import.meta.url).href + t)).default;
     const usuarioSchemas = (await import(new URL("../schemas/usuarioSchema.js",
         import.meta.url).href + t)).default;
     // const categoriaSchemas = (await import(new URL("../schemas/categoriaSchema.js",
@@ -74,10 +74,10 @@ const getSwaggerOptions = async () => {
             },
             servers: getServersInCorrectOrder(),
             tags: [
-                //{
-                //    name: "Auth",
-                //    description: "Rotas para autenticação e autorização"
-                //},
+                {
+                    name: "Auth",
+                    description: "Rotas para autenticação e autorização"
+                },
                 {
                     name: "Usuários",
                     description: "Rotas para o gerenciamento de usuários"
@@ -116,7 +116,7 @@ const getSwaggerOptions = async () => {
                 // }
             ],
             paths: {
-                //...authPaths,
+                ...authPaths,
                 ...usuarioPaths,
                 // ...categoriaPaths,
                 ...restaurantePaths,
@@ -136,7 +136,7 @@ const getSwaggerOptions = async () => {
                     }
                 },
                 schemas: {
-                    //...authSchemas,
+                    ...authSchemas,
                     ...usuarioSchemas,
                     // ...categoriaSchemas,
                     ...restauranteSchemas,
