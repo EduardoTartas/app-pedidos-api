@@ -14,6 +14,7 @@ import {
   CustomError,
   HttpStatusCodes,
 } from '../utils/helpers/index.js';
+
 class RestauranteController {
   constructor() {
     this.service = new RestauranteService();

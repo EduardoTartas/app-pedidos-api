@@ -4,6 +4,7 @@ import 'dotenv/config';
 const requiredGarageVars = [
     'GARAGE_ENDPOINT',
     'GARAGE_PORT',
+    'GARAGE_PUBLIC_URL',
     'GARAGE_ACCESS_KEY',
     'GARAGE_SECRET_KEY',
     'GARAGE_BUCKET_FOTOS'
