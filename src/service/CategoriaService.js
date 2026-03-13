@@ -60,7 +60,7 @@ class CategoriaService {
                 errorType: 'validationError',
                 field: 'nome',
                 details: [{ path: 'nome', message: 'Nome já está em uso.' }],
-                customMessage: 'Nome já cadastrado.',
+                customMessage: 'O nome informado já está sendo utilizado por outra categoria.',
             });
         }
     }
