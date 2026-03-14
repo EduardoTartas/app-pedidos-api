@@ -21,8 +21,8 @@ const getSwaggerOptions = async () => {
         import.meta.url).href + t)).default;
     const usuarioPaths = (await import(new URL("../paths/usuario.js",
         import.meta.url).href + t)).default;
-    // const categoriaPaths = (await import(new URL("../paths/categoria.js",
-    //     import.meta.url).href + t)).default;
+    const categoriaPaths = (await import(new URL("../paths/categoria.js",
+        import.meta.url).href + t)).default;
     const restaurantePaths = (await import(new URL("../paths/restaurante.js",
         import.meta.url).href + t)).default;
     const enderecoPaths = (await import(new URL("../paths/endereco.js",
@@ -43,8 +43,8 @@ const getSwaggerOptions = async () => {
         import.meta.url).href + t)).default;
     const usuarioSchemas = (await import(new URL("../schemas/usuarioSchema.js",
         import.meta.url).href + t)).default;
-    // const categoriaSchemas = (await import(new URL("../schemas/categoriaSchema.js",
-    //     import.meta.url).href + t)).default;
+    const categoriaSchemas = (await import(new URL("../schemas/categoriaSchema.js",
+        import.meta.url).href + t)).default;
     const restauranteSchemas = (await import(new URL("../schemas/restauranteSchema.js",
         import.meta.url).href + t)).default;
     const enderecoSchemas = (await import(new URL("../schemas/enderecoSchema.js",
@@ -82,10 +82,10 @@ const getSwaggerOptions = async () => {
                     name: "Usuários",
                     description: "Rotas para o gerenciamento de usuários"
                 },
-                // {
-                //     name: "Categorias",
-                //     description: "Rotas para o gerenciamento de categorias de restaurantes"
-                // },
+                {
+                    name: "Categorias",
+                    description: "Rotas para o gerenciamento de categorias de restaurantes"
+                },
                 {
                     name: "Restaurantes",
                     description: "Rotas para o gerenciamento de restaurantes"
@@ -118,7 +118,7 @@ const getSwaggerOptions = async () => {
             paths: {
                 ...authPaths,
                 ...usuarioPaths,
-                // ...categoriaPaths,
+                ...categoriaPaths,
                 ...restaurantePaths,
                 ...enderecoPaths,
                 ...pratoPaths,
@@ -138,7 +138,7 @@ const getSwaggerOptions = async () => {
                 schemas: {
                     ...authSchemas,
                     ...usuarioSchemas,
-                    // ...categoriaSchemas,
+                    ...categoriaSchemas,
                     ...restauranteSchemas,
                     ...enderecoSchemas,
                     ...pratoSchemas,

@@ -11,7 +11,7 @@ import mongoose from 'mongoose';
 // Importação das rotas
 import authRoutes from './authRoutes.js';
 import usuarioRoutes from './usuarioRoutes.js';
-//import categoriaRoutes from './categoriaRoutes.js';
+import categoriaRoutes from './categoriaRoutes.js';
 import restauranteRoutes from './restauranteRoutes.js';
 import enderecoRoutes from './enderecoRoutes.js';
 import pratoRoutes from './pratoRoutes.js';
@@ -56,7 +56,7 @@ const routes = (app) => {
         express.json(),
         authRoutes,
         usuarioRoutes,
-        //categoriaRoutes,
+        categoriaRoutes,
         restauranteRoutes,
         enderecoRoutes,
         pratoRoutes,
