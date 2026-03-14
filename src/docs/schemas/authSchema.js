@@ -43,25 +43,15 @@ const authSchemas = {
                 description: "Senha (mín. 8 chars, 1 maiúscula, 1 minúscula, 1 número, 1 especial)",
                 example: "Senha123"
             },
-            cpf_cnpj: {
+            cpf: {
                 type: "string",
-                description: "CPF ou CNPJ do usuário",
+                description: "CPF do usuário",
                 example: "12345678900"
             },
             telefone: {
                 type: "string",
                 description: "Telefone de contato",
                 example: "69999998888"
-            },
-            endereco: {
-                type: "object",
-                properties: {
-                    cep: { type: "string", example: "76800000" },
-                    rua: { type: "string", example: "Rua das Flores" },
-                    numero: { type: "string", example: "123" },
-                    bairro: { type: "string", example: "Centro" },
-                    complemento: { type: "string", example: "Apt 101" }
-                }
             }
         },
         required: ["nome", "email", "senha"],
@@ -70,15 +60,8 @@ const authSchemas = {
             nome: "João da Silva",
             email: "admin@delivery.com",
             senha: "Senha123",
-            cpf_cnpj: "12345678900",
+            cpf: "12345678900",
             telefone: "69999998888",
-            endereco: {
-                cep: "76800000",
-                rua: "Rua das Flores",
-                numero: "123",
-                bairro: "Centro",
-                complemento: "Apt 101"
-            }
         }
     },
 
@@ -88,21 +71,11 @@ const authSchemas = {
             _id: { type: "string", example: "674fa21d79969d2172e78710" },
             nome: { type: "string", example: "João da Silva" },
             email: { type: "string", example: "admin@delivery.com" },
-            cpf_cnpj: { type: "string", example: "12345678900" },
+            cpf: { type: "string", example: "12345678900" },
             telefone: { type: "string", example: "69999998888" },
             status: { type: "string", example: "ativo" },
             isAdmin: { type: "boolean", example: false },
             foto_perfil: { type: "string", example: "" },
-            endereco: {
-                type: "object",
-                properties: {
-                    cep: { type: "string", example: "76800000" },
-                    rua: { type: "string", example: "Rua das Flores" },
-                    numero: { type: "string", example: "123" },
-                    bairro: { type: "string", example: "Centro" },
-                    complemento: { type: "string", example: "Apt 101" }
-                }
-            },
             createdAt: { type: "string", format: "date-time", example: "16/01/2025 12:00:00" },
             updatedAt: { type: "string", format: "date-time", example: "16/01/2025 12:00:00" }
         },
