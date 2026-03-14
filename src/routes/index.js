@@ -17,7 +17,7 @@ import restauranteRoutes from './restauranteRoutes.js';
 //import adicionalRoutes from './adicionalRoutes.js';
 //import pedidoRoutes from './pedidoRoutes.js';
 //import avaliacaoRoutes from './avaliacaoRoutes.js';
-//import notificacaoRoutes from './notificacaoRoutes.js';
+import notificacaoRoutes from './notificacaoRoutes.js';
 
 dotenv.config();
 
@@ -61,7 +61,7 @@ const routes = (app) => {
         //adicionalRoutes,
         //pedidoRoutes,
         //avaliacaoRoutes,
-        //notificacaoRoutes
+        notificacaoRoutes
     );
 };
 
