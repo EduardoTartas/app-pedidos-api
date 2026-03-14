@@ -35,7 +35,22 @@ class NotificacaoService {
             });
         }
 
- 
+    const notificacao = await this.repository.buscarPorID(id);
+
+        // o destinatário  marcar a notificação como lida
+        if (String(notificacao.usuario_id) !== String(req.user_id)) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.FORBIDDEN.code,
+                errorType: 'permissionError',
+                field: 'Notificação',
+                details: [],
+                customMessage: 'Você não tem permissão para marcar esta notificação como lida.'
+            });
+        }
+
+        const updated = await this.repository.marcarComoLida(id);
+        return updated;
+    }
 }
 
 export default NotificacaoService;
