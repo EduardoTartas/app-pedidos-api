@@ -8,11 +8,13 @@ import {
 } from '../utils/helpers/index.js';
 import AuthHelper from '../utils/AuthHelper.js';
 import UsuarioRepository from '../repository/UsuarioRepository.js';
+import UploadService from './UploadService.js';
 import { cpf } from 'cpf-cnpj-validator';
 
 class UsuarioService {
     constructor() {
         this.repository = new UsuarioRepository();
+        this.uploadService = new UploadService();
     }
 
     async listar(req) {
@@ -89,6 +91,67 @@ class UsuarioService {
 
         const data = await this.repository.deletar(id);
         return data;
+    }
+
+    // ================================
+    // UPLOAD DE FOTO
+    // ================================
+
+    async fotoUpload(id, file, req) {
+        const usuario = await this.ensureUserExists(id);
+
+        const usuarioLogado = await this.repository.buscarPorID(req.user_id);
+        ensurePermission({
+            usuarioLogado,
+            targetId: id,
+            field: 'Usuário',
+            customMessage: 'Você não tem permissões para alterar a foto deste usuário.',
+        });
+
+        // O 'substituirImagem' já trata se 'usuario.foto_perfil' for null ou se não existir
+        const uploadResult = await this.uploadService.substituirImagem(
+            file,
+            usuario.foto_perfil,
+            { width: 400, height: 400, fit: 'cover', quality: 80 }
+        );
+
+        // Atualiza a URL no banco de dados
+        await this.repository.atualizar(id, { foto_perfil: uploadResult.url });
+
+        return uploadResult;
+    }
+
+    async fotoDelete(id, req) {
+        const usuario = await this.ensureUserExists(id);
+
+        const usuarioLogado = await this.repository.buscarPorID(req.user_id);
+        ensurePermission({
+            usuarioLogado,
+            targetId: id,
+            field: 'Usuário',
+            customMessage: 'Você não tem permissões para excluir a foto deste usuário.',
+        });
+
+        if (!usuario.foto_perfil) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.NOT_FOUND.code,
+                errorType: 'resourceNotFound',
+                field: 'foto_perfil',
+                customMessage: 'Este usuário não possui uma foto de perfil para remover.'
+            });
+        }
+
+        const urlAntiga = usuario.foto_perfil;
+
+        // 1. Remove a URL do banco de dados imediatamente (resposta rápida, evita carregamento desnecessário da imagem)
+        await this.repository.atualizar(id, { foto_perfil: "" });
+
+        // 2. Deleta do Garage em background com retry (se falhar, apenas loga e não impacta o usuário)
+        this.uploadService.deleteImagemComRetry(urlAntiga).catch(err => {
+            console.error(`Erro isolado na exclusão da foto em background: ${err.message}`);
+        });
+
+        return true;
     }
 
     // ================================

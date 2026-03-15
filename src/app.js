@@ -5,14 +5,17 @@ import helmet from "helmet";
 import errorHandler from './utils/helpers/errorHandler.js';
 import logger from './utils/logger.js';
 import DbConnect from './config/dbConnect.js';
+import setupGarage from './config/setupGarage.js';
 import routes from './routes/index.js';
 import CommonResponse from './utils/helpers/CommonResponse.js';
 import express from "express";
+import expressFileUpload from "express-fileupload";
 import compression from 'compression';
 
 const app = express();
 
 await DbConnect.conectar();
+await setupGarage();
 
 // Middlewares de segurança
 app.use(helmet({
@@ -32,6 +35,12 @@ app.use(compression());
 
 // Habilitando o uso de json pelo express
 app.use(express.json());
+
+// Habilitando o uso de arquivos pelo express, com limite de segurança em memória de 50MB
+app.use(expressFileUpload({
+    limits: { fileSize: 50 * 1024 * 1024 }, // Trava em 50MB para não esgotar a RAM
+    abortOnLimit: true // Rejeita a requisição e poupa a banda automaticamente se passar
+}));
 
 // Configuração para o proxy confiar no cliente
 app.set('trust proxy', true);

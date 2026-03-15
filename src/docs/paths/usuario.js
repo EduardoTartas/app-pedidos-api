@@ -254,6 +254,93 @@ const usuarioRoutes = {
                 500: commonResponses[500]()
             }
         }
+    },
+
+    "/usuarios/{id}/foto": {
+        post: {
+            tags: ["Usuários"],
+            summary: "Faz upload/atualiza a foto de perfil do usuário",
+            description: `
+            + Caso de uso: Adicionar ou alterar a foto de perfil do usuário.
+
+            + Função de Negócio:
+                - Processa um arquivo de imagem, envia para o bucket e associa ao perfil.
+                + Recebe via **multipart/form-data**:
+                    - \`file\` ou \`imagem\`: O arquivo da foto.
+
+            + Regras de Negócio:
+                - Máximo 50MB (definido no serviço) e tipos restritos (jpg, png).
+                - A imagem antiga é apagada automaticamente.
+                - O próprio usuário (ou admin) pode realizar esta ação.
+
+            + Resultado Esperado:
+                - HTTP 200 OK com link da imagem carregada.
+            `,
+            security: [{ bearerAuth: [] }],
+            parameters: [{
+                name: "id",
+                in: "path",
+                required: true,
+                schema: { type: "string" },
+                description: "ID do usuário"
+            }],
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        schema: {
+                            type: "object",
+                            properties: {
+                                file: {
+                                    type: "string",
+                                    format: "binary",
+                                    description: "Arquivo de imagem (JPEG, PNG, etc)"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            responses: {
+                200: commonResponses[200](),
+                400: commonResponses[400](),
+                401: commonResponses[401](),
+                403: commonResponses[403](),
+                404: commonResponses[404](),
+                500: commonResponses[500]()
+            }
+        },
+        delete: {
+            tags: ["Usuários"],
+            summary: "Deleta a foto de perfil do usuário",
+            description: `
+            + Caso de uso: O usuário deseja remover sua foto de perfil.
+
+            + Função de Negócio:
+                - Apaga a foto do bucket e define como vazio/null na base de dados.
+
+            + Regras de Negócio:
+                - O próprio usuário (ou admin) pode remover a imagem.
+                - A remoção real do arquivo pode ocorrer de forma silenciosa ou síncrona.
+
+            + Resultado Esperado:
+                - HTTP 200 OK informando o sucesso da remoção.
+            `,
+            security: [{ bearerAuth: [] }],
+            parameters: [{
+                name: "id",
+                in: "path",
+                required: true,
+                schema: { type: "string" },
+                description: "ID do usuário"
+            }],
+            responses: {
+                200: commonResponses[200](),
+                401: commonResponses[401](),
+                403: commonResponses[403](),
+                404: commonResponses[404](),
+                500: commonResponses[500]()
+            }
+        }
     }
 };
 

@@ -171,6 +171,44 @@ class UsuarioController {
       'Usuário excluído com sucesso.',
     );
   }
+
+  async fotoUpload(req, res) {
+    const { id } = req.params;
+    UsuarioIdSchema.parse(id);
+
+    const file = req.files?.file || req.files?.imagem;
+    if (!file) {
+      throw new CustomError({
+        statusCode: HttpStatusCodes.BAD_REQUEST.code,
+        errorType: 'validationError',
+        field: 'file',
+        details: [{ path: 'file', message: 'Nenhum arquivo enviado.' }],
+        customMessage: 'A imagem é obrigatória para o upload.',
+      });
+    }
+
+    const { url, fileName, metadata } = await this.service.fotoUpload(id, file, req);
+
+    return CommonResponse.success(res, {
+      message: 'Foto processada e usuário atualizado com sucesso.',
+      dados: { foto_perfil: url },
+      metadados: metadata,
+    });
+  }
+
+  async fotoDelete(req, res) {
+    const { id } = req.params;
+    UsuarioIdSchema.parse(id);
+
+    await this.service.fotoDelete(id, req);
+
+    return CommonResponse.success(
+      res,
+      null,
+      200,
+      'Foto excluída com sucesso.',
+    );
+  }
 }
 
 export default UsuarioController;

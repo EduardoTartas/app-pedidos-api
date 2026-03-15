@@ -9,7 +9,7 @@ const authRoutes = {
             summary: "Autentica usuário e retorna tokens JWT",
             description: `
             + Caso de uso: Autenticação de usuário no sistema via email e senha.
-            
+
             + Função de Negócio:
                 - Permitir que o usuário faça login na plataforma de delivery.
                 + Recebe no corpo da requisição:
@@ -49,7 +49,7 @@ const authRoutes = {
             summary: "Registra novo usuário no sistema",
             description: `
             + Caso de uso: Criação de conta própria no sistema de delivery.
-            
+
             + Função de Negócio:
                 - Permitir que novos usuários se registrem, criando uma conta com dados básicos.
                 + Recebe no corpo da requisição:
@@ -57,7 +57,7 @@ const authRoutes = {
 
             + Regras de Negócio:
                 - Validação de campos obrigatórios (nome, email e senha).
-                - Verificação de unicidade para email e cpf_cnpj.
+                - Verificação de unicidade para email e cpf.
                 - Definição de status inicial como "ativo".
                 - Senha deve atender requisitos de segurança (mín. 8 chars, maiúscula, minúscula, número, especial).
                 - Em caso de duplicidade ou erro de validação, retorna erro apropriado.
@@ -89,18 +89,18 @@ const authRoutes = {
             summary: "Encerra sessão e invalida access token",
             description: `
             + Caso de uso: Logout de usuário e revogação de token de acesso.
-            
+
             + Função de Negócio:
                 - Permitir ao usuário encerrar a sessão corrente e impedir o uso futuro do mesmo token.
 
             + Recebe pelo header Authorization:
                 - Bearer <token> o accessToken a ser revogado.
-            
+
             + Fluxo:
                 - Valida accessToken e revoga ao excluir da base de dados, impedindo usos futuros.
                 - Invalida sessão corrente.
                 - Endpoint idempotente: se já revogado, continua retornando 200 OK.
-            
+
             + Resultado Esperado:
                 - 200 OK com mensagem: Sessão encerrada com sucesso.
         `,
@@ -137,7 +137,7 @@ const authRoutes = {
             summary: "Renova access token a partir de refresh token",
             description: `
             + Caso de uso: Renovação de accessToken via refreshToken.
-            
+
             + Função de Negócio:
                 - Permitir ao usuário continuar logado sem necessidade de nova autenticação completa.
 
@@ -145,10 +145,10 @@ const authRoutes = {
                 1. Valida se o token não está expirado.
                 2. Gera um **accessToken** (expiração: 15 minutos).
                 3. Opcionalmente, gera um **refreshToken** novo (rotacionamento).
-            
+
             + Regras de Negócio:
                 - Falha na validação retorna 401 Unauthorized ou 498 Token Expired.
-            
+
             + Resultado Esperado:
                 - **accessToken** (string): novo JWT de acesso, válido por 15 minutos.
                 - **refreshToken** (string, opcional): novo refreshToken, válido por 7 dias.
@@ -187,7 +187,7 @@ const authRoutes = {
             summary: "Solicita recuperação de senha via email",
             description: `
             + Caso de uso: Recuperação de senha quando o usuário esqueceu suas credenciais.
-            
+
             + Função de Negócio:
                 - Enviar email com código de recuperação para o usuário.
                 + Recebe no corpo da requisição:
@@ -227,7 +227,7 @@ const authRoutes = {
             summary: "Redefine senha com código de recuperação",
             description: `
             + Caso de uso: Redefinição de senha utilizando código recebido por email.
-            
+
             + Função de Negócio:
                 - Permitir ao usuário definir uma nova senha utilizando o código de recuperação.
                 + Recebe no corpo da requisição:
