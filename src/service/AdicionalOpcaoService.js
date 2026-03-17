@@ -1,6 +1,6 @@
 // src/service/AdicionalOpcaoService.js
 
-import { ensurePermission } from '../utils/helpers/index.js';
+import { CustomError, HttpStatusCodes, ensurePermission } from '../utils/helpers/index.js';
 import AdicionalOpcaoRepository from '../repository/AdicionalOpcaoRepository.js';
 import AdicionalGrupoRepository from '../repository/AdicionalGrupoRepository.js';
 import RestauranteRepository from '../repository/RestauranteRepository.js';
@@ -28,6 +28,17 @@ class AdicionalOpcaoService {
             customMessage: 'Você não tem permissões para gerenciar adicionais deste restaurante.',
         });
 
+        const nomeExistente = await this.opcaoRepository.buscarPorNomeNoGrupo(parsedData.nome, grupoId);
+        if (nomeExistente) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.CONFLICT.code,
+                errorType: 'resourceAlreadyExists',
+                field: 'nome',
+                details: [],
+                customMessage: 'Já existe uma opção de adicional com este nome neste grupo.',
+            });
+        }
+
         const opcao = await this.opcaoRepository.criar(parsedData);
         return opcao;
     }
@@ -51,6 +62,19 @@ class AdicionalOpcaoService {
             field: 'Adicional',
             customMessage: 'Você não tem permissões para editar adicionais deste restaurante.',
         });
+
+        if (parsedData.nome) {
+            const nomeExistente = await this.opcaoRepository.buscarPorNomeNoGrupo(parsedData.nome, opcao.grupo_id, id);
+            if (nomeExistente) {
+                throw new CustomError({
+                    statusCode: HttpStatusCodes.CONFLICT.code,
+                    errorType: 'resourceAlreadyExists',
+                    field: 'nome',
+                    details: [],
+                    customMessage: 'Já existe uma opção de adicional com este nome neste grupo.',
+                });
+            }
+        }
 
         const data = await this.opcaoRepository.atualizar(id, parsedData);
         return data;

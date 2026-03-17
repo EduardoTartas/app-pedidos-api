@@ -33,6 +33,12 @@ class AdicionalOpcaoRepository {
         return opcoes;
     }
 
+    async buscarPorNomeNoGrupo(nome, grupoId, idIgnorado = null) {
+        const filtro = { nome, grupo_id: grupoId };
+        if (idIgnorado) filtro._id = { $ne: idIgnorado };
+        return await this.modelAdicionalOpcao.findOne(filtro);
+    }
+
     async buscarPorIDs(ids) {
         return await this.modelAdicionalOpcao.find({ _id: { $in: ids } });
     }
