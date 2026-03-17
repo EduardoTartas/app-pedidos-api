@@ -148,6 +148,44 @@ class RestauranteController {
       'Restaurante excluído com sucesso.',
     );
   }
+
+  async fotoUpload(req, res) {
+    const { id } = req.params;
+    RestauranteIdSchema.parse(id);
+
+    const file = req.files?.file || req.files?.imagem;
+    if(!file) {
+      throw new CustomError({
+        statusCode: HttpStatusCodes.BAD_REQUEST.code,
+        errorType: 'validationError',
+        field: 'file',
+        details: [{ path: 'file', message: 'Nenhum arquivo enviado.' }],
+        customMessage: 'A imagem é obrigatória para o upload.',
+      });
+    }
+
+    const { url, fileName, metadata } = await this.service.fotoUpload(id, file, req);
+
+    return CommonResponse.success( res, {
+      message: 'Foto processada e restaurante atualizado com sucesso.',
+      dados: { foto_restaurante: url },
+      metadados: metadata,
+    });
+  }
+
+  async fotoDelete(req, res) {
+    const { id } = req.params;
+    RestauranteIdSchema.parse(id);
+
+    await this.service.fotoDelete(id, req);
+
+    return CommonResponse.success(
+      res,
+      null,
+      HttpStatusCodes.OK.code,
+      'Foto do restaurante excluída com sucesso.',
+    )
+  }
 }
 
 export default RestauranteController;

@@ -14,6 +14,8 @@ router
     .get('/restaurantes/:id', asyncWrapper(restauranteController.listar.bind(restauranteController)))
     .post('/restaurantes', AuthMiddleware, asyncWrapper(restauranteController.criar.bind(restauranteController)))
     .patch('/restaurantes/:id', AuthMiddleware, asyncWrapper(restauranteController.atualizar.bind(restauranteController)))
-    .delete('/restaurantes/:id', AuthMiddleware, asyncWrapper(restauranteController.deletar.bind(restauranteController)));
+    .delete('/restaurantes/:id', AuthMiddleware, asyncWrapper(restauranteController.deletar.bind(restauranteController)))
+    .post('/restaurantes/:id/foto', AuthMiddleware, asyncWrapper(restauranteController.fotoUpload.bind(restauranteController)))
+    .delete('/restaurantes/:id/foto', AuthMiddleware, asyncWrapper(restauranteController.fotoDelete.bind(restauranteController)));
 
 export default router;
