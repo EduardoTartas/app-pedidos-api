@@ -2,12 +2,13 @@
 
 import CustomError from './CustomError.js';
 import HttpStatusCodes from './HttpStatusCodes.js';
+import messages from './messages.js';
 
-function ensurePermission({ usuarioLogado, targetId, field, customMessage }) {
+function ensurePermission({ usuarioLogado, targetId, field, customMessage = messages.auth.invalidPermission }) {
     const isAdmin = usuarioLogado.isAdmin;
-    const isSelf = String(usuarioLogado._id) === String(targetId);
+    const isOwner = String(usuarioLogado._id) === String(targetId);
 
-    if (!isAdmin && !isSelf) {
+    if (!isAdmin && !isOwner) {
         throw new CustomError({
             statusCode: HttpStatusCodes.FORBIDDEN.code,
             errorType: 'permissionError',
@@ -17,7 +18,7 @@ function ensurePermission({ usuarioLogado, targetId, field, customMessage }) {
         });
     }
 
-    return { isAdmin, isSelf };
+    return { isAdmin, isOwner };
 }
 
 export default ensurePermission;

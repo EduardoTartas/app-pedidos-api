@@ -15,7 +15,8 @@ import categoriaRoutes from './categoriaRoutes.js';
 import restauranteRoutes from './restauranteRoutes.js';
 import enderecoRoutes from './enderecoRoutes.js';
 import pratoRoutes from './pratoRoutes.js';
-//import adicionalRoutes from './adicionalRoutes.js';
+import adicionalGrupoRoutes from './adicionalGrupoRoutes.js';
+import adicionalOpcaoRoutes from './adicionalOpcaoRoutes.js';
 import pedidoRoutes from './pedidoRoutes.js';
 //import avaliacaoRoutes from './avaliacaoRoutes.js';
 //import notificacaoRoutes from './notificacaoRoutes.js';
@@ -60,7 +61,8 @@ const routes = (app) => {
         restauranteRoutes,
         enderecoRoutes,
         pratoRoutes,
-        //adicionalRoutes,
+        adicionalGrupoRoutes,
+        adicionalOpcaoRoutes,
         pedidoRoutes,
         //avaliacaoRoutes,
         //notificacaoRoutes

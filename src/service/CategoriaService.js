@@ -12,6 +12,7 @@ class CategoriaService {
         this.repository = new CategoriaRepository();
     }
 
+    //TODO: VALIDAÇÃO DE PERMISSÃO PARA SOMENTE ADMINISTRADORES PODEREM GERENCIAR CATEGORIAS!!!
     async listar(req) {
         const data = await this.repository.listar(req);
         return data;
