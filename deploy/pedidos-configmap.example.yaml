@@ -1,0 +1,40 @@
+# CONFIGMAP EXAMPLE - API App Pedidos
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pedidos-env
+  labels:
+    io.kompose.service: app-pedidos
+data:
+  # SERVIDOR
+  APP_PORT: "5020"
+  NODE_ENV: "production"
+  DEBUGLOG: "false"
+
+  # URLs
+  BASE_URL: "https://pedidos-api.app.fslab.dev"
+  FRONTEND_URL: "https://pedidos.app.fslab.dev"
+  SWAGGER_PROD_URL: "https://pedidos-api.app.fslab.dev"
+  SWAGGER_DEV_URL: "https://pedidos-api.app.fslab.dev"
+
+  # MONGODB
+  # Formato: mongodb://USUARIO:SENHA@HOST:PORTA/DATABASE?authSource=admin
+  DB_URL: "mongodb://<USUARIO>:<SENHA>@pedidos-mongodb:27017/appPedidos?authSource=admin"
+  DB_URL_TEST: "mongodb://<USUARIO>:<SENHA>@pedidos-mongodb:27017/appPedidosTest?authSource=admin"
+  MONGO_INITDB_DATABASE: "appPedidos"
+  MONGO_INITDB_ROOT_USERNAME: "<GERAR_USUARIO>"
+  MONGO_INITDB_ROOT_PASSWORD: "<GERAR_SENHA_SEGURA>"
+
+  # JWT - GERAR: openssl rand -base64 48
+  JWT_ACCESS_TOKEN_EXPIRATION: "15m"
+  JWT_PASSWORD_RECOVERY_EXPIRATION: "1h"
+  JWT_REFRESH_TOKEN_EXPIRATION: "7d"
+  JWT_SECRET_ACCESS_TOKEN: "<GERAR_COM_OPENSSL>"
+  JWT_SECRET_PASSWORD_RECOVERY: "<GERAR_COM_OPENSSL>"
+  JWT_SECRET_REFRESH_TOKEN: "<GERAR_COM_OPENSSL>"
+  SINGLE_SESSION_REFRESH_TOKEN: "false"
+
+  # MAIL SERVICE
+  URL_MAIL_SERVICE: "https://mailsender-backend.app.fslab.dev/api/emails/send"
+  MAIL_API_KEY: "<GERAR_API_KEY>"
