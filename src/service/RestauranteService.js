@@ -145,6 +145,10 @@ class RestauranteService {
         return data;
     }
 
+    // ================================
+    // UPLOAD DE FOTO
+    // ================================
+
     async fotoUpload(id, file, req) {
         const restaurante = await this.ensureRestauranteExists(id);
 
@@ -157,7 +161,7 @@ class RestauranteService {
           customMessage: 'Você não tem permissões para alterar a foto deste restaurante.',
         });
 
-        // O 'processarImagem' já
+        // O 'substituirImagem' já trata se 'restaurante.foto_restaurante' for null ou se não existir
         const uploadResult = await this.uploadService.substituirImagem(
           file,
           restaurante.foto_restaurante,

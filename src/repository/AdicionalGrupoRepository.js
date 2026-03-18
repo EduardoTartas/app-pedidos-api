@@ -54,7 +54,7 @@ class AdicionalGrupoRepository {
     }
 
     async atualizar(id, parsedData) {
-        const grupo = await this.modelAdicionalGrupo.findByIdAndUpdate(id, parsedData, { new: true });
+        const grupo = await this.modelAdicionalGrupo.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' });
         if (!grupo) {
             throw new CustomError({
                 statusCode: 404,

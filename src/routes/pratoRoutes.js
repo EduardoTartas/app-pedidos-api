@@ -15,6 +15,8 @@ router
     .get('/cardapio/:restauranteId', asyncWrapper(pratoController.buscarCardapio.bind(pratoController)))
     .post('/pratos', AuthMiddleware, asyncWrapper(pratoController.criar.bind(pratoController)))
     .patch('/pratos/:id', AuthMiddleware, asyncWrapper(pratoController.atualizar.bind(pratoController)))
-    .delete('/pratos/:id', AuthMiddleware, asyncWrapper(pratoController.deletar.bind(pratoController)));
+    .delete('/pratos/:id', AuthMiddleware, asyncWrapper(pratoController.deletar.bind(pratoController)))
+    .post("/pratos/:id/foto", AuthMiddleware, asyncWrapper(pratoController.fotoUpload.bind(pratoController)))
+    .delete("/pratos/:id/foto", AuthMiddleware, asyncWrapper(pratoController.fotoDelete.bind(pratoController)))
 
 export default router;

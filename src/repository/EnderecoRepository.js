@@ -39,7 +39,7 @@ class EnderecoRepository {
     }
 
     async atualizar(id, parsedData) {
-        const endereco = await this.modelEndereco.findByIdAndUpdate(id, parsedData, { new: true });
+        const endereco = await this.modelEndereco.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' });
         if (!endereco) {
             throw new CustomError({
                 statusCode: 404,
