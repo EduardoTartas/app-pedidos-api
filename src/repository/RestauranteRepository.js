@@ -106,7 +106,7 @@ class RestauranteRepository {
     }
 
     async atualizar(id, parsedData) {
-        const restaurante = await this.modelRestaurante.findByIdAndUpdate(id, parsedData, { new: true })
+        const restaurante = await this.modelRestaurante.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' })
             .populate('categoria_ids')
             .populate('dono_id', 'nome email');
         if (!restaurante) {

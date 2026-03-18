@@ -33,7 +33,7 @@ class UsuarioRepository {
             refreshtoken: null,
             accesstoken: null
         };
-        const usuario = await this.modelUsuario.findByIdAndUpdate(id, parsedData, { new: true }).exec();
+        const usuario = await this.modelUsuario.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' }).exec();
         if (!usuario) {
             throw new CustomError({
                 statusCode: 404,
@@ -126,7 +126,7 @@ class UsuarioRepository {
     }
 
     async atualizar(id, parsedData) {
-        const usuario = await this.modelUsuario.findByIdAndUpdate(id, parsedData, { new: true });
+        const usuario = await this.modelUsuario.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' });
         if (!usuario) {
             throw new CustomError({
                 statusCode: 404,
@@ -160,7 +160,7 @@ class UsuarioRepository {
                 codigo_recupera_senha: null,
                 exp_codigo_recupera_senha: null
             },
-            { new: true }
+            { returnDocument: 'after' }
         );
         if (!usuario) {
             throw new CustomError({

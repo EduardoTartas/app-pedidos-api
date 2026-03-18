@@ -79,7 +79,7 @@ class PedidoRepository {
     }
 
     async atualizar(id, parsedData) {
-        const pedido = await this.modelPedido.findByIdAndUpdate(id, parsedData, { new: true })
+        const pedido = await this.modelPedido.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' })
             .populate('cliente_id', 'nome email telefone')
             .populate('restaurante_id', 'nome foto_restaurante');
         if (!pedido) {

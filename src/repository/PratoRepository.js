@@ -87,7 +87,7 @@ class PratoRepository {
     }
 
     async atualizar(id, parsedData) {
-        const prato = await this.modelPrato.findByIdAndUpdate(id, parsedData, { new: true })
+        const prato = await this.modelPrato.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' })
             .populate('adicionais_grupo_ids');
         if (!prato) {
             throw new CustomError({
