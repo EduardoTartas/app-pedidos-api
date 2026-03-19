@@ -184,15 +184,15 @@ class PratoService {
 
         const urlAntiga = prato.foto_prato;
 
-      // 1. Remove a URL do banco de dados imediatamente (resposta rápida, evita carregamento desnecessário da imagem)
-      await this.repository.atualizar(id, { foto_prato: "" });
+        // 1. Remove a URL do banco de dados imediatamente (resposta rápida, evita carregamento desnecessário da imagem)
+        await this.repository.atualizar(id, { foto_prato: "" });
 
-      // 2. Deleta do Garage em background com retry (se falhar, apenas loga e não impacta o usuário)
-      this.uploadService.deleteImagemComRetry(urlAntiga).catch(err => {
-          console.error(`Erro isolado na exclusão da foto em background: ${err.message}`);
-      });
+        // 2. Deleta do Garage em background com retry (se falhar, apenas loga e não impacta o usuário)
+        this.uploadService.deleteImagemComRetry(urlAntiga).catch(err => {
+            console.error(`Erro isolado na exclusão da foto em background: ${err.message}`);
+        });
 
-      return true;
+        return true;
     }
 
     // === Métodos auxiliares de validação ===

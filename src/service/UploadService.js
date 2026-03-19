@@ -1,6 +1,8 @@
 import { v4 as uuidv4 } from "uuid";
 import path from "path";
 import sharp from "sharp";
+import { JSDOM } from "jsdom";
+import createDOMPurify from "dompurify";
 import UploadRepository from "../repository/UploadRepository.js";
 import CustomError from "../utils/helpers/CustomError.js";
 import HttpStatusCodes from "../utils/helpers/HttpStatusCodes.js";
@@ -37,7 +39,7 @@ class UploadService {
         if (file.name) {
             ext = path.extname(file.name).slice(1).toLowerCase();
         }
-        
+
         const validExts = ['jpg', 'jpeg', 'png', 'svg'];
         const validMimeTypes = ['image/jpeg', 'image/png', 'image/svg+xml'];
 
@@ -81,8 +83,8 @@ class UploadService {
             let buffer;
             let contentType;
 
-            // 4. Processamento com Sharp
-            if(ext !== 'svg') {
+            // 4. Processamento da Imagem ou Sanitização de SVG
+            if (ext !== 'svg') {
                 const transformer = sharp(file.data);
 
                 // Só redimensiona se passar width/height
@@ -99,9 +101,19 @@ class UploadService {
                     mozjpeg: true
                 })
                 .toBuffer();
+
                 contentType = 'image/jpeg';
             } else {
-                buffer = file.data;
+                // Configura ambiente DOM simulado para limpar tags <script> do SVG
+                const window = new JSDOM('').window;
+                const DOMPurify = createDOMPurify(window);
+                
+                // Sanitiza o conteúdo XML do SVG para remover XSS
+                const cleanSvg = DOMPurify.sanitize(file.data.toString('utf8'), {
+                    USE_PROFILES: { svg: true } // Utiliza perfil específico para SVG
+                });
+
+                buffer = Buffer.from(cleanSvg, 'utf8');
                 contentType = 'image/svg+xml';
             }
 
