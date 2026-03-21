@@ -21,6 +21,16 @@ export const PratoQuerySchema = z.object({
     status: z
         .enum(['ativo', 'inativo'])
         .optional(),
+    preco_min: z
+        .string()
+        .refine((val) => !isNaN(parseFloat(val)), { message: 'Preço mínimo inválido.' })
+        .transform((val) => parseFloat(val))
+        .optional(),
+    preco_max: z
+        .string()
+        .refine((val) => !isNaN(parseFloat(val)), { message: 'Preço máximo inválido.' })
+        .transform((val) => parseFloat(val))
+        .optional(),
     restaurante_id: z
         .string()
         .refine((val) => !val || mongoose.Types.ObjectId.isValid(val), {

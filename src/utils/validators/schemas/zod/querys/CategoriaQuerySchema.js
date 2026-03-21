@@ -1,13 +1,7 @@
-// src/utils/validators/schemas/zod/querys/UsuarioQuerySchema.js
-
 import { z } from 'zod';
 import mongoose from 'mongoose';
 
-export const UsuarioIdSchema = z.string().refine((id) => mongoose.Types.ObjectId.isValid(id), {
-    message: 'ID inválido.',
-});
-
-export const UsuarioQuerySchema = z.object({
+export const CategoriaQuerySchema = z.object({
     nome: z
         .string()
         .optional()
@@ -15,18 +9,7 @@ export const UsuarioQuerySchema = z.object({
             message: 'Nome não pode ser vazio.',
         })
         .transform((val) => val?.trim()),
-    email: z
-        .union([z.string().email('Formato de email inválido.'), z.undefined()])
-        .optional(),
-    status: z
-        .preprocess(
-            (val) => {
-                if (val === 'ativo' || val === 'inativo') return val;
-                return undefined;
-            },
-            z.enum(['ativo', 'inativo']).optional()
-        ),
-    isAdmin: z
+    ativo: z
         .preprocess(
             (val) => {
                 if (val === 'true' || val === true || val === '1') return true;
@@ -35,14 +18,6 @@ export const UsuarioQuerySchema = z.object({
             },
             z.boolean().optional()
         ),
-    cpf: z
-        .string()
-        .optional()
-        .transform((val) => val?.trim()),
-    telefone: z
-        .string()
-        .optional()
-        .transform((val) => val?.trim()),
     page: z
         .string()
         .optional()
