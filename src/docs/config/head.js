@@ -37,8 +37,8 @@ const getSwaggerOptions = async () => {
         import.meta.url).href + t)).default;
     // const avaliacaoPaths = (await import(new URL("../paths/avaliacao.js",
     //     import.meta.url).href + t)).default;
-    // const notificacaoPaths = (await import(new URL("../paths/notificacao.js",
-    //     import.meta.url).href + t)).default;
+    const notificacaoPaths = (await import(new URL("../paths/notificacao.js",
+        import.meta.url).href + t)).default;
 
     // Schemas
     const authSchemas = (await import(new URL("../schemas/authSchema.js",
@@ -61,8 +61,8 @@ const getSwaggerOptions = async () => {
         import.meta.url).href + t)).default;
     // const avaliacaoSchemas = (await import(new URL("../schemas/avaliacaoSchema.js",
     //     import.meta.url).href + t)).default;
-    // const notificacaoSchemas = (await import(new URL("../schemas/notificacaoSchema.js",
-    //     import.meta.url).href + t)).default;
+    const notificacaoSchemas = (await import(new URL("../schemas/notificacaoSchema.js",
+        import.meta.url).href + t)).default;
 
     return {
         swaggerDefinition: {
@@ -118,10 +118,10 @@ const getSwaggerOptions = async () => {
                 //     name: "Avaliações",
                 //     description: "Rotas para avaliações de restaurantes"
                 // },
-                // {
-                //     name: "Notificações",
-                //     description: "Rotas para notificações do sistema"
-                // }
+                {
+                    name: "Notificações",
+                    description: "Rotas para notificações do sistema"
+                }
             ],
             paths: {
                 ...authPaths,
@@ -134,7 +134,7 @@ const getSwaggerOptions = async () => {
                 ...adicionalOpcaoPaths,
                 ...pedidoPaths,
                 // ...avaliacaoPaths,
-                // ...notificacaoPaths,
+                ...notificacaoPaths,
             },
             components: {
                 securitySchemes: {
@@ -155,7 +155,7 @@ const getSwaggerOptions = async () => {
                     ...adicionalOpcaoSchemas,
                     ...pedidoSchemas,
                     // ...avaliacaoSchemas,
-                    // ...notificacaoSchemas
+                    ...notificacaoSchemas
                 }
             },
             security: [{
