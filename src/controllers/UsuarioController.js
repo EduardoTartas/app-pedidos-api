@@ -124,7 +124,7 @@ class UsuarioController {
     return CommonResponse.success(
       res,
       usuarioLimpo,
-      200,
+      HttpStatusCodes.OK.code,
       'Usuário atualizado com sucesso.',
     );
   }
@@ -139,7 +139,7 @@ class UsuarioController {
     return CommonResponse.success(
       res,
       data,
-      200,
+      HttpStatusCodes.OK.code,
       'Status do usuário atualizado com sucesso.',
     );
   }
@@ -167,7 +167,7 @@ class UsuarioController {
     return CommonResponse.success(
       res,
       data,
-      200,
+      HttpStatusCodes.OK.code,
       'Usuário excluído com sucesso.',
     );
   }
@@ -205,7 +205,7 @@ class UsuarioController {
     return CommonResponse.success(
       res,
       null,
-      200,
+      HttpStatusCodes.OK.code,
       'Foto excluída com sucesso.',
     );
   }

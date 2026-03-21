@@ -46,7 +46,7 @@ class AdicionalGrupoController {
 
         const parsedData = AdicionalGrupoUpdateSchema.parse(req.body);
         const data = await this.service.atualizar(id, parsedData, req);
-        return CommonResponse.success(res, data, 200, 'Grupo de adicional atualizado com sucesso.');
+        return CommonResponse.success(res, data, HttpStatusCodes.OK.code, 'Grupo de adicional atualizado com sucesso.');
     }
 
     async deletar(req, res) {
@@ -54,7 +54,7 @@ class AdicionalGrupoController {
         IdSchema.parse(id);
 
         const data = await this.service.deletar(id, req);
-        return CommonResponse.success(res, data, 200, 'Grupo de adicional excluído com sucesso.');
+        return CommonResponse.success(res, data, HttpStatusCodes.OK.code, 'Grupo de adicional excluído com sucesso.');
     }
 }
 

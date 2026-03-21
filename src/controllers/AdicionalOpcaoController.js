@@ -37,7 +37,7 @@ class AdicionalOpcaoController {
 
         const parsedData = AdicionalOpcaoUpdateSchema.parse(req.body);
         const data = await this.service.atualizar(id, parsedData, req);
-        return CommonResponse.success(res, data, 200, 'Opção de adicional atualizada com sucesso.');
+        return CommonResponse.success(res, data, HttpStatusCodes.OK.code, 'Opção de adicional atualizada com sucesso.');
     }
 
     async deletar(req, res) {
@@ -45,7 +45,7 @@ class AdicionalOpcaoController {
         IdSchema.parse(id);
 
         const data = await this.service.deletar(id, req);
-        return CommonResponse.success(res, data, 200, 'Opção de adicional excluída com sucesso.');
+        return CommonResponse.success(res, data, HttpStatusCodes.OK.code, 'Opção de adicional excluída com sucesso.');
     }
 
     async fotoUpload(req, res) {

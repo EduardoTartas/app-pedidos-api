@@ -45,7 +45,7 @@ class CategoriaController {
 
         const parsedData = CategoriaUpdateSchema.parse(req.body);
         const data = await this.service.atualizar(id, parsedData, req);
-        return CommonResponse.success(res, data, 200, 'Categoria atualizada com sucesso.');
+        return CommonResponse.success(res, data, HttpStatusCodes.OK.code, 'Categoria atualizada com sucesso.');
     }
 
     async deletar(req, res) {
@@ -53,7 +53,7 @@ class CategoriaController {
         IdSchema.parse(id);
 
         const data = await this.service.deletar(id, req);
-        return CommonResponse.success(res, data, 200, 'Categoria excluída com sucesso.');
+        return CommonResponse.success(res, data, HttpStatusCodes.OK.code, 'Categoria excluída com sucesso.');
     }
 
     async fotoUpload(req, res) {

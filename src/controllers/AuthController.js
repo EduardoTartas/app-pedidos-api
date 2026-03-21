@@ -54,7 +54,7 @@ class AuthController {
         const decodedId = UsuarioIdSchema.parse(decoded.id);
         await this.service.logout(decodedId, token);
 
-        return CommonResponse.success(res, null, 200, messages.success.logout);
+        return CommonResponse.success(res, null, HttpStatusCodes.OK.code, messages.success.logout);
     }
 
     refresh = async (req, res) => {
@@ -118,7 +118,7 @@ class AuthController {
         }
 
         const data = await this.service.atualizarSenhaToken(tokenRecuperacao, senha);
-        return CommonResponse.success(res, data, 200, 'Senha atualizada com sucesso.');
+        return CommonResponse.success(res, data, HttpStatusCodes.OK.code, 'Senha atualizada com sucesso.');
     }
 
     signup = async (req, res) => {
