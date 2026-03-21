@@ -1,6 +1,7 @@
 // src/repository/RestauranteRepository.js
 
 import Restaurante from '../models/Restaurante.js';
+import RestauranteFilterBuild from './filters/RestauranteFilterBuild.js';
 import {
     CustomError,
     messages
@@ -77,10 +78,12 @@ class RestauranteRepository {
         const { nome, categoria, status, page = 1 } = req.query;
         const limite = Math.min(parseInt(req.query.limite, 10) || 10, 100);
 
-        const filtros = {};
-        if (nome) filtros.nome = { $regex: nome, $options: 'i' };
-        if (categoria) filtros.categoria_ids = { $in: [categoria] };
-        if (status) filtros.status = status;
+        const filterBuilder = new RestauranteFilterBuild()
+            .comNome(nome)
+            .comCategorias(categoria)
+            .comStatus(status);
+
+        const filtros = filterBuilder.build();
         if (dono_id) filtros.dono_id = dono_id;
 
         const options = {

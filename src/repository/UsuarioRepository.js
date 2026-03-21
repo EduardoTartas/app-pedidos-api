@@ -1,6 +1,7 @@
 // src/repository/UsuarioRepository.js
 
 import Usuario from '../models/Usuario.js';
+import UsuarioFilterBuild from './filters/UsuarioFilterBuild.js';
 import {
     CustomError,
     messages
@@ -98,13 +99,18 @@ class UsuarioRepository {
             return data;
         }
 
-        const { nome, email, status, page = 1 } = req.query;
+        const { nome, email, status, cpf, telefone, isAdmin, page = 1 } = req.query;
         const limite = Math.min(parseInt(req.query.limite, 10) || 10, 100);
 
-        const filtros = {};
-        if (nome) filtros.nome = { $regex: nome, $options: 'i' };
-        if (email) filtros.email = { $regex: email, $options: 'i' };
-        if (status) filtros.status = status;
+        const filterBuilder = new UsuarioFilterBuild()
+            .comNome(nome)
+            .comEmail(email)
+            .comStatus(status)
+            .comCpf(cpf)
+            .comTelefone(telefone)
+            .comIsAdmin(isAdmin);
+
+        const filtros = filterBuilder.build();
 
         const options = {
             page: parseInt(page, 10),

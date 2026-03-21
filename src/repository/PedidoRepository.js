@@ -1,6 +1,7 @@
 // src/repository/PedidoRepository.js
 
 import Pedido from '../models/Pedido.js';
+import PedidoFilterBuild from './filters/PedidoFilterBuild.js';
 import {
     CustomError,
     messages
@@ -28,11 +29,15 @@ class PedidoRepository {
     }
 
     async listarPorCliente(clienteId, req) {
-        const { status, page = 1 } = req.query;
+        const { status, data_inicio, data_fim, page = 1 } = req.query;
         const limite = Math.min(parseInt(req.query.limite, 10) || 10, 100);
 
-        const filtros = { cliente_id: clienteId };
-        if (status) filtros.status = status;
+        const filterBuilder = new PedidoFilterBuild()
+            .comCliente(clienteId)
+            .comStatus(status || '')
+            .comData(data_inicio, data_fim);
+
+        const filtros = filterBuilder.build();
 
         const options = {
             page: parseInt(page, 10),
@@ -51,11 +56,15 @@ class PedidoRepository {
     }
 
     async listarPorRestaurante(restauranteId, req) {
-        const { status, page = 1 } = req.query;
+        const { status, data_inicio, data_fim, page = 1 } = req.query;
         const limite = Math.min(parseInt(req.query.limite, 10) || 10, 100);
 
-        const filtros = { restaurante_id: restauranteId };
-        if (status) filtros.status = status;
+        const filterBuilder = new PedidoFilterBuild()
+            .comRestaurante(restauranteId)
+            .comStatus(status || '')
+            .comData(data_inicio, data_fim);
+
+        const filtros = filterBuilder.build();
 
         const options = {
             page: parseInt(page, 10),
