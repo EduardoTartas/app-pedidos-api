@@ -17,40 +17,48 @@ const getSwaggerOptions = async () => {
     const t = process.env.NODE_ENV === 'development' ? `?t=${Date.now()}` : '';
 
     // Paths
-    //const authPaths = (await import(new URL("../paths/auth.js",
-    //    import.meta.url).href + t)).default;
+    const authPaths = (await import(new URL("../paths/auth.js",
+        import.meta.url).href + t)).default;
     const usuarioPaths = (await import(new URL("../paths/usuario.js",
         import.meta.url).href + t)).default;
-    // const categoriaPaths = (await import(new URL("../paths/categoria.js",
-    //     import.meta.url).href + t)).default;
+    const categoriaPaths = (await import(new URL("../paths/categoria.js",
+        import.meta.url).href + t)).default;
     const restaurantePaths = (await import(new URL("../paths/restaurante.js",
         import.meta.url).href + t)).default;
-    // const pratoPaths = (await import(new URL("../paths/prato.js",
-    //     import.meta.url).href + t)).default;
-    // const adicionalPaths = (await import(new URL("../paths/adicional.js",
-    //     import.meta.url).href + t)).default;
-    // const pedidoPaths = (await import(new URL("../paths/pedido.js",
-    //     import.meta.url).href + t)).default;
+    const enderecoPaths = (await import(new URL("../paths/endereco.js",
+        import.meta.url).href + t)).default;
+    const pratoPaths = (await import(new URL("../paths/prato.js",
+        import.meta.url).href + t)).default;
+    const adicionalGrupoPaths = (await import(new URL("../paths/adicionalGrupo.js",
+        import.meta.url).href + t)).default;
+    const adicionalOpcaoPaths = (await import(new URL("../paths/adicionalOpcao.js",
+        import.meta.url).href + t)).default;
+    const pedidoPaths = (await import(new URL("../paths/pedido.js",
+        import.meta.url).href + t)).default;
     // const avaliacaoPaths = (await import(new URL("../paths/avaliacao.js",
     //     import.meta.url).href + t)).default;
     // const notificacaoPaths = (await import(new URL("../paths/notificacao.js",
     //     import.meta.url).href + t)).default;
 
     // Schemas
-    //const authSchemas = (await import(new URL("../schemas/authSchema.js",
-    //    import.meta.url).href + t)).default;
+    const authSchemas = (await import(new URL("../schemas/authSchema.js",
+        import.meta.url).href + t)).default;
     const usuarioSchemas = (await import(new URL("../schemas/usuarioSchema.js",
         import.meta.url).href + t)).default;
-    // const categoriaSchemas = (await import(new URL("../schemas/categoriaSchema.js",
-    //     import.meta.url).href + t)).default;
+    const categoriaSchemas = (await import(new URL("../schemas/categoriaSchema.js",
+        import.meta.url).href + t)).default;
     const restauranteSchemas = (await import(new URL("../schemas/restauranteSchema.js",
         import.meta.url).href + t)).default;
-    // const pratoSchemas = (await import(new URL("../schemas/pratoSchema.js",
-    //     import.meta.url).href + t)).default;
-    // const adicionalSchemas = (await import(new URL("../schemas/adicionalSchema.js",
-    //     import.meta.url).href + t)).default;
-    // const pedidoSchemas = (await import(new URL("../schemas/pedidoSchema.js",
-    //     import.meta.url).href + t)).default;
+    const enderecoSchemas = (await import(new URL("../schemas/enderecoSchema.js",
+        import.meta.url).href + t)).default;
+    const pratoSchemas = (await import(new URL("../schemas/pratoSchema.js",
+        import.meta.url).href + t)).default;
+    const adicionalGrupoSchemas = (await import(new URL("../schemas/adicionalGrupoSchema.js",
+        import.meta.url).href + t)).default;
+    const adicionalOpcaoSchemas = (await import(new URL("../schemas/adicionalOpcaoSchema.js",
+        import.meta.url).href + t)).default;
+    const pedidoSchemas = (await import(new URL("../schemas/pedidoSchema.js",
+        import.meta.url).href + t)).default;
     // const avaliacaoSchemas = (await import(new URL("../schemas/avaliacaoSchema.js",
     //     import.meta.url).href + t)).default;
     // const notificacaoSchemas = (await import(new URL("../schemas/notificacaoSchema.js",
@@ -70,34 +78,42 @@ const getSwaggerOptions = async () => {
             },
             servers: getServersInCorrectOrder(),
             tags: [
-                //{
-                //    name: "Auth",
-                //    description: "Rotas para autenticação e autorização"
-                //},
+                {
+                    name: "Auth",
+                    description: "Rotas para autenticação e autorização"
+                },
                 {
                     name: "Usuários",
                     description: "Rotas para o gerenciamento de usuários"
                 },
-                // {
-                //     name: "Categorias",
-                //     description: "Rotas para o gerenciamento de categorias de restaurantes"
-                // },
+                {
+                    name: "Categorias",
+                    description: "Rotas para o gerenciamento de categorias de restaurantes"
+                },
                 {
                     name: "Restaurantes",
                     description: "Rotas para o gerenciamento de restaurantes"
                 },
-                // {
-                //     name: "Pratos",
-                //     description: "Rotas para o gerenciamento de pratos e cardápio"
-                // },
-                // {
-                //     name: "Adicionais",
-                //     description: "Rotas para gestão de grupos e opções de adicionais"
-                // },
-                // {
-                //     name: "Pedidos",
-                //     description: "Rotas para o gerenciamento de pedidos de delivery"
-                // },
+                {
+                    name: "Endereços",
+                    description: "Rotas para o gerenciamento de endereços de usuários e restaurantes"
+                },
+                {
+                    name: "Pratos",
+                    description: "Rotas para o gerenciamento de pratos e cardápio"
+                },
+                {
+                    name: "Adicionais - Grupos",
+                    description: "Rotas para gestão de grupos de adicionais"
+                },
+                {
+                    name: "Adicionais - Opções",
+                    description: "Rotas para gestão de opções de adicionais"
+                },
+                {
+                    name: "Pedidos",
+                    description: "Rotas para o gerenciamento de pedidos de delivery"
+                },
                 // {
                 //     name: "Avaliações",
                 //     description: "Rotas para avaliações de restaurantes"
@@ -108,13 +124,15 @@ const getSwaggerOptions = async () => {
                 // }
             ],
             paths: {
-                //...authPaths,
+                ...authPaths,
                 ...usuarioPaths,
-                // ...categoriaPaths,
+                ...categoriaPaths,
                 ...restaurantePaths,
-                // ...pratoPaths,
-                // ...adicionalPaths,
-                // ...pedidoPaths,
+                ...enderecoPaths,
+                ...pratoPaths,
+                ...adicionalGrupoPaths,
+                ...adicionalOpcaoPaths,
+                ...pedidoPaths,
                 // ...avaliacaoPaths,
                 // ...notificacaoPaths,
             },
@@ -127,13 +145,15 @@ const getSwaggerOptions = async () => {
                     }
                 },
                 schemas: {
-                    //...authSchemas,
+                    ...authSchemas,
                     ...usuarioSchemas,
-                    // ...categoriaSchemas,
+                    ...categoriaSchemas,
                     ...restauranteSchemas,
-                    // ...pratoSchemas,
-                    // ...adicionalSchemas,
-                    // ...pedidoSchemas,
+                    ...enderecoSchemas,
+                    ...pratoSchemas,
+                    ...adicionalGrupoSchemas,
+                    ...adicionalOpcaoSchemas,
+                    ...pedidoSchemas,
                     // ...avaliacaoSchemas,
                     // ...notificacaoSchemas
                 }

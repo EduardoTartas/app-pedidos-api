@@ -16,17 +16,8 @@ const restauranteSchemas = {
             nome: { type: "string", example: "Burger House" },
             foto_restaurante: { type: "string", example: "https://example.com/burger.jpg" },
             dono_id: { type: "string", example: "674fa21d79969d2172e78711" },
+            cnpj: { type: "string", example: "12345678000195" },
             status: { type: "string", enum: ["aberto", "fechado", "inativo"], example: "aberto" },
-            endereco: {
-                type: "object",
-                properties: {
-                    cep: { type: "string", example: "76800000" },
-                    rua: { type: "string", example: "Av. Principal" },
-                    numero: { type: "string", example: "500" },
-                    bairro: { type: "string", example: "Centro" },
-                    complemento: { type: "string", example: "Loja 01" }
-                }
-            },
             categoria_ids: {
                 type: "array",
                 items: { type: "string" },
@@ -54,17 +45,8 @@ const restauranteSchemas = {
             nome: { type: "string", example: "Burger House" },
             foto_restaurante: { type: "string", example: "https://example.com/burger.jpg" },
             dono_id: { type: "string", example: "674fa21d79969d2172e78711" },
+            cnpj: { type: "string", example: "12345678000195" },
             status: { type: "string", enum: ["aberto", "fechado", "inativo"], example: "aberto" },
-            endereco: {
-                type: "object",
-                properties: {
-                    cep: { type: "string", example: "76800000" },
-                    rua: { type: "string", example: "Av. Principal" },
-                    numero: { type: "string", example: "500" },
-                    bairro: { type: "string", example: "Centro" },
-                    complemento: { type: "string", example: "Loja 01" }
-                }
-            },
             categoria_ids: {
                 type: "array",
                 items: { type: "string" },
@@ -90,16 +72,7 @@ const restauranteSchemas = {
         properties: {
             nome: { type: "string", description: "Nome do restaurante", example: "Burger House" },
             foto_restaurante: { type: "string", description: "URL da foto do restaurante", example: "https://example.com/burger.jpg" },
-            endereco: {
-                type: "object",
-                properties: {
-                    cep: { type: "string", example: "76800000" },
-                    rua: { type: "string", example: "Av. Principal" },
-                    numero: { type: "string", example: "500" },
-                    bairro: { type: "string", example: "Centro" },
-                    complemento: { type: "string", example: "Loja 01" }
-                }
-            },
+            cnpj: { type: "string", description: "CNPJ do restaurante (opcional, 14 dígitos)", example: "12345678000195" },
             categoria_ids: {
                 type: "array",
                 items: { type: "string" },
@@ -121,13 +94,7 @@ const restauranteSchemas = {
         example: {
             nome: "Burger House",
             foto_restaurante: "https://example.com/burger.jpg",
-            endereco: {
-                cep: "76800000",
-                rua: "Av. Principal",
-                numero: "500",
-                bairro: "Centro",
-                complemento: "Loja 01"
-            },
+            cnpj: "12345678000195",
             categoria_ids: ["674fa21d79969d2172e78712"],
             secoes_cardapio: ["Hambúrgueres", "Bebidas", "Sobremesas"],
             estimativa_entrega_min: 30,
@@ -142,16 +109,6 @@ const restauranteSchemas = {
             nome: { type: "string", example: "Burger House Premium" },
             foto_restaurante: { type: "string", example: "https://example.com/burger2.jpg" },
             status: { type: "string", enum: ["aberto", "fechado", "inativo"], example: "aberto" },
-            endereco: {
-                type: "object",
-                properties: {
-                    cep: { type: "string", example: "76800001" },
-                    rua: { type: "string", example: "Av. Nova" },
-                    numero: { type: "string", example: "600" },
-                    bairro: { type: "string", example: "Jardim" },
-                    complemento: { type: "string", example: "Sala 02" }
-                }
-            },
             categoria_ids: {
                 type: "array",
                 items: { type: "string" },

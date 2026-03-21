@@ -4,7 +4,7 @@ import { z } from 'zod';
 import objectIdSchema from './ObjectIdSchema.js';
 
 const AdicionalGrupoSchema = z.object({
-    restaurante_id: objectIdSchema,
+    prato_id: objectIdSchema,
     nome: z
         .string()
         .nonempty('Campo nome é obrigatório.')

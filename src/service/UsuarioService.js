@@ -3,14 +3,18 @@
 import {
     CustomError,
     HttpStatusCodes,
-    messages
+    messages,
+    ensurePermission
 } from '../utils/helpers/index.js';
 import AuthHelper from '../utils/AuthHelper.js';
 import UsuarioRepository from '../repository/UsuarioRepository.js';
+import UploadService from './UploadService.js';
+import { cpf } from 'cpf-cnpj-validator';
 
 class UsuarioService {
     constructor() {
         this.repository = new UsuarioRepository();
+        this.uploadService = new UploadService();
     }
 
     async listar(req) {
@@ -22,9 +26,9 @@ class UsuarioService {
         // Validar email único
         await this.validateEmail(parsedData.email);
 
-        // Validar cpf_cnpj único se fornecido
-        if (parsedData.cpf_cnpj) {
-            await this.validateCpfCnpj(parsedData.cpf_cnpj);
+        // Validar cpf único se fornecido
+        if (parsedData.cpf) {
+            await this.validateCpf(parsedData.cpf);
         }
 
         // Hash da senha
@@ -37,26 +41,18 @@ class UsuarioService {
     }
 
     async atualizar(id, parsedData, req) {
-        // Não permitir alterar email e senha por esta rota
-        delete parsedData.email;
+        // Não permitir alterar senha por esta rota
         delete parsedData.senha;
 
         await this.ensureUserExists(id);
 
-        // Verificar se o usuário está atualizando a si mesmo ou é admin
         const usuarioLogado = await this.repository.buscarPorID(req.user_id);
-        const isAdmin = usuarioLogado.isAdmin;
-        const atualizarOutroUser = String(usuarioLogado._id) !== String(id);
-
-        if (!isAdmin && atualizarOutroUser) {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.FORBIDDEN.code,
-                errorType: 'permissionError',
-                field: 'Usuário',
-                details: [],
-                customMessage: "Você não tem permissões para atualizar outro usuário."
-            });
-        }
+        const { isAdmin } = ensurePermission({
+            usuarioLogado,
+            targetId: id,
+            field: 'Usuário',
+            customMessage: 'Você não tem permissões para atualizar outro usuário.',
+        });
 
         // Não permitir alterar isAdmin se não for admin
         if (!isAdmin) {
@@ -71,42 +67,91 @@ class UsuarioService {
         await this.ensureUserExists(id);
 
         const usuarioLogado = await this.repository.buscarPorID(req.user_id);
-        const isAdmin = usuarioLogado.isAdmin;
-        const atualizarPropriaConta = String(usuarioLogado._id) === String(id);
-
-        // Somente admin ou o próprio usuário podem alterar status
-        if (!isAdmin && !atualizarPropriaConta) {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.FORBIDDEN.code,
-                errorType: 'permissionError',
-                field: 'Usuário',
-                details: [],
-                customMessage: "Você não tem permissões para alterar o status deste usuário."
-            });
-        }
+        ensurePermission({
+            usuarioLogado,
+            targetId: id,
+            field: 'Usuário',
+            customMessage: 'Você não tem permissões para alterar o status deste usuário.',
+        });
 
         const data = await this.repository.atualizar(id, { status: parsedData.status });
         return data;
     }
 
     async deletar(id, req) {
-        const usuarioLogado = await this.repository.buscarPorID(req.user_id);
-        const isAdmin = usuarioLogado.isAdmin;
-
         await this.ensureUserExists(id);
 
-        if (!isAdmin && String(usuarioLogado._id) !== String(id)) {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.FORBIDDEN.code,
-                errorType: 'permissionError',
-                field: 'Usuário',
-                details: [],
-                customMessage: "Você só pode deletar sua própria conta."
-            });
-        }
+        const usuarioLogado = await this.repository.buscarPorID(req.user_id);
+        ensurePermission({
+            usuarioLogado,
+            targetId: id,
+            field: 'Usuário',
+            customMessage: 'Você só pode deletar sua própria conta.',
+        });
 
         const data = await this.repository.deletar(id);
         return data;
+    }
+
+    // ================================
+    // UPLOAD DE FOTO
+    // ================================
+
+    async fotoUpload(id, file, req) {
+        const usuario = await this.ensureUserExists(id);
+
+        const usuarioLogado = await this.repository.buscarPorID(req.user_id);
+        ensurePermission({
+            usuarioLogado,
+            targetId: id,
+            field: 'Usuário',
+            customMessage: 'Você não tem permissões para alterar a foto deste usuário.',
+        });
+
+        // O 'substituirImagem' já trata se 'usuario.foto_perfil' for null ou se não existir
+        const uploadResult = await this.uploadService.substituirImagem(
+            file,
+            usuario.foto_perfil,
+            { width: 400, height: 400, fit: 'cover', quality: 80 }
+        );
+
+        // Atualiza a URL no banco de dados
+        await this.repository.atualizar(id, { foto_perfil: uploadResult.url });
+
+        return uploadResult;
+    }
+
+    async fotoDelete(id, req) {
+        const usuario = await this.ensureUserExists(id);
+
+        const usuarioLogado = await this.repository.buscarPorID(req.user_id);
+        ensurePermission({
+            usuarioLogado,
+            targetId: id,
+            field: 'Usuário',
+            customMessage: 'Você não tem permissões para excluir a foto deste usuário.',
+        });
+
+        if (!usuario.foto_perfil) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.NOT_FOUND.code,
+                errorType: 'resourceNotFound',
+                field: 'foto_perfil',
+                customMessage: 'Este usuário não possui uma foto de perfil para remover.'
+            });
+        }
+
+        const urlAntiga = usuario.foto_perfil;
+
+        // 1. Remove a URL do banco de dados imediatamente (resposta rápida, evita carregamento desnecessário da imagem)
+        await this.repository.atualizar(id, { foto_perfil: "" });
+
+        // 2. Deleta do Garage em background com retry (se falhar, apenas loga e não impacta o usuário)
+        this.uploadService.deleteImagemComRetry(urlAntiga).catch(err => {
+            console.error(`Erro isolado na exclusão da foto em background: ${err.message}`);
+        });
+
+        return true;
     }
 
     // ================================
@@ -125,17 +170,34 @@ class UsuarioService {
         }
     }
 
-    async validateCpfCnpj(cpf_cnpj, id = null) {
-        const usuarioExistente = await this.repository.buscarPorCpfCnpj(cpf_cnpj, id);
-        if (usuarioExistente) {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.BAD_REQUEST.code,
-                errorType: 'validationError',
-                field: 'cpf_cnpj',
-                details: [{ path: 'cpf_cnpj', message: 'CPF/CNPJ já está em uso.' }],
-                customMessage: 'CPF/CNPJ já cadastrado.',
-            });
-        }
+    async validateCpf(cpfValue, id = null) {
+      // Validar formato do CPF
+      if (!this.isValidCpf(cpfValue)) {
+        throw new CustomError({
+          statusCode: HttpStatusCodes.BAD_REQUEST.code,
+          errorType: 'validationError',
+          field: 'cpf',
+          details: [{ path: 'cpf', message: 'CPF inválido.' }],
+          customMessage: 'CPF inválido.',
+        });
+      }
+
+      // Validar se já existe
+      const usuarioExistente = await this.repository.buscarPorCpf(cpfValue, id);
+      if (usuarioExistente) {
+        throw new CustomError({
+          statusCode: HttpStatusCodes.BAD_REQUEST.code,
+          errorType: 'validationError',
+          field: 'cpf',
+          details: [{ path: 'cpf', message: 'CPF já está em uso.' }],
+          customMessage: 'CPF já cadastrado.',
+        });
+      }
+    }
+
+    isValidCpf(cpfValue) {
+      const cleaned = cpfValue.replace(/\D/g, '');
+      return cleaned.length === 11 && cpf.isValid(cleaned);
     }
 
     async ensureUserExists(id) {

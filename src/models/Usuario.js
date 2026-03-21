@@ -21,7 +21,7 @@ class Usuario {
                 required: [true, "A senha é obrigatória!"],
                 select: false
             },
-            cpf_cnpj: {
+            cpf: {
                 type: String,
                 unique: true,
                 sparse: true
@@ -41,13 +41,6 @@ class Usuario {
             foto_perfil: {
                 type: String,
                 default: ""
-            },
-            endereco: {
-                cep: { type: String },
-                rua: { type: String },
-                numero: { type: String },
-                bairro: { type: String },
-                complemento: { type: String }
             },
             refreshtoken: {
                 type: String,

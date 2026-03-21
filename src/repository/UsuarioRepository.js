@@ -1,6 +1,7 @@
 // src/repository/UsuarioRepository.js
 
 import Usuario from '../models/Usuario.js';
+import UsuarioFilterBuild from './filters/UsuarioFilterBuild.js';
 import {
     CustomError,
     messages
@@ -33,7 +34,7 @@ class UsuarioRepository {
             refreshtoken: null,
             accesstoken: null
         };
-        const usuario = await this.modelUsuario.findByIdAndUpdate(id, parsedData, { new: true }).exec();
+        const usuario = await this.modelUsuario.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' }).exec();
         if (!usuario) {
             throw new CustomError({
                 statusCode: 404,
@@ -73,8 +74,8 @@ class UsuarioRepository {
         return documento;
     }
 
-    async buscarPorCpfCnpj(cpf_cnpj, idIgnorado = null) {
-        const filtro = { cpf_cnpj };
+    async buscarPorCpf(cpfValue, idIgnorado = null) {
+        const filtro = { cpf: cpfValue };
         if (idIgnorado) {
             filtro._id = { $ne: idIgnorado };
         }
@@ -98,13 +99,18 @@ class UsuarioRepository {
             return data;
         }
 
-        const { nome, email, status, page = 1 } = req.query;
+        const { nome, email, status, cpf, telefone, isAdmin, page = 1 } = req.query;
         const limite = Math.min(parseInt(req.query.limite, 10) || 10, 100);
 
-        const filtros = {};
-        if (nome) filtros.nome = { $regex: nome, $options: 'i' };
-        if (email) filtros.email = { $regex: email, $options: 'i' };
-        if (status) filtros.status = status;
+        const filterBuilder = new UsuarioFilterBuild()
+            .comNome(nome)
+            .comEmail(email)
+            .comStatus(status)
+            .comCpf(cpf)
+            .comTelefone(telefone)
+            .comIsAdmin(isAdmin);
+
+        const filtros = filterBuilder.build();
 
         const options = {
             page: parseInt(page, 10),
@@ -126,7 +132,7 @@ class UsuarioRepository {
     }
 
     async atualizar(id, parsedData) {
-        const usuario = await this.modelUsuario.findByIdAndUpdate(id, parsedData, { new: true });
+        const usuario = await this.modelUsuario.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' });
         if (!usuario) {
             throw new CustomError({
                 statusCode: 404,
@@ -160,7 +166,7 @@ class UsuarioRepository {
                 codigo_recupera_senha: null,
                 exp_codigo_recupera_senha: null
             },
-            { new: true }
+            { returnDocument: 'after' }
         );
         if (!usuario) {
             throw new CustomError({

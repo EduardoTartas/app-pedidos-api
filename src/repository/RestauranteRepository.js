@@ -1,6 +1,7 @@
 // src/repository/RestauranteRepository.js
 
 import Restaurante from '../models/Restaurante.js';
+import RestauranteFilterBuild from './filters/RestauranteFilterBuild.js';
 import {
     CustomError,
     messages
@@ -36,6 +37,15 @@ class RestauranteRepository {
         return documento;
     }
 
+    async buscarPorCnpj(cnpjValue, idIgnorado = null) {
+        const filtro = { cnpj: cnpjValue };
+        if (idIgnorado) {
+            filtro._id = { $ne: idIgnorado };
+        }
+        const documento = await this.modelRestaurante.findOne(filtro);
+        return documento;
+    }
+
     async buscarPorDonoId(donoId) {
         const restaurantes = await this.modelRestaurante.find({ dono_id: donoId })
             .populate('categoria_ids');
@@ -44,8 +54,13 @@ class RestauranteRepository {
 
     async listar(req) {
         const { id } = req.params;
+        const dono_id = req.query?.dono_id; // Pega o dono_id se injetado pelas camadas superiores
+
         if (id) {
-            const data = await this.modelRestaurante.findById(id)
+            const filtroId = { _id: id };
+            if (dono_id) filtroId.dono_id = dono_id;
+
+            const data = await this.modelRestaurante.findOne(filtroId)
                 .populate('categoria_ids')
                 .populate('dono_id', 'nome email');
             if (!data) {
@@ -63,10 +78,13 @@ class RestauranteRepository {
         const { nome, categoria, status, page = 1 } = req.query;
         const limite = Math.min(parseInt(req.query.limite, 10) || 10, 100);
 
-        const filtros = {};
-        if (nome) filtros.nome = { $regex: nome, $options: 'i' };
-        if (categoria) filtros.categoria_ids = { $in: [categoria] };
-        if (status) filtros.status = status;
+        const filterBuilder = new RestauranteFilterBuild()
+            .comNome(nome)
+            .comCategorias(categoria)
+            .comStatus(status);
+
+        const filtros = filterBuilder.build();
+        if (dono_id) filtros.dono_id = dono_id;
 
         const options = {
             page: parseInt(page, 10),
@@ -91,7 +109,7 @@ class RestauranteRepository {
     }
 
     async atualizar(id, parsedData) {
-        const restaurante = await this.modelRestaurante.findByIdAndUpdate(id, parsedData, { new: true })
+        const restaurante = await this.modelRestaurante.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' })
             .populate('categoria_ids')
             .populate('dono_id', 'nome email');
         if (!restaurante) {

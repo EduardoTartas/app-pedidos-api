@@ -4,7 +4,6 @@ import { z } from 'zod';
 
 const senhaRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/;
 const cpfRegex = /^\d{11}$/;
-const cnpjRegex = /^\d{14}$/;
 const telefoneRegex = /^\d{10,11}$/;
 
 const UsuarioSchema = z.object({
@@ -25,11 +24,11 @@ const UsuarioSchema = z.object({
         }, {
             message: 'A senha deve conter pelo menos 1 letra maiúscula, 1 letra minúscula e 1 número.',
         }),
-    cpf_cnpj: z
+    cpf: z
         .string()
-        .nonempty('Campo CPF/CNPJ é obrigatório.')
-        .refine((val) => cpfRegex.test(val) || cnpjRegex.test(val), {
-            message: 'CPF deve conter 11 dígitos ou CNPJ deve conter 14 dígitos numéricos.',
+        .nonempty('Campo CPF é obrigatório.')
+        .refine((val) => cpfRegex.test(val), {
+            message: 'CPF deve conter exatamente 11 dígitos numéricos.',
         }),
     telefone: z
         .string()
@@ -44,15 +43,6 @@ const UsuarioSchema = z.object({
         })
         .optional(),
     isAdmin: z.boolean().optional(),
-    endereco: z.object({
-        logradouro: z.string().min(2, 'Logradouro é obrigatório.'),
-        cep: z.string().regex(/^\d{5}-?\d{3}$/, 'CEP inválido.'),
-        bairro: z.string().min(1, 'Bairro é obrigatório.'),
-        numero: z.string().min(1, 'Número é obrigatório.'),
-        complemento: z.string().optional(),
-        cidade: z.string().min(2, 'Cidade é obrigatória.'),
-        estado: z.string().length(2, 'Estado deve conter 2 caracteres (UF).'),
-    }).optional(),
 });
 
 const UsuarioUpdateSchema = UsuarioSchema.partial();

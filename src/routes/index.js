@@ -9,13 +9,15 @@ import getSwaggerOptions from '../docs/config/head.js';
 import mongoose from 'mongoose';
 
 // Importação das rotas
-//import authRoutes from './authRoutes.js';
+import authRoutes from './authRoutes.js';
 import usuarioRoutes from './usuarioRoutes.js';
-//import categoriaRoutes from './categoriaRoutes.js';
+import categoriaRoutes from './categoriaRoutes.js';
 import restauranteRoutes from './restauranteRoutes.js';
-//import pratoRoutes from './pratoRoutes.js';
-//import adicionalRoutes from './adicionalRoutes.js';
-//import pedidoRoutes from './pedidoRoutes.js';
+import enderecoRoutes from './enderecoRoutes.js';
+import pratoRoutes from './pratoRoutes.js';
+import adicionalGrupoRoutes from './adicionalGrupoRoutes.js';
+import adicionalOpcaoRoutes from './adicionalOpcaoRoutes.js';
+import pedidoRoutes from './pedidoRoutes.js';
 //import avaliacaoRoutes from './avaliacaoRoutes.js';
 import notificacaoRoutes from './notificacaoRoutes.js';
 
@@ -53,13 +55,15 @@ const routes = (app) => {
     // Registra todas as rotas
     app.use(
         express.json(),
-        //authRoutes,
+        authRoutes,
         usuarioRoutes,
-        //categoriaRoutes,
+        categoriaRoutes,
         restauranteRoutes,
-        //pratoRoutes,
-        //adicionalRoutes,
-        //pedidoRoutes,
+        enderecoRoutes,
+        pratoRoutes,
+        adicionalGrupoRoutes,
+        adicionalOpcaoRoutes,
+        pedidoRoutes,
         //avaliacaoRoutes,
         notificacaoRoutes
     );

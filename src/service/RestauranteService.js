@@ -3,20 +3,58 @@
 import {
     CustomError,
     HttpStatusCodes,
-    messages
+    messages,
+    ensurePermission
 } from '../utils/helpers/index.js';
 import RestauranteRepository from '../repository/RestauranteRepository.js';
 import UsuarioRepository from '../repository/UsuarioRepository.js';
+import UploadService from './UploadService.js';
 import Categoria from '../models/Categoria.js';
+import { cnpj } from 'cpf-cnpj-validator';
 
 class RestauranteService {
     constructor() {
         this.repository = new RestauranteRepository();
         this.usuarioRepository = new UsuarioRepository();
+        this.uploadService = new UploadService();
     }
 
     async listar(req) {
+        // Listagem pública geral (para o APP Mobile, sem amarrar ao usuário logado)
         const data = await this.repository.listar(req);
+        return data;
+    }
+
+    async listarMeus(req) {
+        // Listagem privada para o Painel Web/Dashboard
+        if (!req?.user_id) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.UNAUTHORIZED.code,
+                errorType: 'unauthorized',
+                field: 'Autenticação',
+                details: [],
+                customMessage: 'Usuário não autenticado. Faça login para listar seus restaurantes.',
+            });
+        }
+
+        const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
+
+        // Isso foi necessário porque, quando eu tentava “injetar” o filtro usando o `req` do Express (principalmente no `req.query`),
+        // em algumas versões ele pode ser read-only (só getter) ou não se comportar como um objeto comum.
+        // Aí o `dono_id` não ficava aplicado como esperado e a consulta acabava indo sem filtro (voltando todos os restaurantes),
+        // em vez de retornar só os do usuário logado.
+        // Tentei resolver de outras formas, mas normalizar os dados foi o que funcionou sem gambiarra.
+        const query = { ...(req?.query || {}) };
+        if (!usuarioLogado?.isAdmin) {
+            query.dono_id = req.user_id;
+        }
+
+        const reqNormalizado = {
+            params: req?.params || {},
+            query,
+        };
+
+        const data = await this.repository.listar(reqNormalizado);
         return data;
     }
 
@@ -43,6 +81,11 @@ class RestauranteService {
             await this.ensureCategoriasExistem(parsedData.categoria_ids);
         }
 
+        // Validar e verificar unicidade do CNPJ se fornecido
+        if (parsedData.cnpj) {
+            await this.validateCnpj(parsedData.cnpj);
+        }
+
         // Definir o dono_id como o usuário logado
         parsedData.dono_id = req.user_id;
 
@@ -53,31 +96,15 @@ class RestauranteService {
     async atualizar(id, parsedData, req) {
         const restaurante = await this.ensureRestauranteExists(id);
 
-        // Validar se user_id está presente na requisição
-        if (!req.user_id) {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.UNAUTHORIZED.code,
-                errorType: 'unauthorized',
-                field: 'Autenticação',
-                details: [],
-                customMessage: 'Usuário não autenticado. Faça login para atualizar um restaurante.',
-            });
-        }
-
         // Verificar se o usuário é o dono ou admin
         const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
-        const isAdmin = usuarioLogado.isAdmin;
-        const isDono = String(restaurante.dono_id._id || restaurante.dono_id) === String(req.user_id);
-
-        if (!isAdmin && !isDono) {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.FORBIDDEN.code,
-                errorType: 'permissionError',
-                field: 'Restaurante',
-                details: [],
-                customMessage: "Você não tem permissões para editar este restaurante."
-            });
-        }
+        const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
+        ensurePermission({
+            usuarioLogado,
+            targetId: donoId,
+            field: 'Restaurante',
+            customMessage: 'Você não tem permissões para editar este restaurante.',
+        });
 
         // Verificar nome duplicado (se está tentando alterar o nome)
         if (parsedData.nome) {
@@ -87,6 +114,11 @@ class RestauranteService {
         // Verificar se as categorias informadas existem
         if (parsedData.categoria_ids && parsedData.categoria_ids.length > 0) {
             await this.ensureCategoriasExistem(parsedData.categoria_ids);
+        }
+
+        // Validar e verificar unicidade do CNPJ se fornecido
+        if (parsedData.cnpj) {
+            await this.validateCnpj(parsedData.cnpj, id);
         }
 
         // Não permitir alterar o dono_id
@@ -99,33 +131,81 @@ class RestauranteService {
     async deletar(id, req) {
         const restaurante = await this.ensureRestauranteExists(id);
 
-        // Validar se user_id está presente na requisição
-        if (!req.user_id) {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.UNAUTHORIZED.code,
-                errorType: 'unauthorized',
-                field: 'Autenticação',
-                details: [],
-                customMessage: 'Usuário não autenticado. Faça login para deletar um restaurante.',
-            });
-        }
-
+        // Verificar se o usuário é o dono ou admin
         const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
-        const isAdmin = usuarioLogado.isAdmin;
-        const isDono = String(restaurante.dono_id._id || restaurante.dono_id) === String(req.user_id);
-
-        if (!isAdmin && !isDono) {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.FORBIDDEN.code,
-                errorType: 'permissionError',
-                field: 'Restaurante',
-                details: [],
-                customMessage: "Você não tem permissões para deletar este restaurante."
-            });
-        }
+        const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
+        ensurePermission({
+            usuarioLogado,
+            targetId: donoId,
+            field: 'Restaurante',
+            customMessage: 'Você não tem permissões para deletar este restaurante.',
+        });
 
         const data = await this.repository.deletar(id);
         return data;
+    }
+
+    // ================================
+    // UPLOAD DE FOTO
+    // ================================
+
+    async fotoUpload(id, file, req) {
+        const restaurante = await this.ensureRestauranteExists(id);
+
+        const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
+        const donoId = String(restaurante.dono_id ?._id || restaurante.dono_id);
+        ensurePermission({
+          usuarioLogado,
+          targetId: donoId,
+          field: 'Restaurante',
+          customMessage: 'Você não tem permissões para alterar a foto deste restaurante.',
+        });
+
+        // O 'substituirImagem' já trata se 'restaurante.foto_restaurante' for null ou se não existir
+        const uploadResult = await this.uploadService.substituirImagem(
+          file,
+          restaurante.foto_restaurante,
+          { fit: 'cover', quality: 80 }
+        );
+
+        // Atualiza a URL no banco de dados
+        await this.repository.atualizar(id, { foto_restaurante: uploadResult.url });
+
+        return uploadResult;
+    }
+
+    async fotoDelete(id, req) {
+      const restaurante = await this.ensureRestauranteExists(id);
+
+      const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
+      const donoId = String(restaurante.dono_id ?._id || restaurante.dono_id);
+      ensurePermission({
+        usuarioLogado,
+        targetId: donoId,
+        field: 'Restaurante',
+        customMessage: 'Você não tem permissões para deletar a foto deste restaurante.',
+      });
+
+      if(!restaurante.foto_restaurante) {
+        throw new CustomError({
+          statusCode: HttpStatusCodes.NOT_FOUND.code,
+          errorType: 'resourceNotFound',
+          field: 'foto_restaurante',
+          customMessage: 'Este restaurante não possui uma foto para remover.',
+        });
+      }
+
+      const urlAntiga = restaurante.foto_restaurante;
+
+      // 1. Remove a URL do banco de dados imediatamente (resposta rápida, evita carregamento desnecessário da imagem)
+      await this.repository.atualizar(id, { foto_restaurante: "" });
+
+      // 2. Deleta do Garage em background com retry (se falhar, apenas loga e não impacta o usuário)
+      this.uploadService.deleteImagemComRetry(urlAntiga).catch(err => {
+          console.error(`Erro isolado na exclusão da foto em background: ${err.message}`);
+      });
+
+      return true;
     }
 
     // === Métodos auxiliares de validação ===
@@ -198,6 +278,34 @@ class RestauranteService {
                 customMessage: `${idsNaoEncontrados.length} categoria(s) informada(s) não foram encontradas.`,
             });
         }
+    }
+
+    async validateCnpj(cnpjValue, id = null) {
+        if (!this.isValidCnpj(cnpjValue)) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                errorType: 'validationError',
+                field: 'cnpj',
+                details: [{ path: 'cnpj', message: 'CNPJ inválido.' }],
+                customMessage: 'CNPJ inválido.',
+            });
+        }
+
+        const restauranteExistente = await this.repository.buscarPorCnpj(cnpjValue, id);
+        if (restauranteExistente) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.CONFLICT.code,
+                errorType: 'duplicateEntry',
+                field: 'cnpj',
+                details: [{ path: 'cnpj', message: 'CNPJ já está em uso.' }],
+                customMessage: 'CNPJ já cadastrado.',
+            });
+        }
+    }
+
+    isValidCnpj(cnpjValue) {
+        const cleaned = cnpjValue.replace(/\D/g, '');
+        return cleaned.length === 14 && cnpj.isValid(cleaned);
     }
 }
 

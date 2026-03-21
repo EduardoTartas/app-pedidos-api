@@ -31,14 +31,6 @@ async function seedRestaurantes() {
             foto_restaurante: '',
             dono_id: dono1._id,
             status: 'aberto',
-            endereco: {
-                logradouro: 'Rua das Pizzas',
-                cep: '01001000',
-                bairro: 'Centro',
-                numero: '42',
-                cidade: 'São Paulo',
-                estado: 'SP'
-            },
             categoria_ids: [pizzaCat._id],
             secoes_cardapio: ['Pizzas Tradicionais', 'Pizzas Especiais', 'Bebidas'],
             estimativa_entrega_min: 30,
@@ -51,14 +43,6 @@ async function seedRestaurantes() {
             foto_restaurante: '',
             dono_id: dono1._id,
             status: 'aberto',
-            endereco: {
-                logradouro: 'Av. dos Hambúrgueres',
-                cep: '01310100',
-                bairro: 'Bela Vista',
-                numero: '100',
-                cidade: 'São Paulo',
-                estado: 'SP'
-            },
             categoria_ids: [hamburCat._id],
             secoes_cardapio: ['Hambúrgueres Clássicos', 'Hambúrgueres Artesanais', 'Acompanhamentos', 'Bebidas'],
             estimativa_entrega_min: 25,
@@ -71,14 +55,6 @@ async function seedRestaurantes() {
             foto_restaurante: '',
             dono_id: dono2._id,
             status: 'aberto',
-            endereco: {
-                logradouro: 'Rua Liberdade',
-                cep: '01503000',
-                bairro: 'Liberdade',
-                numero: '88',
-                cidade: 'São Paulo',
-                estado: 'SP'
-            },
             categoria_ids: [japCat._id],
             secoes_cardapio: ['Sushis', 'Sashimis', 'Combos', 'Bebidas'],
             estimativa_entrega_min: 35,
@@ -89,6 +65,7 @@ async function seedRestaurantes() {
     ];
 
     const created = await Restaurante.insertMany(restaurantes);
+
     console.log(`[SEED] ${created.length} restaurantes criados.`);
     return created;
 }

@@ -21,12 +21,28 @@ export const UsuarioQuerySchema = z.object({
     status: z
         .preprocess(
             (val) => {
-                if (val === 'true' || val === true) return true;
-                if (val === 'false' || val === false) return false;
+                if (val === 'ativo' || val === 'inativo') return val;
+                return undefined;
+            },
+            z.enum(['ativo', 'inativo']).optional()
+        ),
+    isAdmin: z
+        .preprocess(
+            (val) => {
+                if (val === 'true' || val === true || val === '1') return true;
+                if (val === 'false' || val === false || val === '0') return false;
                 return undefined;
             },
             z.boolean().optional()
         ),
+    cpf: z
+        .string()
+        .optional()
+        .transform((val) => val?.trim()),
+    telefone: z
+        .string()
+        .optional()
+        .transform((val) => val?.trim()),
     page: z
         .string()
         .optional()

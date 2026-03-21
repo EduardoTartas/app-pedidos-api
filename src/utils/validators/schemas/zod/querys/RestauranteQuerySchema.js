@@ -24,6 +24,12 @@ export const RestauranteQuerySchema = z.object({
             message: 'Categoria inválida.',
         })
         .optional(),
+    dono_id: z
+        .string()
+        .refine((val) => !val || mongoose.Types.ObjectId.isValid(val), {
+            message: 'dono_id inválido.',
+        })
+        .optional(),
     page: z
         .string()
         .optional()

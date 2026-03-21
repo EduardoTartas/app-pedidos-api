@@ -11,7 +11,7 @@ const usuarioRoutes = {
             summary: "Lista todos os usuários cadastrados",
             description: `
         + Caso de uso: Permitir que um usuário autorizado liste todos os usuários disponíveis no sistema, com possibilidade de filtros.
-        
+
         + Função de Negócio:
             - Permitir ao front-end obter uma lista dos usuários cadastrados.
             + Recebe como query parameters (opcionais):
@@ -59,21 +59,20 @@ const usuarioRoutes = {
             summary: "Cadastro de novos usuários (admin)",
             description: `
             + Caso de uso: Permitir que o administrador cadastre um novo usuário no sistema.
-            
+
             + Função de Negócio:
                 - Permitir ao front-end cadastrar um usuário.
                 + Recebe no corpo da requisição os seguintes campos:
                     - **nome**: nome do usuário.
                     - **email**: email do usuário.
                     - **senha**: senha do usuário.
-                    - **cpf_cnpj**: CPF ou CNPJ (opcional).
+                    - **cpf**: CPF do usuário (opcional, 11 dígitos).
                     - **telefone**: telefone (opcional).
-                    - **endereco**: endereço (opcional).
 
             + Regras de Negócio:
                 - O corpo da requisição deve seguir o UsuarioSchema.
                 - Campos obrigatórios: nome, email e senha.
-                - Não deve permitir criação com email ou cpf_cnpj duplicados.
+                - Não deve permitir criação com email ou CPF duplicados.
                 - Apenas administradores podem criar outros usuários.
 
             + Resultado Esperado:
@@ -104,7 +103,7 @@ const usuarioRoutes = {
             summary: "Obtém detalhes de um usuário",
             description: `
             + Caso de uso: Consulta de detalhes de um usuário específico.
-            
+
             + Função de Negócio:
                 - Permitir ao front-end obter todas as informações de um usuário cadastrado.
                 + Recebe como path parameter:
@@ -139,7 +138,7 @@ const usuarioRoutes = {
             summary: "Atualiza parcialmente um usuário",
             description: `
             + Caso de uso: Permitir que os usuários atualizem parcialmente seus próprios dados.
-            
+
             + Função de Negócio:
                 - Permitir ao front-end atualizar um usuário.
                 + Recebe como path parameter:
@@ -181,7 +180,7 @@ const usuarioRoutes = {
             summary: "Deleta um usuário",
             description: `
             + Caso de uso: Permitir que o administrador exclua um usuário ou que o próprio usuário exclua sua conta.
-            
+
             + Função de Negócio:
                 - Permitir ao front-end excluir um usuário.
                 + Recebe como path parameter:
@@ -219,7 +218,7 @@ const usuarioRoutes = {
             summary: "Atualiza status do usuário (ativo/inativo)",
             description: `
             + Caso de uso: Permitir que o administrador ative ou desative um usuário.
-            
+
             + Função de Negócio:
                 - Atualizar o campo status do usuário entre "ativo" e "inativo".
                 + Recebe como path parameter:
@@ -252,6 +251,93 @@ const usuarioRoutes = {
                 401: commonResponses[401](),
                 404: commonResponses[404](),
                 498: commonResponses[498](),
+                500: commonResponses[500]()
+            }
+        }
+    },
+
+    "/usuarios/{id}/foto": {
+        post: {
+            tags: ["Usuários"],
+            summary: "Faz upload/atualiza a foto de perfil do usuário",
+            description: `
+            + Caso de uso: Adicionar ou alterar a foto de perfil do usuário.
+
+            + Função de Negócio:
+                - Processa um arquivo de imagem, envia para o bucket e associa ao perfil.
+                + Recebe via **multipart/form-data**:
+                    - \`file\` ou \`imagem\`: O arquivo da foto.
+
+            + Regras de Negócio:
+                - Máximo 50MB (definido no serviço) e tipos restritos (jpg, png, jpeg, svg).
+                - A imagem antiga é apagada automaticamente.
+                - O próprio usuário (ou admin) pode realizar esta ação.
+
+            + Resultado Esperado:
+                - HTTP 200 OK com link da imagem carregada.
+            `,
+            security: [{ bearerAuth: [] }],
+            parameters: [{
+                name: "id",
+                in: "path",
+                required: true,
+                schema: { type: "string" },
+                description: "ID do usuário"
+            }],
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        schema: {
+                            type: "object",
+                            properties: {
+                                file: {
+                                    type: "string",
+                                    format: "binary",
+                                    description: "Arquivo de imagem (JPEG, PNG, etc)"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            responses: {
+                200: commonResponses[200](),
+                400: commonResponses[400](),
+                401: commonResponses[401](),
+                403: commonResponses[403](),
+                404: commonResponses[404](),
+                500: commonResponses[500]()
+            }
+        },
+        delete: {
+            tags: ["Usuários"],
+            summary: "Deleta a foto de perfil do usuário",
+            description: `
+            + Caso de uso: O usuário deseja remover sua foto de perfil.
+
+            + Função de Negócio:
+                - Apaga a foto do bucket e define como vazio/null na base de dados.
+
+            + Regras de Negócio:
+                - O próprio usuário (ou admin) pode remover a imagem.
+                - A remoção real do arquivo pode ocorrer de forma silenciosa ou síncrona.
+
+            + Resultado Esperado:
+                - HTTP 200 OK informando o sucesso da remoção.
+            `,
+            security: [{ bearerAuth: [] }],
+            parameters: [{
+                name: "id",
+                in: "path",
+                required: true,
+                schema: { type: "string" },
+                description: "ID do usuário"
+            }],
+            responses: {
+                200: commonResponses[200](),
+                401: commonResponses[401](),
+                403: commonResponses[403](),
+                404: commonResponses[404](),
                 500: commonResponses[500]()
             }
         }

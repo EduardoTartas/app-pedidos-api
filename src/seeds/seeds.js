@@ -5,18 +5,22 @@ import mongoose from 'mongoose';
 import seedUsuarios from './seedsUsuario.js';
 import seedCategorias from './seedsCategoria.js';
 import seedRestaurantes from './seedsRestaurante.js';
+import seedEnderecos from './seedsEndereco.js';
 import seedPratos from './seedsPrato.js';
 import seedAdicionais from './seedsAdicional.js';
 import seedNotificacoes from './seedsNotificacao.js';
+import seedPedidos from './seedsPedido.js';
 
 async function main() {
     try {
         await seedCategorias();
         await seedUsuarios();
         await seedRestaurantes();
+        await seedEnderecos();
         await seedPratos();
         await seedAdicionais();
         await seedNotificacoes();
+        await seedPedidos();
 
         console.log('>>> SEED FINALIZADO COM SUCESSO! <<<');
     } catch (err) {
