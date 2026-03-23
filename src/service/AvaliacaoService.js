@@ -55,7 +55,43 @@ class AvaliacaoService {
             });
         }
 
+    const restauranteId = pedido.restaurante_id._id || pedido.restaurante_id;
 
+        const avaliacao = await this.repository.criar({
+            pedido_id: pedidoId,
+            cliente_id: clienteId,
+            restaurante_id: restauranteId,
+            nota: parsedData.nota,
+            descricao: parsedData.descricao || ''
+        });
+
+        // Vincular avaliação ao pedido
+        await this.pedidoRepository.atualizar(pedidoId, { avaliacao_id: avaliacao._id });
+
+        // Recalcular média do restaurante
+        const novaMedia = await this.repository.calcularMediaRestaurante(restauranteId);
+        await this.restauranteRepository.atualizar(restauranteId, {
+            avaliacao_media: Math.round(novaMedia * 10) / 10
+        });
+
+        // Notificar o dono do restaurante
+        const restaurante = await this.restauranteRepository.buscarPorID(restauranteId);
+        await this.notificacaoRepository.criar({
+            usuario_id: restaurante.dono_id._id || restaurante.dono_id,
+            pedido_id: pedidoId,
+            tipo: 'avaliacao',
+            titulo: 'Nova avaliação recebida',
+            mensagem: `Você recebeu uma avaliação de ${parsedData.nota} estrela(s).`
+        });
+
+        return avaliacao;
     }
+
+    /*Lista avaliações de um restaurante com paginação.*/
+    async listarPorRestaurante(restauranteId, req) {
+        await this.restauranteRepository.buscarPorID(restauranteId);
+        const data = await this.repository.listarPorRestaurante(restauranteId, req);
+        return data;
+   }
 }
 export default AvaliacaoService;
