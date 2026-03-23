@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import objectIdSchema from './zod/ObjectIdSchema.js';
+import objectIdSchema from './ObjectIdSchema.js';
 
 const NotificacaoSchema = z.object({
     usuario_id: objectIdSchema,

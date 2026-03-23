@@ -37,6 +37,7 @@ class Notificacao {
             versionKey: false
         });
 
+        notificacaoSchema.index({ usuario_id: 1, tipo: 1 }, { sparse: true });
         notificacaoSchema.plugin(mongoosePaginate);
         notificacaoSchema.plugin(brazilianDatePlugin);
 

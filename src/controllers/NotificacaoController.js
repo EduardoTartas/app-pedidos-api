@@ -1,6 +1,6 @@
 import NotificacaoService from '../service/NotificacaoService.js';
 import { IdSchema } from '../utils/validators/schemas/zod/querys/CommonQuerySchema.js';
-import { NotificacaoSchema, NotificacaoUpdateSchema } from '../utils/validators/schemas/NotificacaoSchema.js';
+import { NotificacaoSchema, NotificacaoUpdateSchema } from '../utils/validators/schemas/zod/NotificacaoSchema.js';
 import {
     CommonResponse,
     CustomError,
