@@ -9,8 +9,8 @@
 
 # 📋 Documentação de Rotas - API de Delivery
 
-Bem-vindo à documentação oficial das rotas da **API de Delivery**. 
-Aqui você encontra de forma detalhada o mapeamento de endpoints, regras de negócio associadas a cada um, padrões de validação e restrições de permissão.
+Bem-vindo à documentação oficial e exaustiva das rotas da **API de Delivery**. 
+Aqui você encontra de forma detalhada o mapeamento de **todos os endpoints disponíveis**, regras de negócio associadas, padrões de validação, limites de requisição e restrições de permissão.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Desenvolvimento-brightgreen?style=flat-square" alt="Status"/>
@@ -21,173 +21,187 @@ Aqui você encontra de forma detalhada o mapeamento de endpoints, regras de neg�
 
 ## 🧭 Sumário
 
-1. [Visão Geral e Regras Comuns](#-visão-geral-e-regras-comuns)
-2. [🔐 Autenticação](#-autenticação)
-3. [👤 Usuários](#-usuários)
-4. [🏪 Restaurantes](#-restaurantes)
-5. [🍽️ Pratos](#️-pratos)
+1. [Visão Geral, Regras e Status](#-visão-geral-e-regras)
+2. [🌐 Sistema e Base](#-sistema-e-base)
+3. [🔐 Autenticação](#-autenticação)
+4. [👤 Usuários](#-usuários)
+5. [🏬 Restaurantes](#-restaurantes)
 6. [📑 Categorias](#-categorias)
-7. [➕ Adicionais (Grupos e Opções)](#-adicionais-grupos-e-opções)
-8. [🚚 Pedidos](#-pedidos)
-9. [⭐ Avaliações](#-avaliações)
-10. [📍 Endereços](#-endereços)
-11. [🔔 Notificações](#-notificações)
+7. [🍽️ Pratos e Cardápio](#-pratos-e-cardápio)
+8. [➕ Adicionais (Grupos e Opções)](#-adicionais-grupos-e-opções)
+9. [📍 Endereços (Usuários e Restaurantes)](#-endereços)
+10. [🚚 Pedidos](#-pedidos)
+11. [⭐ Avaliações](#-avaliações)
+12. [🔔 Notificações](#-notificações)
 
 ---
 
-## 📌 Visão Geral e Regras Comuns
+## 📌 Visão Geral e Regras
 
 ### 🛡️ Segurança e Controle de Acesso
-- **Middleware Global (`AuthMiddleware`)**: Grande parte da API está protegida. O token JWT (Bearer) é obrigatório e validado quanto à expiração e revogação.
-- **Autorização Baseada em Propriedade (`Owner/Admin`)**: A API não permite que um usuário altere recursos que não sejam seus, a não ser que possua a flag `isAdmin = true`.
-- **🚀 Limitação de Requisições (Rate Limit - Não Implementado em Todas as Rotas Ainda)**:
-  - Rotas Críticas (Login, Recover, Reset): Máximo ![Rate_Limit](https://img.shields.io/badge/50_req_/_5_min-red?style=flat-square).
-  - Rotas Autenticadas (Gerais): Máximo ![Rate_Limit](https://img.shields.io/badge/100_req_/_15_min-yellow?style=flat-square).
+- **Middleware Global (`AuthMiddleware`)**: Protege a malha principal da API validando a sessão no token JWT (Bearer).
+- **Autorização Baseada em Propriedade (`Owner/Admin`)**: Apenas Donos do recurso (ex: Donos de restaurantes ou usuários donos da própria conta) ou Administradores realizam alterações, inibindo BOLA (Broken Object Level Authorization).
+- **Rate Limit Estrito**: Rotas sensíveis (verificação/recuperação de senhas) estão sob rate limit forte ![Rate_Limit](https://img.shields.io/badge/50_req_/_5_min-red?style=flat-square).
 
-### ⚙️ Convenção de Status
-As entidades base da aplicação obedecem padrões estritos de status:
-- **Restaurantes**: ![Aberto](https://img.shields.io/badge/-aberto-brightgreen?style=flat-square) | ![Fechado](https://img.shields.io/badge/-fechado-red?style=flat-square) | ![Inativo](https://img.shields.io/badge/-inativo-gray?style=flat-square). **Nota:** Pedidos só entram se o status for `aberto`.
-- **Pratos**: ![Ativo](https://img.shields.io/badge/-ativo-brightgreen?style=flat-square) | ![Inativo](https://img.shields.io/badge/-inativo-red?style=flat-square). **Nota:** Pratos inativos não podem ser adicionados em novos pedidos.
-- **Pedidos**: Passam, obrigatoriamente, por um funil de controle:
-  `criado` ➔ `em_preparo` ➔ `a_caminho` ➔ `entregue`. Pode ser `cancelado` antes da entrega.
+### ⚙️ Convenção de Status (Regras de Negócio)
+- **Restaurantes**: ![Aberto](https://img.shields.io/badge/-aberto-brightgreen?style=flat-square) `aberto` | ![Fechado](https://img.shields.io/badge/-fechado-red?style=flat-square) `fechado` | ![Inativo](https://img.shields.io/badge/-inativo-gray?style=flat-square) `inativo`. Pedidos bloqueados caso diferente de 'aberto'.
+- **Pratos**: ![Ativo](https://img.shields.io/badge/-ativo-brightgreen?style=flat-square) `ativo` | ![Inativo](https://img.shields.io/badge/-inativo-red?style=flat-square) `inativo`. Pratos inativos ou indisponíveis não podem compor novos pedidos.
+- **Pedidos**: Avanço estrito (backend trava "pulos"): `criado` ➔ `em_preparo` ➔ `a_caminho` ➔ `entregue`.
+
+---
+
+## 🌐 Sistema e Base
+Rotas de serviço da própria API.
+
+| Método | Endpoint | Permissão | Resumo / Propósito |
+|--------|----------|-----------|--------------------|
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | Redireciona para o Docs `/docs`. |
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/docs` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | Swagger UI contendo os esquemas REST abertos. |
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/health` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | Retorna o status de conexão ao MongoDB e uptime do App. |
 
 ---
 
 ## 🔐 Autenticação
-Base do sistema de controle de acesso. Funciona via JWT Bearer Token sem validação por cookie, operando inteiramente em JSON.
+Responsável pelas validações e ciclo de vida da sessão JWT.
 
-| Método | Endpoint | Parâmetros | Permissão / Validações |
-|--------|----------|------------|------------------------|
-| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/login` | ![Body](https://img.shields.io/badge/body-blue?style=flat-square) `email`, `senha` | Rate limit estrito. |
-| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/logout` | ![Body](https://img.shields.io/badge/body-blue?style=flat-square) `access_token` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) Invalida o refresh token. |
-| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/refresh` | ![Body](https://img.shields.io/badge/body-blue?style=flat-square) `refresh_token` | Gera novo access token. |
-| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/recover` | ![Body](https://img.shields.io/badge/body-blue?style=flat-square) `email` | E-mail de recuperação (5 min de timeout p/ novo envio). |
-| ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/password/reset` | ![Body](https://img.shields.io/badge/body-blue?style=flat-square) `senha` <br> ![Query](https://img.shields.io/badge/query-orange?style=flat-square) `token` | Força padrão de senha (8+ chars, mix números, maiusc/minusc). |
-| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/signup` | ![Body](https://img.shields.io/badge/body-blue?style=flat-square) `nome`, `email`, `senha`, `cpf`, `telefone` | O usuário criado sempre terá `isAdmin = false`. |
+| Método | Endpoint | Permissão Base | Descrição e Validações |
+|--------|----------|----------------|------------------------|
+| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/login` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | Autentica via `email`/`senha`. Gera novos _Tokens_. |
+| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/signup` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | Cria usuário padrão sem flag admin. |
+| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/logout` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | Desloga um usuário destruindo Refresh token. |
+| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/refresh` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | Rota que aceita o refresh token e devolve um novo JWT e renova sessão. |
+| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/recover` | ![Rate Limit](https://img.shields.io/badge/RateLmtd-Red?style=flat-square) | Envio de token de reset por e-mail no backend. |
+| ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/password/reset` | ![Rate Limit](https://img.shields.io/badge/RateLmtd-Red?style=flat-square) | Substituição de senha via token `query` recuperado. |
 
 ---
 
 ## 👤 Usuários
-Controle de clientes administradores do sistema e de restaurantes.
+Cadastros, fotos e controles de hierarquia.
 
-| Método | Endpoint | Params | Permissão / Regras de Negócio |
-|--------|----------|--------|-------------------------------|
-| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/usuarios` | - | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) |
-| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/usuarios/:id` | ![Param](https://img.shields.io/badge/param-yellow?style=flat-square) `:id` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) Retorna dados de um usuário. |
-| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/usuarios` | - | ![Admin](https://img.shields.io/badge/Apenas-Admin-1F6FEB?style=flat-square) Validações avançadas de CPF e limite mínimo de Nome (2 char). |
-| ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/usuarios/:id` | ![Param](https://img.shields.io/badge/param-yellow?style=flat-square) `:id` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) Usuário comum não altera privilégio (isAdmin). |
-| ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/usuarios/:id/status` | ![Param](https://img.shields.io/badge/param-yellow?style=flat-square) `:id` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) Serve para ativar/desativar conta. |
-| ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/usuarios/:id` | ![Param](https://img.shields.io/badge/param-yellow?style=flat-square) `:id` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) Realiza "Soft Delete". |
-| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/usuarios/:id/foto` | ![Param](https://img.shields.io/badge/param-yellow?style=flat-square) `:id` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) Upload `multipart/form-data`. |
-| ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/usuarios/:id/foto` | ![Param](https://img.shields.io/badge/param-yellow?style=flat-square) `:id` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) Exclusão da imagem atual. |
-
----
-
-## 🏪 Restaurantes
-Qualquer usuário administrador/proprietário pode gerir o cardápio base de um restaurante.
-
-| Método | Endpoint | Regras de Negócio / Permissão |
-|--------|----------|-------------------------------|
-| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/restaurantes` | ![Public](https://img.shields.io/badge/Acesso-Público-2EA043?style=flat-square) Lista restaurantes `abertos` ou `ativos`. |
-| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/restaurantes/:id` | ![Public](https://img.shields.io/badge/Acesso-Público-2EA043?style=flat-square) Traz informações públicas se não inativo. |
-| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/restaurantes/meus` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) Retorna seus restaurantes (`dono_id = user_id`). Admin vê todos. |
-| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/restaurantes` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) Obrigatório: Nome, Array Categorias, CNPJ (14 dig). |
-| ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/restaurantes/:id` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) Atualiza status, taxa de entrega, categorias. |
-| ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/restaurantes/:id` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) Operação protegida (Soft Delete). |
-| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/restaurantes/:id/foto` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) Upload via form-data para os buckets. |
-| ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/restaurantes/:id/foto` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) Deletar foto existente. |
+| Método | Endpoint | Permissão | Resumo / Propósito |
+|--------|----------|-----------|--------------------|
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/usuarios` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) | Lista usuários. Oculta senhas por padrão. |
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/usuarios/:id` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) | Busca cadastro específico. |
+| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/usuarios` | ![Auth](https://img.shields.io/badge/Admin-1F6FEB?style=flat-square) | Cria conta contornando o signup (Apenas admin). |
+| ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/usuarios/:id` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) | Atualiza dados textuais. Senhas aqui são ignoradas por segurança. |
+| ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/usuarios/:id/status` | ![Auth](https://img.shields.io/badge/Admin-1F6FEB?style=flat-square) | Bloqueio ou Liberação (Inativar/Ativar conta). |
+| ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/usuarios/:id` | ![Auth](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) | Soft delete nativo. |
+| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/usuarios/:id/foto` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Upload de `multipart` pra avatar no bucket. |
+| ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/usuarios/:id/foto` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Remoção e bypass pro fallback padrão. |
 
 ---
 
-## 🍽️ Pratos
-Estruturação e manipulação do cardápio ofertado pelo restaurante.
+## 🏬 Restaurantes
+Lojas e parceiros. 
 
-| Método | Endpoint | Regras de Negócio e Permissões |
-|--------|----------|--------------------------------|
-| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/pratos` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) Listagem bruta com filtros opcionais. |
-| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/pratos/:id` | ![Public](https://img.shields.io/badge/Acesso-Público-2EA043?style=flat-square) Apenas com status `ativo`. |
-| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/cardapio/:restauranteId` | ![Public](https://img.shields.io/badge/Acesso-Público-2EA043?style=flat-square) Retorna menu agrupado por seções. |
-| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/pratos` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) **Body:** `restaurante_id`, `nome`, `preco`, `secao`. |
-| ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/pratos/:id` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) Modifica preço, status ou seção de um item. |
-| ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/pratos/:id` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) Desativa item deletando via soft delete. |
+| Método | Endpoint | Permissão | Resumo / Propósito |
+|--------|----------|-----------|--------------------|
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/restaurantes` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | Feed de restaurantes (aceita query `?categoria=`). |
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/restaurantes/meus` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) | Retorna restaurantes cadastrados no perfil do logado. |
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/restaurantes/:id` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | Retorna página descritiva do Restaurante se não for inativo. |
+| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/restaurantes` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) | Abertura de parceria. |
+| ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/restaurantes/:id` | ![Auth](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) | Atualiza infos básicas e _Status_ da Loja (`aberto/fechado`). |
+| ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/restaurantes/:id` | ![Auth](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) | Soft delete da Loja. |
+| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/restaurantes/:id/foto` | ![Auth](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) | Upload da Logo/Capa. |
+| ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/restaurantes/:id/foto` | ![Auth](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) | Remoção. |
 
 ---
 
 ## 📑 Categorias
-Rotulam o modelo de negócio dos restaurantes (Ex: "Saudável", "Hambúrguer", "Asiática").
+Agrupadores globais ("Hambúrguer", "Doces", "Japonês").
 
-| Método | Endpoint | Regras / Observações |
-|--------|----------|----------------------|
-| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/categorias` e `/:id` | ![Public](https://img.shields.io/badge/Acesso-Público-2EA043?style=flat-square) Disponível no Catálogo inicial. |
-| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/categorias` | ![Admin](https://img.shields.io/badge/Apenas-Admin-1F6FEB?style=flat-square) Define novas categorias base. |
-| ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/categorias/:id` | ![Admin](https://img.shields.io/badge/Apenas-Admin-1F6FEB?style=flat-square) Altera categorias base. |
-| ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/categorias/:id` | ![Admin](https://img.shields.io/badge/Apenas-Admin-1F6FEB?style=flat-square) Remove categorias para manter padronização. |
+| Método | Endpoint | Permissão | Resumo / Propósito |
+|--------|----------|-----------|--------------------|
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/categorias` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | Listagem da home page. |
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/categorias/:id` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | Busca ID detalhado. |
+| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/categorias` | ![Auth](https://img.shields.io/badge/Admin-1F6FEB?style=flat-square) | Cria nova tag (via Admin). |
+| ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/categorias/:id` | ![Auth](https://img.shields.io/badge/Admin-1F6FEB?style=flat-square) | Modifica nome e tag. |
+| ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/categorias/:id` | ![Auth](https://img.shields.io/badge/Admin-1F6FEB?style=flat-square) | Remoção global de Categoria. |
+| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/categorias/:id/foto` | ![Auth](https://img.shields.io/badge/Admin-1F6FEB?style=flat-square) | Vincula um ícone descritivo à Categoria. |
+| ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/categorias/:id/foto` | ![Auth](https://img.shields.io/badge/Admin-1F6FEB?style=flat-square) | Volta a Categoria ao estado sem imagem. |
+
+---
+
+## 🍽️ Pratos e Cardápio
+O conteúdo de venda vinculado ao restaurante.
+
+| Método | Endpoint | Permissão | Resumo / Propósito |
+|--------|----------|-----------|--------------------|
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/cardapio/:restauranteId` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | **Acesso Principal:** Retorna todos os pratos ativos da loja, por seções. |
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/pratos` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) | Listagem crua (utilizada por dashboards administrativos). |
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/pratos/:id` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | Renderiza modal detalhado de um item para usuário comprar. |
+| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/pratos` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Cadastro atrelado ao `restaurante_id` pertencente a ele. |
+| ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/pratos/:id` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Edição (Inclusive inativando prato). |
+| ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/pratos/:id` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Inativa/Deleta o prato definitivamente. |
+| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/pratos/:id/foto` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Inserção de foto de apresentação (Ex: "Hamburguer Gourmet"). |
+| ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/pratos/:id/foto` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Exclusão de foto. |
 
 ---
 
 ## ➕ Adicionais (Grupos e Opções)
+Motor de customização de pedidos (Ex: "Escolha 2 molhos" -> Grupos | "Ketchup", "Maionese" -> Opções).
 
-* **Regra Fundamental**: A consistência (`min`, `max`, `obrigatorio`) é imposta pelo backend no ato do pedido.
-
-### Grupos de Adicionais
-| Método | Endpoint / Params | Permissão / Validações |
-|--------|-------------------|------------------------|
-| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/adicionais/grupos/prato/:pratoId` | ![Public](https://img.shields.io/badge/Acesso-Público-2EA043?style=flat-square) Lista grupos do prato. |
-| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/adicionais/grupos` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) Cria vinculando nome, min/max. |
-| ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/adicionais/grupos/:id` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) Update do grupo. |
-| ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/adicionais/grupos/:id` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) Delete do grupo. |
-
-### Opções dos Grupos (Valores Reais)
-| Método | Endpoint / Params | Permissão / Validações |
-|--------|-------------------|------------------------|
-| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/adicionais/opcoes/:grupoId` | ![Public](https://img.shields.io/badge/Acesso-Público-2EA043?style=flat-square) Mapeadas num grupo específico. |
-| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/adicionais/opcoes` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) Propaga o valor, podendo este ter preço >= 0. |
-
----
-
-## 🚚 Pedidos
-**Core do Negócio.** Cálculos ocorrem inteiramente pela API para garantir segurança financeira.
-
-| Método | Endpoint | Acesso / Regras de Negócio |
-|--------|----------|----------------------------|
-| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/pedidos/meus` | ![Customer](https://img.shields.io/badge/Cliente-Verde?style=flat-square&color=2EA043) Aceita ![Query](https://img.shields.io/badge/query-orange?style=flat-square) `status`, `data_inicio`, `page`. |
-| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/pedidos/restaurante/:restauranteId` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) Restaurante gerencia pedidos recebidos. |
-| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/pedidos` | ![Customer](https://img.shields.io/badge/Cliente-Verde?style=flat-square&color=2EA043) **Regra:** O Restaurante DEVE estar _'aberto'_. Servidor ignora preços injetados pelo client e recalcula (Preço + Taxa Rest. + Adicionais). |
-| ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/pedidos/:id/status` | ![Owner/Admin](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) Evolução: `criado` ➔ `em_preparo` ➔ `a_caminho` ➔ `entregue`. <br>**Cancelamento:** Apenas se não finalizado. |
-
----
-
-## ⭐ Avaliações
-Sistema de rating que qualifica parcerias no aplicativo.
-
-| Método | Endpoint | Descrição e Validações |
-|--------|----------|------------------------|
-| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/avaliacoes/restaurante/:id` | ![Public](https://img.shields.io/badge/Acesso-Público-2EA043?style=flat-square) Média na vitrine (`1-5`). |
-| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/avaliacoes` | ![Customer](https://img.shields.io/badge/Cliente-Verde?style=flat-square&color=2EA043) **Restrito:** O cliente só submete nota da sua própria compra. |
+| Entidade | Método | Endpoint / Params | Permissão | Ação |
+|----------|--------|-------------------|-----------|------|
+| **Grupos** | ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/adicionais/grupos/prato/:pratoId` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | Retorna `min`/`max` obrigatoriedades. |
+| **Grupos** | ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/adicionais/grupos/:id` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | Buscar setup isolado. |
+| **Grupos** | ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/adicionais/grupos` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Exige o vínculo com array de restaurantes/pratos. |
+| **Grupos** | ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/adicionais/grupos/:id` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Edição de `min` e `max`. |
+| **Grupos** | ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/adicionais/grupos/:id` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Remoção em conjunto. |
+| **Opções** | ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/adicionais/opcoes/:grupoId` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | Lista opções vinculadas (+ preço adicional). |
+| **Opções** | ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/adicionais/opcoes` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Inserção de valor (Nome, Acréscimo Preço, GrupoId). |
+| **Opções** | ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/adicionais/opcoes/:id` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Modifica o valor. |
+| **Opções** | ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/adicionais/opcoes/:id` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Remove opção individual. |
+| **Opções** | ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/adicionais/opcoes/:id/foto` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Upload Imagem adicional. |
+| **Opções** | ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/adicionais/opcoes/:id/foto` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Remove Imagem adicional. |
 
 ---
 
 ## 📍 Endereços
-Estrutura segregada de Logística. Base validada pela formatação CEP (`XXXXX-XXX`).
+Políticas restritas baseadas no Mongo Unique Indexing, dividindo Restaurante da Cartela do Usuário.
 
-* **Endpoints Principais:**
-  * Usuário: `/usuarios/:usuarioId/enderecos`
-  * Restaurante: `/restaurantes/:restauranteId/enderecos`
-  
-| Operação | Método Base | Permissão / Resumo |
-|----------|-------------|--------------------|
-| **Criação** | ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | Obrigatório `cep`, `rua`, `numero`, `bairro`, `cidade`, `estado`. Protegido apenas para o dono. |
-| **Leitura** | ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | Usuários podem ter N endereços. Restituição de restaurante é livre (![Public](https://img.shields.io/badge/Acesso-Público-2EA043?style=flat)). |
-| **Delete** | ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | Remover da conta (Owner/Admin). |
+| Tipo da Rota | Método | Endpoint | Permissão | Resumo / Propósito |
+|-------------|--------|----------|-----------|--------------------|
+| **Usuários** | ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/usuarios/:usuarioId/enderecos` | ![Auth](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) | Traz os Múltiplos endereços do utiizador. |
+| **Usuários** | ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/usuarios/:usuarioId/enderecos` | ![Auth](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) | Cadastra novo destino. **Regra**: Se `principal: true`, zera false os antigos (Cascata). |
+| **Usuários** | ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/usuarios/:usuarioId/enderecos/:enderecoId` | ![Auth](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) | Edição e reposicionamento. |
+| **Usuários** | ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/usuarios/:usuarioId/enderecos/:enderecoId` | ![Auth](https://img.shields.io/badge/Owner/Admin-8957E5?style=flat-square) | Exclui rota do perfil. |
+| **Rests.** | ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/restaurantes/:restauranteId/enderecos` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | Recupera o local físico onde a Loja despacha/funciona. |
+| **Rests.** | ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/restaurantes/:restauranteId/enderecos` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | **Hard Constraint**: A Loja pode emitir `409` bloqueando duplicidades. |
+| **Rests.** | ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/restaurantes/:restauranteId/enderecos/:enderecoId` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Sobrescreve dados geográficos da loja. |
+| **Rests.** | ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/restaurantes/:restauranteId/enderecos/:enderecoId` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Desvincula local da operação. |
+
+---
+
+## 🚚 Pedidos
+As regras sensíveis e cálculos de impostos ocorrem inteiramente aqui pelo backend (ignorando inputs do client de "preço fixo").
+
+| Método | Endpoint | Permissão | Resumo / Propósito |
+|--------|----------|-----------|--------------------|
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/pedidos/meus` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) | O Cliente visualiza o progresso no feed dele. |
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/pedidos/restaurante/:restauranteId` | ![Auth](https://img.shields.io/badge/Owner-8957E5?style=flat-square) | Dashboard do parceiro (Feed de produção da loja). |
+| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/pedidos` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) | Carga principal de validação (`Pratos Ativos?`, `Addon Limits?`, `Restaurante Aberto?`). O preço exato é gerado e retornado. |
+| ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/pedidos/:id/status` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) | Avanço linear pelo proprietário (`Pendente → Preparo → Caminho → Entregue`). |
+
+---
+
+## ⭐ Avaliações
+Medição de confiança dos Restaurantes e Entregadores baseada em Notas atreladas ao Restaurante.
+
+| Método | Endpoint | Permissão | Resumo / Propósito |
+|--------|----------|-----------|--------------------|
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/avaliacoes/restaurante/:restauranteId` | ![Public](https://img.shields.io/badge/Público-2EA043?style=flat-square) | Renderiza pontuação e resenhas efetuadas. |
+| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/avaliacoes` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) | Dispara Nova Avaliação. |
 
 ---
 
 ## 🔔 Notificações
-Sistema mantido pela base para disparar alertas interativos (webhook / polling).
+Gera caixa de entrada interna para avisos na tela (Polled) indicando mudança de status do pedido para o cliente, ou novo pedido para o lojista.
 
-| Método | Endpoint | Operação / Permissão |
-|--------|----------|----------------------|
-| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/notificacoes` | ![System](https://img.shields.io/badge/Sistema-Automático-6E40C9?style=flat-square) Lança avisos de status. |
-| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/notificacoes` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) Resgata caixa de entrada particular. |
-| ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/notificacoes/:id/lida` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) Marca booleano `lida=true`. |
-| ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/notificacoes/:id` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) Remove notificação. |
+| Método | Endpoint | Permissão | Resumo / Propósito |
+|--------|----------|-----------|--------------------|
+| ![POST](https://img.shields.io/badge/POST-238636?style=for-the-badge) | `/notificacoes` | ![System](https://img.shields.io/badge/Público/Sistema-2EA043?style=flat-square) | Endpoint utilizado para emitir alertas internos no painel. |
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/notificacoes` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) | Caixa de avisos do painel do usuário logado. |
+| ![GET](https://img.shields.io/badge/GET-0052CC?style=for-the-badge) | `/notificacoes/:id` | ![Public](https://img.shields.io/badge/Aberto-2EA043?style=flat-square) | Resgata texto/metadata de uma notificação. |
+| ![PATCH](https://img.shields.io/badge/PATCH-FF991F?style=for-the-badge) | `/notificacoes/:id/lida` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) | Seta o aviso pra estado `lida=true`. |
+| ![DELETE](https://img.shields.io/badge/DELETE-E34F26?style=for-the-badge) | `/notificacoes/:id` | ![Auth](https://img.shields.io/badge/Auth-Obrigatório-B60205?style=flat-square) | Destrói alerta da caixa de correio do indivíduo. |
