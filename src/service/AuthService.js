@@ -1,5 +1,7 @@
 // src/service/AuthService.js
 
+import EmailService from './EmailService.js';
+
 import jwt from 'jsonwebtoken';
 import {
     CustomError,
@@ -154,7 +156,7 @@ class AuthService {
             });
         }
 
-        const tokenUnico = await this.TokenUtil.generatePasswordRecoveryToken(userEncontrado._id);
+        const tokenUnico = this.TokenUtil.generateRecoveryCode();
         const expMs = Date.now() + 60 * 60 * 1000; // 1 hora
 
         await this.repository.atualizar(userEncontrado._id, {
@@ -162,19 +164,19 @@ class AuthService {
             exp_codigo_recupera_senha: new Date(expMs)
         });
 
-        // Em produção, aqui seria enviado o email com o token
+        // Enviar email com o token de recuperação
+        await EmailService.enviarEmailRecuperacao(
+            body.email,
+            tokenUnico,
+            userEncontrado.nome
+        );
+
         return {
-            message: 'Solicitação de recuperação de senha recebida.',
-            token: tokenUnico // Retorna o token para teste (remover em produção)
+            message: 'Um email com o token de recuperação foi enviado para o seu endereço de email.'
         };
     }
 
-    async atualizarSenhaToken(tokenRecuperacao, senhaBody) {
-        const usuarioId = await this.TokenUtil.decodePasswordRecoveryToken(
-            tokenRecuperacao,
-            process.env.JWT_SECRET_PASSWORD_RECOVERY
-        );
-
+    async atualizarSenhaToken(tokenRecuperacao, novaSenha) {
         const usuario = await this.repository.buscarPorTokenUnico(tokenRecuperacao);
         if (!usuario) {
             throw new CustomError({
@@ -194,8 +196,8 @@ class AuthService {
             });
         }
 
-        const senhaHasheada = await AuthHelper.hashPassword(senhaBody.senha);
-        const usuarioAtualizado = await this.repository.atualizarSenha(usuarioId, senhaHasheada);
+        const senhaHasheada = await AuthHelper.hashPassword(novaSenha);
+        const usuarioAtualizado = await this.repository.atualizarSenha(usuario._id, senhaHasheada);
 
         if (!usuarioAtualizado) {
             throw new CustomError({

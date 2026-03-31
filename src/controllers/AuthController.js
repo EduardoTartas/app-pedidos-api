@@ -77,7 +77,7 @@ class AuthController {
 
     recuperaSenha = async (req, res) => {
         const body = req.body || {};
-        const email = body.email || body.email.trim().toLowerCase();
+        const email = body.email?.trim()?.toLowerCase() || null;
 
         if (!email || typeof email !== 'string' || !email.includes('@')) {
             throw new CustomError({
