@@ -23,19 +23,22 @@ const UsuarioSchema = z.object({
             return senhaRegex.test(senha);
         }, {
             message: 'A senha deve conter pelo menos 1 letra maiúscula, 1 letra minúscula e 1 número.',
-        }),
+        })
+        .optional(),
     cpf: z
         .string()
         .nonempty('Campo CPF é obrigatório.')
         .refine((val) => cpfRegex.test(val), {
             message: 'CPF deve conter exatamente 11 dígitos numéricos.',
-        }),
+        })
+        .optional(),
     telefone: z
         .string()
         .nonempty('Campo telefone é obrigatório.')
         .refine((val) => telefoneRegex.test(val), {
             message: 'Telefone deve conter 10 ou 11 dígitos numéricos.',
-        }),
+        })
+        .optional(),
     foto_perfil: z
         .string()
         .refine((val) => val === '' || /\.(jpg|jpeg|png|webp|svg|gif)$/i.test(val), {
