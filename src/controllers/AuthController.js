@@ -10,6 +10,7 @@ import {
 } from '../utils/helpers/index.js';
 import { LoginSchema } from '../utils/validators/schemas/zod/LoginSchema.js';
 import { UsuarioSchema } from '../utils/validators/schemas/zod/UsuarioSchema.js';
+import { GoogleLoginSchema } from '../utils/validators/schemas/zod/GoogleLoginSchema.js';
 import { UsuarioIdSchema } from '../utils/validators/schemas/zod/querys/UsuarioQuerySchema.js';
 import AuthService from '../service/AuthService.js';
 
@@ -23,6 +24,12 @@ class AuthController {
         const validatedBody = LoginSchema.parse(body);
         const data = await this.service.login(validatedBody);
         console.log(data)
+        return CommonResponse.success(res, data);
+    }
+
+    googleLogin = async (req, res) => {
+        const { idToken } = GoogleLoginSchema.parse(req.body || {});
+        const data = await this.service.loginWithGoogle(idToken);
         return CommonResponse.success(res, data);
     }
 

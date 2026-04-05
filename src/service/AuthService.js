@@ -1,6 +1,7 @@
 // src/service/AuthService.js
 
 import EmailService from './EmailService.js';
+import { OAuth2Client } from 'google-auth-library';
 
 import jwt from 'jsonwebtoken';
 import {
@@ -12,6 +13,8 @@ import tokenUtil from '../utils/TokenUtil.js';
 import bcrypt from 'bcryptjs';
 import AuthHelper from '../utils/AuthHelper.js';
 import UsuarioRepository from "../repository/UsuarioRepository.js";
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 class AuthService {
     constructor(params = {}) {
@@ -46,6 +49,17 @@ class AuthService {
                 field: 'Status',
                 details: [],
                 customMessage: 'Conta desativada. Entre em contato com o suporte.'
+            });
+        }
+
+        // Verificar se a conta é Google-only (sem senha)
+        if (!userEncontrado.senha) {
+            throw new CustomError({
+                statusCode: 401,
+                errorType: 'googleOnly',
+                field: 'Senha',
+                details: [],
+                customMessage: 'Esta conta utiliza login com Google. Use o botão "Entrar com Google".'
             });
         }
 
@@ -96,6 +110,113 @@ class AuthService {
             user: {
                 accessToken,
                 refreshtoken,
+                ...userObject
+            }
+        };
+    }
+
+    // ═══════════════════════════════════════════
+    // LOGIN COM GOOGLE
+    // ═══════════════════════════════════════════
+
+    async loginWithGoogle(idToken) {
+        // 1. Verificar o idToken com o Google
+        let payload;
+        try {
+            const ticket = await googleClient.verifyIdToken({
+                idToken,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
+            payload = ticket.getPayload();
+        } catch (error) {
+            throw new CustomError({
+                statusCode: 401,
+                errorType: 'invalidToken',
+                field: 'idToken',
+                details: [],
+                customMessage: 'Token do Google inválido ou expirado.'
+            });
+        }
+
+        const { sub: googleId, email, name, picture } = payload;
+
+        // 2. Buscar usuário pelo googleId ou email
+        let user = await this.repository.buscarPorGoogleId(googleId);
+        let isNewUser = false;
+
+        if (!user) {
+            // Tentar buscar por email (conta local existente)
+            const userPorEmail = await this.repository.buscarPorEmail(email);
+
+            if (userPorEmail) {
+                // Vincular conta Google a conta existente
+                user = await this.repository.atualizar(userPorEmail._id, {
+                    googleId,
+                    authProvider: 'google',
+                    foto_perfil: userPorEmail.foto_perfil || picture || ''
+                });
+            } else {
+                // Criar novo usuário Google
+                isNewUser = true;
+                user = await this.repository.criar({
+                    nome: name,
+                    email,
+                    googleId,
+                    authProvider: 'google',
+                    foto_perfil: picture || '',
+                    profileComplete: false,
+                    senha: null
+                });
+            }
+        }
+
+        // Verificar status
+        if (user.status === 'inativo') {
+            throw new CustomError({
+                statusCode: 403,
+                errorType: 'forbidden',
+                field: 'Status',
+                details: [],
+                customMessage: 'Conta desativada. Entre em contato com o suporte.'
+            });
+        }
+
+        // 3. Gerar tokens JWT
+        const accessToken = await this.TokenUtil.generateAccessToken(user._id);
+        let refreshtoken;
+
+        const userComToken = await this.repository.buscarPorID(user._id, true);
+        refreshtoken = userComToken.refreshtoken;
+
+        if (refreshtoken) {
+            try {
+                jwt.verify(refreshtoken, process.env.JWT_SECRET_REFRESH_TOKEN);
+            } catch (error) {
+                refreshtoken = await this.TokenUtil.generateRefreshToken(user._id);
+            }
+        } else {
+            refreshtoken = await this.TokenUtil.generateRefreshToken(user._id);
+        }
+
+        await this.repository.armazenarTokens(user._id, accessToken, refreshtoken);
+
+        // 4. Calcular profileComplete
+        const profileComplete = !!(user.cpf && user.telefone);
+
+        // Atualizar profileComplete no banco se necessário
+        if (user.profileComplete !== profileComplete) {
+            await this.repository.atualizar(user._id, { profileComplete });
+        }
+
+        // 5. Retornar resposta
+        const userLogado = await this.repository.buscarPorID(user._id, false);
+        const userObject = userLogado.toObject();
+
+        return {
+            user: {
+                accessToken,
+                refreshtoken,
+                profileComplete,
                 ...userObject
             }
         };
