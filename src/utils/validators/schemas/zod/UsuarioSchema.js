@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 
-const senhaRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+const senhaRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 const cpfRegex = /^\d{11}$/;
 const telefoneRegex = /^\d{10,11}$/;
 
@@ -22,7 +22,7 @@ const UsuarioSchema = z.object({
             if (!senha) return true;
             return senhaRegex.test(senha);
         }, {
-            message: 'A senha deve conter pelo menos 1 letra maiúscula, 1 letra minúscula e 1 número.',
+            message: 'A senha deve conter pelo menos 1 letra maiúscula, 1 letra minúscula, 1 número e 1 caractere especial.',
         })
         .optional(),
     cpf: z
