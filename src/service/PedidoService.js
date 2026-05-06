@@ -58,6 +58,29 @@ class PedidoService {
             });
         }
 
+        // L-12: Validar que há itens e que as quantidades são válidas
+        if (!parsedData.itens || parsedData.itens.length === 0) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                errorType: 'validationError',
+                field: 'Itens',
+                details: [],
+                customMessage: 'O pedido deve ter pelo menos um item.'
+            });
+        }
+
+        for (const item of parsedData.itens) {
+            if (!item.quantidade || item.quantidade < 1) {
+                throw new CustomError({
+                    statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                    errorType: 'validationError',
+                    field: 'Itens',
+                    details: [],
+                    customMessage: `A quantidade de cada item deve ser pelo menos 1.`
+                });
+            }
+        }
+
         // Recalcular preços no backend para evitar manipulação
         let subtotal = 0;
         const itensCalculados = [];
@@ -150,8 +173,12 @@ class PedidoService {
 
     /**
      * Valida adicionais respeitando regras min/max dos grupos.
+     * L-02: Verifica se cada adicional pertence a um grupo vinculado ao prato.
      */
     async validarAdicionais(prato, adicionais) {
+        // IDs dos grupos vinculados ao prato
+        const gruposVinculados = (prato.adicionais_grupo_ids || []).map(g => String(g._id || g));
+
         // Agrupar adicionais por grupo
         const adicionaisPorGrupo = {};
 
@@ -159,6 +186,18 @@ class PedidoService {
             const opcao = await this.opcaoRepository.buscarPorID(adicional.opcao_id);
 
             const grupoId = String(opcao.grupo_id);
+
+            // L-02: Verificar se o grupo do adicional pertence ao prato
+            if (!gruposVinculados.includes(grupoId)) {
+                throw new CustomError({
+                    statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                    errorType: 'validationError',
+                    field: 'Adicionais',
+                    details: [],
+                    customMessage: `O adicional "${opcao.nome}" não pertence a este prato.`
+                });
+            }
+
             if (!adicionaisPorGrupo[grupoId]) {
                 adicionaisPorGrupo[grupoId] = [];
             }
@@ -247,19 +286,8 @@ class PedidoService {
 
         const novoStatus = parsedData.status;
 
-        // Verificar cancelamento (qualquer momento antes de entregue)
+        // L-01: Verificar cancelamento com janela de tempo
         if (novoStatus === 'cancelado') {
-            if (pedido.status === 'entregue') {
-                throw new CustomError({
-                    statusCode: HttpStatusCodes.BAD_REQUEST.code,
-                    errorType: 'validationError',
-                    field: 'Status',
-                    details: [],
-                    customMessage: 'Não é possível cancelar um pedido já entregue.'
-                });
-            }
-
-            // Verificar se o usuário é o cliente, o dono do restaurante ou admin
             const restaurante = await this.restauranteRepository.buscarPorID(pedido.restaurante_id._id || pedido.restaurante_id);
             const usuarioLogado = await this.usuarioRepository.buscarPorID(req.user_id);
             const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
@@ -275,6 +303,28 @@ class PedidoService {
                     field: 'Pedido',
                     details: [],
                     customMessage: 'Você não tem permissão para cancelar este pedido.'
+                });
+            }
+
+            // Cliente só pode cancelar em 'criado'
+            if (isCliente && !isDonoOuAdmin && pedido.status !== 'criado') {
+                throw new CustomError({
+                    statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                    errorType: 'validationError',
+                    field: 'Status',
+                    details: [],
+                    customMessage: 'Você só pode cancelar o pedido enquanto ele estiver no status "criado". Entre em contato com o restaurante para solicitar o cancelamento.'
+                });
+            }
+
+            // Dono/admin pode cancelar em 'criado' ou 'em_preparo'
+            if (isDonoOuAdmin && !['criado', 'em_preparo'].includes(pedido.status)) {
+                throw new CustomError({
+                    statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                    errorType: 'validationError',
+                    field: 'Status',
+                    details: [],
+                    customMessage: `Não é possível cancelar um pedido no status "${pedido.status}".`
                 });
             }
         } else {

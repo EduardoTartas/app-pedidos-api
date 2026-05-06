@@ -44,6 +44,17 @@ class AdicionalGrupoService {
             });
         }
 
+        // L-03: Validar max >= min no service (defense in depth)
+        if (parsedData.max !== undefined && parsedData.min !== undefined && parsedData.max < parsedData.min) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                errorType: 'validationError',
+                field: 'max',
+                details: [],
+                customMessage: `O valor máximo (${parsedData.max}) não pode ser menor que o mínimo (${parsedData.min}).`,
+            });
+        }
+
         parsedData.restaurante_id = prato.restaurante_id;
 
         const grupo = await this.grupoRepository.criar(parsedData);
@@ -79,6 +90,19 @@ class AdicionalGrupoService {
             customMessage: 'Você não tem permissões para editar adicionais deste restaurante.',
         });
 
+        // L-03: Validar max >= min considerando valores atuais do grupo
+        const novoMin = parsedData.min !== undefined ? parsedData.min : grupo.min;
+        const novoMax = parsedData.max !== undefined ? parsedData.max : grupo.max;
+        if (novoMax < novoMin) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                errorType: 'validationError',
+                field: 'max',
+                details: [],
+                customMessage: `O valor máximo (${novoMax}) não pode ser menor que o mínimo (${novoMin}).`,
+            });
+        }
+
         const data = await this.grupoRepository.atualizar(id, parsedData);
         return data;
     }
@@ -99,17 +123,12 @@ class AdicionalGrupoService {
         await this.opcaoRepository.deletarPorGrupo(id);
         const data = await this.grupoRepository.deletar(id);
 
-        // Remover o vínculo do prato se existir
-        if (req.query.prato_id) {
-            await this.pratoRepository.removerGrupo(req.query.prato_id, id);
-        } else {
-            // Fallback: se não vier prato_id na query, buscar prato que contenha este grupo
-            const Prato = (await import('../models/Prato.js')).default;
-            await Prato.updateMany(
-                { adicionais_grupo_ids: id },
-                { $pull: { adicionais_grupo_ids: id } }
-            );
-        }
+        // L-10: Sempre buscar e desvincular o grupo de todos os pratos que o referenciam
+        const Prato = (await import('../models/Prato.js')).default;
+        await Prato.updateMany(
+            { adicionais_grupo_ids: id },
+            { $pull: { adicionais_grupo_ids: id } }
+        );
 
         return data;
     }
