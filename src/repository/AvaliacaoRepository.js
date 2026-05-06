@@ -70,6 +70,20 @@ class AvaliacaoRepository {
         const avaliacao = new this.modelAvaliacao(dadosAvaliacao);
         return await avaliacao.save();
     }
+
+    async deletar(id) {
+        const avaliacao = await this.modelAvaliacao.findByIdAndDelete(id);
+        if (!avaliacao) {
+            throw new CustomError({
+                statusCode: 404,
+                errorType: 'resourceNotFound',
+                field: 'Avaliação',
+                details: [],
+                customMessage: messages.error.resourceNotFound('Avaliação')
+            });
+        }
+        return avaliacao;
+    }
 }
 
 export default AvaliacaoRepository;

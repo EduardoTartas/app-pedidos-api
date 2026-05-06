@@ -18,7 +18,7 @@ import pratoRoutes from './pratoRoutes.js';
 import adicionalGrupoRoutes from './adicionalGrupoRoutes.js';
 import adicionalOpcaoRoutes from './adicionalOpcaoRoutes.js';
 import pedidoRoutes from './pedidoRoutes.js';
-import avaliacaoRoutes from './avaliacaoRoute.js';
+import avaliacaoRoutes from './avaliacaoRoutes.js';
 import notificacaoRoutes from './notificacaoRoutes.js';
 
 dotenv.config();
