@@ -10,13 +10,13 @@ const router = express.Router();
 const authController = new AuthController();
 
 router
-    .post('/login', asyncWrapper(authController.login.bind(authController)))
+    .post('/login', strictRateLimit, asyncWrapper(authController.login.bind(authController)))
     .post('/logout', asyncWrapper(authController.logout.bind(authController)))
     .post('/refresh', asyncWrapper(authController.refresh.bind(authController)))
     .post('/recover', strictRateLimit, asyncWrapper(authController.recuperaSenha.bind(authController)))
     .patch('/password/reset', strictRateLimit, asyncWrapper(authController.atualizarSenhaToken.bind(authController)))
-    .post('/signup', asyncWrapper(authController.signup.bind(authController)))
+    .post('/signup', strictRateLimit, asyncWrapper(authController.signup.bind(authController)))
     .get("/verificar-email", asyncWrapper(authController.verificarEmail.bind(authController)))
-    .post('/google', asyncWrapper(authController.googleLogin.bind(authController)));
+    .post('/google', strictRateLimit, asyncWrapper(authController.googleLogin.bind(authController)));
 
 export default router;
