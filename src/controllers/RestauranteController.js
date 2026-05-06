@@ -21,27 +21,12 @@ class RestauranteController {
   }
 
   async listar(req, res) {
-    const { id } = req.params;
-    if (id) {
-      RestauranteIdSchema.parse(id);
-    }
-
     let query = req?.query || {};
     if (Object.keys(query).length !== 0) {
       query = await RestauranteQuerySchema.parseAsync(query);
     }
 
     const data = await this.service.listar({ params: req.params, query });
-
-    // Mensagem contextualizada para listagem
-    if (id) {
-      return CommonResponse.success(
-        res,
-        data,
-        HttpStatusCodes.OK.code,
-        'Restaurante encontrado com sucesso.',
-      );
-    }
 
     // Resultado paginado - verificar se há resultados
     const totalDocs = data?.totalDocs ?? data?.docs?.length ?? 0;
@@ -64,6 +49,19 @@ class RestauranteController {
       data,
       HttpStatusCodes.OK.code,
       `${totalDocs} restaurante(s) encontrado(s).`,
+    );
+  }
+
+  async buscarPorId(req, res) {
+    const { id } = req.params;
+    RestauranteIdSchema.parse(id);
+
+    const data = await this.service.buscarPorId(id);
+    return CommonResponse.success(
+      res,
+      data,
+      HttpStatusCodes.OK.code,
+      'Restaurante encontrado com sucesso.',
     );
   }
 

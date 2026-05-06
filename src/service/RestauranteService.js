@@ -31,6 +31,11 @@ class RestauranteService {
         return data;
     }
 
+    async buscarPorId(id) {
+        const data = await this.ensureRestauranteExists(id);
+        return data;
+    }
+
     async listarMeus(req) {
         // Listagem privada para o Painel Web/Dashboard
         if (!req?.user_id) {

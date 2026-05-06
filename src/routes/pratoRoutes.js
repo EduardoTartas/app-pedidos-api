@@ -10,7 +10,7 @@ const router = express.Router();
 const pratoController = new PratoController();
 
 router
-    .get('/pratos', AuthMiddleware, asyncWrapper(pratoController.listar.bind(pratoController)))
+    .get('/pratos', asyncWrapper(pratoController.listar.bind(pratoController)))
     .get('/pratos/:id', asyncWrapper(pratoController.listar.bind(pratoController)))
     .get('/cardapio/:restauranteId', asyncWrapper(pratoController.buscarCardapio.bind(pratoController)))
     .post('/pratos', AuthMiddleware, asyncWrapper(pratoController.criar.bind(pratoController)))
