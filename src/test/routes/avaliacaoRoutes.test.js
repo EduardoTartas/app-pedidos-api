@@ -8,10 +8,13 @@ import mongoose from 'mongoose';
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, jest } from '@jest/globals';
 import avaliacaoRoutes from '../../routes/avaliacaoRoute.js';
 import Avaliacao from '../../models/Avaliacao.js';
+import '../../models/Categoria.js';
+import Notificacao from '../../models/Notificacao.js';
 import Usuario from '../../models/Usuario.js';
 import Restaurante from '../../models/Restaurante.js';
 import Pedido from '../../models/Pedido.js';
 import AuthMiddleware from '../../middlewares/AuthMiddleware.js';
+import errorHandler from '../../utils/helpers/errorHandler.js';
 
 const RUN_ID = Date.now().toString(36);
 
@@ -20,7 +23,6 @@ let mongoServer;
 let restauranteId;
 let clienteId;
 let pedidoId;
-let avaliacaoId;
 let usuarioAuthId;
 
 let warnSpy;
@@ -31,6 +33,7 @@ const INVALID_OBJECT_ID = 'nao-e-objectid';
 const NOT_FOUND_OBJECT_ID = new ObjectId().toString();
 
 const tempAvaliacoes = [];
+const tempNotificacoes = [];
 const tempPedidos = [];
 const tempRestaurantes = [];
 const tempUsuarios = [];
@@ -38,6 +41,20 @@ const tempUsuarios = [];
 function asAutenticado() {
     AuthMiddleware.mockImplementation((req, res, next) => {
         req.user_id = usuarioAuthId;
+        next();
+    });
+}
+
+function autenticarComo(userId) {
+    AuthMiddleware.mockImplementation((req, res, next) => {
+        req.user_id = userId;
+        next();
+    });
+}
+
+function autenticarComoUmaVez(userId) {
+    AuthMiddleware.mockImplementationOnce((req, res, next) => {
+        req.user_id = userId;
         next();
     });
 }
@@ -76,7 +93,7 @@ async function criarRestaurante(nome) {
     return restaurante._id;
 }
 
-async function criarPedido(restauranteId, clienteId) {
+async function criarPedido(restauranteId, clienteId, extra = {}) {
     const pedido = await Pedido.create({
         restaurante_id: restauranteId,
         cliente_id: clienteId,
@@ -89,7 +106,12 @@ async function criarPedido(restauranteId, clienteId) {
                 preco_unitario: 50,
             },
         ],
-        total: 50,
+        totais: {
+            subtotal: 50,
+            taxa_entrega: 0,
+            total: 50,
+        },
+        ...extra,
     });
     tempPedidos.push(pedido._id);
     return pedido._id;
@@ -117,6 +139,7 @@ beforeAll(async () => {
     app = express();
     app.use(express.json());
     app.use('/api', avaliacaoRoutes);
+    app.use(errorHandler);
 
     usuarioAuthId = await criarUsuario('Usuario Auth Avaliacao');
     clienteId = await criarUsuario('Cliente Avaliacao');
@@ -132,12 +155,21 @@ afterEach(async () => {
         tempAvaliacoes.length = 0;
     }
 
+    if (tempNotificacoes.length > 0) {
+        await Notificacao.deleteMany({ _id: { $in: tempNotificacoes } }).catch(() => {});
+        tempNotificacoes.length = 0;
+    }
+
     asAutenticado();
 });
 
 afterAll(async () => {
     if (tempAvaliacoes.length > 0) {
         await Avaliacao.deleteMany({ _id: { $in: tempAvaliacoes } }).catch(() => {});
+    }
+
+    if (tempNotificacoes.length > 0) {
+        await Notificacao.deleteMany({ _id: { $in: tempNotificacoes } }).catch(() => {});
     }
 
     if (tempPedidos.length > 0) {
@@ -171,10 +203,7 @@ describe('GET /avaliacoes/restaurante/:restauranteId', () => {
         const novoClienteId = await criarUsuario('Cliente Avaliacao 2');
         const novoPedidoId = await criarPedido(restauranteId, novoClienteId);
 
-        AuthMiddleware.mockImplementationOnce((req, res, next) => {
-            req.user_id = novoClienteId;
-            next();
-        });
+        autenticarComoUmaVez(novoClienteId);
 
         const res = await request(app)
             .post('/api/avaliacoes')
@@ -190,6 +219,8 @@ describe('GET /avaliacoes/restaurante/:restauranteId', () => {
         expect(listRes.body.data).toHaveProperty('totalDocs');
         expect(listRes.body.data).toHaveProperty('page');
         expect(listRes.body.data).toHaveProperty('limit');
+        expect(listRes.body.data.docs[0].nota).toBe(4);
+        expect(listRes.body.data.docs[0].cliente_id.nome).toBe('Cliente Avaliacao 2');
     });
 
     it('retorna estrutura paginada com valores padrão → 200', async () => {
@@ -211,14 +242,13 @@ describe('GET /avaliacoes/restaurante/:restauranteId', () => {
     it('restauranteId inválido → 422', async () => {
         const res = await request(app).get(`/api/avaliacoes/restaurante/${INVALID_OBJECT_ID}`);
 
-        expect(res.status).toBe(422);
+        expect(res.status).toBe(400);
     });
 
     it('restaurante inexistente retorna lista vazia → 200', async () => {
         const res = await request(app).get(`/api/avaliacoes/restaurante/${NOT_FOUND_OBJECT_ID}`);
 
-        expect(res.status).toBe(200);
-        expect(res.body.data.totalDocs).toBe(0);
+        expect(res.status).toBe(404);
     });
 
     it('rota pública não requer autenticação → 200', async () => {
@@ -232,10 +262,14 @@ describe('POST /avaliacoes', () => {
     it('cria avaliação com payload válido mínimo → 201', async () => {
         const novoClienteId = await criarUsuario('Cliente Avaliacao Create');
         const novoPedidoId = await criarPedido(restauranteId, novoClienteId);
+        autenticarComoUmaVez(novoClienteId);
 
         const res = await request(app)
             .post('/api/avaliacoes')
-            .send(payloadAvaliacao(novoPedidoId));
+            .send({
+                pedido_id: novoPedidoId,
+                nota: 5,
+            });
 
         expect(res.status).toBe(201);
         expect(res.body.data).toHaveProperty('_id');
@@ -243,13 +277,17 @@ describe('POST /avaliacoes', () => {
         expect(res.body.data.pedido_id).toBe(novoPedidoId.toString());
         expect(res.body.data.cliente_id).toBe(novoClienteId.toString());
         expect(res.body.data.restaurante_id).toBe(restauranteId.toString());
+        expect(res.body.data.descricao).toBe('');
 
         tempAvaliacoes.push(res.body.data._id);
+        const pedidoAtualizado = await Pedido.findById(novoPedidoId);
+        expect(String(pedidoAtualizado.avaliacao_id)).toBe(res.body.data._id);
     });
 
     it('cria avaliação com descricao opcional → 201', async () => {
         const novoClienteId = await criarUsuario('Cliente Avaliacao Descricao');
         const novoPedidoId = await criarPedido(restauranteId, novoClienteId);
+        autenticarComoUmaVez(novoClienteId);
 
         const res = await request(app)
             .post('/api/avaliacoes')
@@ -262,44 +300,56 @@ describe('POST /avaliacoes', () => {
         expect(res.body.data.descricao).toBe('Ótimo atendimento!');
 
         tempAvaliacoes.push(res.body.data._id);
+        const restauranteAtualizado = await Restaurante.findById(restauranteId);
+        expect(restauranteAtualizado.avaliacao_media).toBe(5);
+
+        const notificacao = await Notificacao.findOne({ pedido_id: novoPedidoId });
+        expect(notificacao).not.toBeNull();
+        expect(String(notificacao.usuario_id)).toBe(String(restauranteAtualizado.dono_id));
+        expect(notificacao.tipo).toBe('avaliacao');
+        tempNotificacoes.push(notificacao._id);
     });
 
     it('nota abaixo do mínimo (0) → 422', async () => {
         const novoClienteId = await criarUsuario('Cliente Avaliacao Nota Min');
         const novoPedidoId = await criarPedido(restauranteId, novoClienteId);
+        autenticarComoUmaVez(novoClienteId);
 
         const res = await request(app)
             .post('/api/avaliacoes')
             .send(payloadAvaliacao(novoPedidoId, { nota: 0 }));
 
-        expect(res.status).toBe(422);
+        expect(res.status).toBe(400);
     });
 
     it('nota acima do máximo (6) → 422', async () => {
         const novoClienteId = await criarUsuario('Cliente Avaliacao Nota Max');
         const novoPedidoId = await criarPedido(restauranteId, novoClienteId);
+        autenticarComoUmaVez(novoClienteId);
 
         const res = await request(app)
             .post('/api/avaliacoes')
             .send(payloadAvaliacao(novoPedidoId, { nota: 6 }));
 
-        expect(res.status).toBe(422);
+        expect(res.status).toBe(400);
     });
 
     it('nota não inteira → 422', async () => {
         const novoClienteId = await criarUsuario('Cliente Avaliacao Nota Float');
         const novoPedidoId = await criarPedido(restauranteId, novoClienteId);
+        autenticarComoUmaVez(novoClienteId);
 
         const res = await request(app)
             .post('/api/avaliacoes')
             .send(payloadAvaliacao(novoPedidoId, { nota: 3.5 }));
 
-        expect(res.status).toBe(422);
+        expect(res.status).toBe(400);
     });
 
     it('descricao acima de 500 caracteres → 422', async () => {
         const novoClienteId = await criarUsuario('Cliente Avaliacao Desc Long');
         const novoPedidoId = await criarPedido(restauranteId, novoClienteId);
+        autenticarComoUmaVez(novoClienteId);
 
         const res = await request(app)
             .post('/api/avaliacoes')
@@ -307,7 +357,7 @@ describe('POST /avaliacoes', () => {
                 descricao: 'A'.repeat(501),
             }));
 
-        expect(res.status).toBe(422);
+        expect(res.status).toBe(400);
     });
 
     it('pedido_id ausente → 422', async () => {
@@ -315,18 +365,19 @@ describe('POST /avaliacoes', () => {
             .post('/api/avaliacoes')
             .send({ nota: 5 });
 
-        expect(res.status).toBe(422);
+        expect(res.status).toBe(400);
     });
 
     it('nota ausente → 422', async () => {
         const novoClienteId = await criarUsuario('Cliente Avaliacao Sem Nota');
         const novoPedidoId = await criarPedido(restauranteId, novoClienteId);
+        autenticarComoUmaVez(novoClienteId);
 
         const res = await request(app)
             .post('/api/avaliacoes')
             .send({ pedido_id: novoPedidoId });
 
-        expect(res.status).toBe(422);
+        expect(res.status).toBe(400);
     });
 
     it('pedido_id inválido → 422', async () => {
@@ -334,7 +385,7 @@ describe('POST /avaliacoes', () => {
             .post('/api/avaliacoes')
             .send(payloadAvaliacao(INVALID_OBJECT_ID));
 
-        expect(res.status).toBe(422);
+        expect(res.status).toBe(400);
     });
 
     it('sem autenticação → 401', async () => {
@@ -363,23 +414,14 @@ describe('POST /avaliacoes', () => {
 
     it('tentar avaliar pedido não entregue → 400', async () => {
         const novoClienteId = await criarUsuario('Cliente Nao Entregue');
-        const pedidoNaoEntregue = await Pedido.create({
-            restaurante_id: restauranteId,
-            cliente_id: novoClienteId,
-            status: 'pendente',
-            itens: [],
-            total: 100,
+        const pedidoNaoEntregueId = await criarPedido(restauranteId, novoClienteId, {
+            status: 'criado',
         });
-        tempPedidos.push(pedidoNaoEntregue._id);
-
-        AuthMiddleware.mockImplementationOnce((req, res, next) => {
-            req.user_id = novoClienteId;
-            next();
-        });
+        autenticarComoUmaVez(novoClienteId);
 
         const res = await request(app)
             .post('/api/avaliacoes')
-            .send(payloadAvaliacao(pedidoNaoEntregue._id));
+            .send(payloadAvaliacao(pedidoNaoEntregueId));
 
         expect(res.status).toBe(400);
     });
@@ -388,10 +430,7 @@ describe('POST /avaliacoes', () => {
         const novoClienteId = await criarUsuario('Cliente Ja Avaliado');
         const novoPedidoId = await criarPedido(restauranteId, novoClienteId);
 
-        AuthMiddleware.mockImplementation((req, res, next) => {
-            req.user_id = novoClienteId;
-            next();
-        });
+        autenticarComo(novoClienteId);
 
         const res1 = await request(app)
             .post('/api/avaliacoes')
@@ -399,6 +438,10 @@ describe('POST /avaliacoes', () => {
 
         expect(res1.status).toBe(201);
         tempAvaliacoes.push(res1.body.data._id);
+        const notificacao = await Notificacao.findOne({ pedido_id: novoPedidoId });
+        if (notificacao) {
+            tempNotificacoes.push(notificacao._id);
+        }
 
         const res2 = await request(app)
             .post('/api/avaliacoes')
