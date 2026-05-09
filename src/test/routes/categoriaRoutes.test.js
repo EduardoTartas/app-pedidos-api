@@ -204,3 +204,14 @@ describe('GET /categorias', () => {
         expect(res.body.data.docs).toHaveLength(1);
         expect(res.body.data.docs[0].nome).toBe('Açaí');
     });
+    it('filtra por ativo=false -> 200', async () => {
+        await criarCategoria({ nome: 'Ativa', ativo: true });
+        await criarCategoria({ nome: 'Inativa', ativo: false });
+
+        const res = await request(app).get('/api/categorias?ativo=false');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.docs).toHaveLength(1);
+        expect(res.body.data.docs[0].nome).toBe('Inativa');
+        expect(res.body.data.docs[0].ativo).toBe(false);
+    });
