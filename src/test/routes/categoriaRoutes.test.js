@@ -95,4 +95,21 @@ async function criarUsuario(nome, extra = {}) {
     tempUsuarios.push(usuario._id);
     return usuario._id;
 }
+async function criarCategoria(extra = {}) {
+    const categoria = await Categoria.create({
+        nome: nextId('Categoria'),
+        icone_categoria: '',
+        ativo: true,
+        ...extra,
+    });
+    tempCategorias.push(categoria._id);
+    return categoria;
+}
 
+function payloadCategoria(extra = {}) {
+    return {
+        nome: nextId('CategoriaPayload'),
+        icone_categoria: 'http://test.com/icone.png',
+        ...extra,
+    };
+}
