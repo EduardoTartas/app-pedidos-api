@@ -30,3 +30,26 @@ import AuthMiddleware from '../../middlewares/AuthMiddleware.js';
 import errorHandler from '../../utils/helpers/errorHandler.js';
 
 const RUN_ID = Date.now().toString(36);
+
+let app;
+let mongoServer;
+let adminId;
+let usuarioAuthId;
+
+let warnSpy;
+let errorSpy;
+let logSpy;
+
+let sequence = 0;
+
+const INVALID_OBJECT_ID = 'nao-e-objectid';
+const NOT_FOUND_OBJECT_ID = new ObjectId().toString();
+
+const tempCategorias = [];
+const tempUsuarios = [];
+
+function nextId(prefix = 'item') {
+    sequence += 1;
+    return `${prefix}-${RUN_ID}-${sequence}`;
+}
+
