@@ -194,3 +194,13 @@ describe('GET /categorias', () => {
         expect(res.body.data.limit).toBe(10);
         expect(res.body.data.docs.map(categoria => categoria.nome)).toEqual(['A Lanches', 'Z Massas']);
     });
+    it('filtra por nome ignorando acentos -> 200', async () => {
+        await criarCategoria({ nome: 'Açaí' });
+        await criarCategoria({ nome: 'Pizza' });
+
+        const res = await request(app).get('/api/categorias?nome=acai');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.docs).toHaveLength(1);
+        expect(res.body.data.docs[0].nome).toBe('Açaí');
+    });
