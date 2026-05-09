@@ -240,3 +240,13 @@ describe('GET /categorias', () => {
         expect(res.status).toBe(200);
     });
 });
+    describe('GET /categorias/:id', () => {
+        it('busca categoria por id em rota publica -> 200', async () => {
+            const categoria = await criarCategoria({ nome: 'Japonesa' });
+
+            const res = await request(app).get(`/api/categorias/${categoria._id}`);
+
+            expect(res.status).toBe(200);
+            expect(res.body.data._id).toBe(categoria._id.toString());
+            expect(res.body.data.nome).toBe('Japonesa');
+        });
