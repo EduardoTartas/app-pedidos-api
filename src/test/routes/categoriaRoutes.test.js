@@ -215,3 +215,14 @@ describe('GET /categorias', () => {
         expect(res.body.data.docs[0].nome).toBe('Inativa');
         expect(res.body.data.docs[0].ativo).toBe(false);
     });
+    it('respeita customizacoes de paginacao page=2&limite=1 -> 200', async () => {
+        await criarCategoria({ nome: 'Categoria A' });
+        await criarCategoria({ nome: 'Categoria B' });
+
+        const res = await request(app).get('/api/categorias?page=2&limite=1');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.page).toBe(2);
+        expect(res.body.data.limit).toBe(1);
+        expect(res.body.data.docs).toHaveLength(1);
+    });
