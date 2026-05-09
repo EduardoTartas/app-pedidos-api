@@ -350,3 +350,23 @@ describe('PATCH /categorias/:id', () => {
 
         expect(res.status).toBe(400);
     });
+    it('sem autenticacao -> 401', async () => {
+        const categoria = await criarCategoria();
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .patch(`/api/categorias/${categoria._id}`)
+            .send({ nome: 'Nome Bloqueado' });
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const categoria = await criarCategoria();
+
+        const res = await request(app)
+            .patch(`/api/categorias/${categoria._id}`)
+            .send({ nome: 'Sem Permissao' });
+
+        expect(res.status).toBe(403);
+    });
