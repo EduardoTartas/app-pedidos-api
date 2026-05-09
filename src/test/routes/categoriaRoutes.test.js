@@ -464,3 +464,19 @@ describe('POST /categorias/:id/foto', () => {
         expect(res.status).toBe(403);
     });
 });
+
+describe('DELETE /categorias/:id/foto', () => {
+    it('remove icone da categoria como administrador -> 200', async () => {
+        const categoria = await criarCategoria({
+            nome: 'Icone Removivel',
+            icone_categoria: 'http://test.com/antiga.jpg',
+        });
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).delete(`/api/categorias/${categoria._id}/foto`);
+
+        expect(res.status).toBe(200);
+
+        const atualizada = await Categoria.findById(categoria._id);
+        expect(atualizada.icone_categoria).toBe('');
+    });
