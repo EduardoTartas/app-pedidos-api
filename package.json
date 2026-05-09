@@ -31,6 +31,7 @@
     "jsdom": "^29.0.0",
     "jsonwebtoken": "^9.0.3",
     "minio": "^8.0.7",
+    "mongodb": "^7.2.0",
     "mongoose": "^9.2.2",
     "mongoose-paginate-v2": "^1.9.1",
     "multer": "^2.1.1",
@@ -66,37 +67,6 @@
     ],
     "plugins": [
       "babel-plugin-transform-import-meta"
-    ]
-  },
-  "jest": {
-    "transform": {
-      "^.+\\.js$": "babel-jest"
-    },
-    "testEnvironment": "node",
-    "verbose": true,
-    "transformIgnorePatterns": [],
-    "roots": [
-      "<rootDir>"
-    ],
-    "setupFilesAfterEnv": [
-      "<rootDir>/jest.setup.js"
-    ],
-    "coveragePathIgnorePatterns": [
-      "/node_modules/",
-      "/src/config/dbConnect.js",
-      "/src/controllers/AuthController.js",
-      "/src/service/AuthService.js",
-      "/utils/logger.js",
-      "/utils/errors",
-      "/middlewares/",
-      "/utils/AuthHelper.js",
-      "/utils/TokenUtil.js",
-      "/utils/helpers/errorHandler.js",
-      "/utils/helpers/StatusService.js",
-      "/utils/helpers/messages.js",
-      "/utils/helpers/CommonResponse.js",
-      "/middlewares/asyncWrapper.js",
-      "utils/helpers/HttpStatusCodes.js"
     ]
   }
 }
