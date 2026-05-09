@@ -480,3 +480,12 @@ describe('DELETE /categorias/:id/foto', () => {
         const atualizada = await Categoria.findById(categoria._id);
         expect(atualizada.icone_categoria).toBe('');
     });
+    
+    it('categoria sem icone -> 404', async () => {
+        const categoria = await criarCategoria({ icone_categoria: '' });
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).delete(`/api/categorias/${categoria._id}/foto`);
+
+        expect(res.status).toBe(404);
+    });
