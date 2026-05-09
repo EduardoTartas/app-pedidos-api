@@ -113,3 +113,22 @@ function payloadCategoria(extra = {}) {
         ...extra,
     };
 }
+beforeAll(async () => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    mongoServer = await MongoMemoryServer.create();
+    await mongoose.connect(mongoServer.getUri());
+
+    app = express();
+    app.use(express.json());
+    app.use(expressFileUpload());
+    app.use('/api', categoriaRoutes);
+    app.use(errorHandler);
+
+    adminId = await criarUsuario('Admin Categoria', { isAdmin: true });
+    usuarioAuthId = await criarUsuario('Usuario Categoria');
+
+    asAutenticado();
+}, 30000);
