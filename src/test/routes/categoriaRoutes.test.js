@@ -444,3 +444,23 @@ describe('POST /categorias/:id/foto', () => {
         const atualizada = await Categoria.findById(categoria._id);
         expect(atualizada.icone_categoria).toBe('http://test.com/categoria.jpg');
     });
+
+    it('sem arquivo -> 400', async () => {
+        const categoria = await criarCategoria();
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).post(`/api/categorias/${categoria._id}/foto`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const categoria = await criarCategoria();
+
+        const res = await request(app)
+            .post(`/api/categorias/${categoria._id}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'categoria.jpg');
+
+        expect(res.status).toBe(403);
+    });
+});
