@@ -277,3 +277,12 @@ describe('GET /categorias', () => {
 
         tempCategorias.push(res.body.data._id);
     });
+     it('payload invalido -> 400', async () => {
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .post('/api/categorias')
+            .send(payloadCategoria({ nome: 'A' }));
+
+        expect(res.status).toBe(400);
+    });
