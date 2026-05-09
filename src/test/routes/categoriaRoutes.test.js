@@ -250,3 +250,15 @@ describe('GET /categorias', () => {
             expect(res.body.data._id).toBe(categoria._id.toString());
             expect(res.body.data.nome).toBe('Japonesa');
         });
+     it('id invalido -> 400', async () => {
+        const res = await request(app).get(`/api/categorias/${INVALID_OBJECT_ID}`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('categoria inexistente -> 404', async () => {
+        const res = await request(app).get(`/api/categorias/${NOT_FOUND_OBJECT_ID}`);
+
+        expect(res.status).toBe(404);
+    });
+});
