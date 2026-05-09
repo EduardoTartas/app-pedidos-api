@@ -72,4 +72,27 @@ function autenticarComoUmaVez(userId) {
         next();
     });
 }
+function asNaoAutenticado() {
+    AuthMiddleware.mockImplementationOnce((req, res) => {
+        res.status(401).json({
+            error: true,
+            code: 401,
+            message: 'Nao autorizado. Faca login para continuar.',
+            data: null,
+            errors: [],
+        });
+    });
+}
+
+async function criarUsuario(nome, extra = {}) {
+    const slug = nome.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const usuario = await Usuario.create({
+        nome,
+        email: `${slug}-${nextId('mail')}@test.local`,
+        senha: 'teste123',
+        ...extra,
+    });
+    tempUsuarios.push(usuario._id);
+    return usuario._id;
+}
 
