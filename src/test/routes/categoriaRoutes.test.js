@@ -286,3 +286,20 @@ describe('GET /categorias', () => {
 
         expect(res.status).toBe(400);
     });
+     it('sem autenticacao -> 401', async () => {
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .post('/api/categorias')
+            .send(payloadCategoria());
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const res = await request(app)
+            .post('/api/categorias')
+            .send(payloadCategoria());
+
+        expect(res.status).toBe(403);
+    });
