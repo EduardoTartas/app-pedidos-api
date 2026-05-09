@@ -428,3 +428,19 @@ describe('DELETE /categorias/:id', () => {
         expect(res.status).toBe(404);
     });
 });
+
+describe('POST /categorias/:id/foto', () => {
+    it('atualiza icone da categoria como administrador -> 200', async () => {
+        const categoria = await criarCategoria({ nome: 'Com Icone' });
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .post(`/api/categorias/${categoria._id}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'categoria.jpg');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.dados.icone_categoria).toBe('http://test.com/categoria.jpg');
+
+        const atualizada = await Categoria.findById(categoria._id);
+        expect(atualizada.icone_categoria).toBe('http://test.com/categoria.jpg');
+    });
