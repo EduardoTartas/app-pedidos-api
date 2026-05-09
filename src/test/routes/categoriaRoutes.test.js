@@ -262,3 +262,18 @@ describe('GET /categorias', () => {
         expect(res.status).toBe(404);
     });
 });
+    describe('POST /categorias', () => {
+    it('cria categoria como administrador -> 201', async () => {
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .post('/api/categorias')
+            .send(payloadCategoria({ nome: 'Bebidas' }));
+
+        expect(res.status).toBe(201);
+        expect(res.body.data.nome).toBe('Bebidas');
+        expect(res.body.data.icone_categoria).toBe('http://test.com/icone.png');
+        expect(res.body.data.ativo).toBe(true);
+
+        tempCategorias.push(res.body.data._id);
+    });
