@@ -52,4 +52,24 @@ function nextId(prefix = 'item') {
     sequence += 1;
     return `${prefix}-${RUN_ID}-${sequence}`;
 }
+function asAutenticado() {
+    AuthMiddleware.mockImplementation((req, res, next) => {
+        req.user_id = usuarioAuthId;
+        next();
+    });
+}
+
+function autenticarComo(userId) {
+    AuthMiddleware.mockImplementation((req, res, next) => {
+        req.user_id = userId;
+        next();
+    });
+}
+
+function autenticarComoUmaVez(userId) {
+    AuthMiddleware.mockImplementationOnce((req, res, next) => {
+        req.user_id = userId;
+        next();
+    });
+}
 
