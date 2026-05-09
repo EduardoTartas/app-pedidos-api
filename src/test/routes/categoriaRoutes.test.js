@@ -370,3 +370,27 @@ describe('PATCH /categorias/:id', () => {
 
         expect(res.status).toBe(403);
     });
+    
+    it('categoria inexistente -> 404', async () => {
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .patch(`/api/categorias/${NOT_FOUND_OBJECT_ID}`)
+            .send({ nome: 'Nao Existe' });
+
+        expect(res.status).toBe(404);
+    });
+});
+
+describe('DELETE /categorias/:id', () => {
+    it('deleta categoria como administrador -> 200', async () => {
+        const categoria = await criarCategoria({ nome: 'Para Deletar' });
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).delete(`/api/categorias/${categoria._id}`);
+
+        expect(res.status).toBe(200);
+
+        const removida = await Categoria.findById(categoria._id);
+        expect(removida).toBeNull();
+    });
