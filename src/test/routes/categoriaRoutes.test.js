@@ -480,7 +480,7 @@ describe('DELETE /categorias/:id/foto', () => {
         const atualizada = await Categoria.findById(categoria._id);
         expect(atualizada.icone_categoria).toBe('');
     });
-    
+
     it('categoria sem icone -> 404', async () => {
         const categoria = await criarCategoria({ icone_categoria: '' });
         autenticarComoUmaVez(adminId);
@@ -489,3 +489,12 @@ describe('DELETE /categorias/:id/foto', () => {
 
         expect(res.status).toBe(404);
     });
+    it('usuario sem permissao -> 403', async () => {
+        const categoria = await criarCategoria({ icone_categoria: 'http://test.com/antiga.jpg' });
+
+        const res = await request(app).delete(`/api/categorias/${categoria._id}/foto`);
+
+        expect(res.status).toBe(403);
+    });
+  });
+});
