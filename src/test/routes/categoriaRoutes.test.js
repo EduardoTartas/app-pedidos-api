@@ -303,7 +303,7 @@ describe('GET /categorias', () => {
 
         expect(res.status).toBe(403);
     });
-    
+
     it('nome duplicado -> 400', async () => {
         await criarCategoria({ nome: 'Repetida' });
         autenticarComoUmaVez(adminId);
@@ -328,4 +328,25 @@ describe('PATCH /categorias/:id', () => {
         expect(res.status).toBe(200);
         expect(res.body.data.nome).toBe('Sobremesas');
         expect(res.body.data.ativo).toBe(false);
+    });
+
+    it('id invalido -> 400', async () => {
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .patch(`/api/categorias/${INVALID_OBJECT_ID}`)
+            .send({ nome: 'Novo Nome' });
+
+        expect(res.status).toBe(400);
+    });
+
+    it('payload invalido -> 400', async () => {
+        const categoria = await criarCategoria();
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .patch(`/api/categorias/${categoria._id}`)
+            .send({ icone_categoria: 'arquivo.txt' });
+
+        expect(res.status).toBe(400);
     });
