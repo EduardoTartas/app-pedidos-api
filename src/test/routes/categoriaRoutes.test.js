@@ -132,3 +132,21 @@ beforeAll(async () => {
 
     asAutenticado();
 }, 30000);
+
+afterEach(async () => {
+    if (tempCategorias.length > 0) {
+        await Categoria.deleteMany({ _id: { $in: tempCategorias } }).catch(() => {});
+        tempCategorias.length = 0;
+    }
+
+    asAutenticado();
+});
+
+afterAll(async () => {
+    if (tempCategorias.length > 0) {
+        await Categoria.deleteMany({ _id: { $in: tempCategorias } }).catch(() => {});
+    }
+
+    if (tempUsuarios.length > 0) {
+        await Usuario.deleteMany({ _id: { $in: tempUsuarios } }).catch(() => {});
+    }
