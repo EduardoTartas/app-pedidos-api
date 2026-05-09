@@ -164,3 +164,18 @@ afterAll(async () => {
 beforeEach(() => {
     asAutenticado();
 });
+
+describe('GET /categorias', () => {
+    it('lista categorias em ordem alfabetica com paginacao padrao -> 200', async () => {
+        await criarCategoria({ nome: 'Z Massas' });
+        await criarCategoria({ nome: 'A Lanches' });
+
+        const res = await request(app).get('/api/categorias');
+
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body.data.docs)).toBe(true);
+        expect(res.body.data).toHaveProperty('totalDocs');
+        expect(res.body.data.page).toBe(1);
+        expect(res.body.data.limit).toBe(10);
+        expect(res.body.data.docs.map(categoria => categoria.nome)).toEqual(['A Lanches', 'Z Massas']);
+    });
