@@ -370,7 +370,7 @@ describe('PATCH /categorias/:id', () => {
 
         expect(res.status).toBe(403);
     });
-    
+
     it('categoria inexistente -> 404', async () => {
         autenticarComoUmaVez(adminId);
 
@@ -393,4 +393,21 @@ describe('DELETE /categorias/:id', () => {
 
         const removida = await Categoria.findById(categoria._id);
         expect(removida).toBeNull();
+    });
+
+    it('id invalido -> 400', async () => {
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).delete(`/api/categorias/${INVALID_OBJECT_ID}`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const categoria = await criarCategoria();
+        asNaoAutenticado();
+
+        const res = await request(app).delete(`/api/categorias/${categoria._id}`);
+
+        expect(res.status).toBe(401);
     });
