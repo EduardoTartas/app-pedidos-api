@@ -226,3 +226,17 @@ describe('GET /categorias', () => {
         expect(res.body.data.limit).toBe(1);
         expect(res.body.data.docs).toHaveLength(1);
     });
+   it('query invalida -> 400', async () => {
+        const res = await request(app).get('/api/categorias?page=0');
+
+        expect(res.status).toBe(400);
+    });
+
+    it('rota publica nao requer autenticacao -> 200', async () => {
+        await criarCategoria({ nome: 'Publica' });
+
+        const res = await request(app).get('/api/categorias');
+
+        expect(res.status).toBe(200);
+    });
+});
