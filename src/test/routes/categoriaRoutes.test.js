@@ -411,3 +411,20 @@ describe('DELETE /categorias/:id', () => {
 
         expect(res.status).toBe(401);
     });
+
+    it('usuario sem permissao -> 403', async () => {
+        const categoria = await criarCategoria();
+
+        const res = await request(app).delete(`/api/categorias/${categoria._id}`);
+
+        expect(res.status).toBe(403);
+    });
+
+    it('categoria inexistente -> 404', async () => {
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).delete(`/api/categorias/${NOT_FOUND_OBJECT_ID}`);
+
+        expect(res.status).toBe(404);
+    });
+});
