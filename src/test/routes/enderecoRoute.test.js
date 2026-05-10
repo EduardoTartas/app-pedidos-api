@@ -282,7 +282,7 @@ describe('POST /usuarios/:usuarioId/enderecos', () => {
         const antigoAtualizado = await Endereco.findById(antigoPrincipal._id);
         expect(antigoAtualizado.principal).toBe(false);
     });
-    
+
     it('label duplicado para o mesmo usuario -> 409', async () => {
         await criarEnderecoUsuario(usuarioAuthId, { label: 'Casa' });
 
@@ -316,3 +316,48 @@ describe('POST /usuarios/:usuarioId/enderecos', () => {
         expect(res.body.data.label).toBe('');
         tempEnderecos.push(res.body.data._id);
     });
+
+        it('payload invalido -> 400', async () => {
+        const res = await request(app)
+            .post(`/api/usuarios/${usuarioAuthId}/enderecos`)
+            .send(payloadEndereco({ cep: '123', estado: 'RDO' }));
+
+        expect(res.status).toBe(400);
+    });
+
+    it('corpo vazio -> 400', async () => {
+        const res = await request(app)
+            .post(`/api/usuarios/${usuarioAuthId}/enderecos`)
+            .send({});
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .post(`/api/usuarios/${usuarioAuthId}/enderecos`)
+            .send(payloadEndereco());
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const res = await request(app)
+            .post(`/api/usuarios/${outroUsuarioId}/enderecos`)
+            .send(payloadEndereco());
+
+        expect(res.status).toBe(403);
+    });
+
+    it('usuario inexistente -> 404', async () => {
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .post(`/api/usuarios/${NOT_FOUND_OBJECT_ID}/enderecos`)
+            .send(payloadEndereco());
+
+        expect(res.status).toBe(404);
+    });
+});
