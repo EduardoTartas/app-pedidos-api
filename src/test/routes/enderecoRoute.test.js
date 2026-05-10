@@ -763,3 +763,60 @@ describe('PATCH /restaurantes/:restauranteId/enderecos/:enderecoId', () => {
         expect(res.status).toBe(404);
     });
 });
+
+describe('DELETE /restaurantes/:restauranteId/enderecos/:enderecoId', () => {
+    it('deleta endereco como dono do restaurante -> 200', async () => {
+        const endereco = await criarEnderecoRestaurante(restauranteId);
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).delete(`/api/restaurantes/${restauranteId}/enderecos/${endereco._id}`);
+
+        expect(res.status).toBe(200);
+
+        const removido = await Endereco.findById(endereco._id);
+        expect(removido).toBeNull();
+    });
+
+    it('endereco de outro restaurante -> 403', async () => {
+        const outroRestauranteId = await criarRestaurante(nextId('Outro Restaurante Delete'), ownerId);
+        const endereco = await criarEnderecoRestaurante(outroRestauranteId);
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).delete(`/api/restaurantes/${restauranteId}/enderecos/${endereco._id}`);
+
+        expect(res.status).toBe(403);
+    });
+
+    it('id invalido -> 400', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).delete(`/api/restaurantes/${restauranteId}/enderecos/${INVALID_OBJECT_ID}`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const endereco = await criarEnderecoRestaurante(restauranteId);
+        asNaoAutenticado();
+
+        const res = await request(app).delete(`/api/restaurantes/${restauranteId}/enderecos/${endereco._id}`);
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const endereco = await criarEnderecoRestaurante(restauranteId);
+
+        const res = await request(app).delete(`/api/restaurantes/${restauranteId}/enderecos/${endereco._id}`);
+
+        expect(res.status).toBe(403);
+    });
+
+    it('endereco inexistente -> 404', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).delete(`/api/restaurantes/${restauranteId}/enderecos/${NOT_FOUND_OBJECT_ID}`);
+
+        expect(res.status).toBe(404);
+    });
+});
