@@ -485,3 +485,106 @@ describe('NotificacaoController - ramos internos', () => {
         }));
     });
 });
+describe('NotificacaoService - ramos internos', () => {
+    it('buscarPorId sem usuario autenticado -> 401', async () => {
+        const service = new NotificacaoService();
+
+        await expect(service.buscarPorId(NOT_FOUND_OBJECT_ID, {})).rejects.toMatchObject({
+            statusCode: 401,
+        });
+    });
+
+    it('listarMinhasNotificacoes sem usuario autenticado -> 401', async () => {
+        const service = new NotificacaoService();
+
+        await expect(service.listarMinhasNotificacoes({})).rejects.toMatchObject({
+            statusCode: 401,
+        });
+    });
+
+    it('marcarComoLida sem usuario autenticado -> 401', async () => {
+        const service = new NotificacaoService();
+
+        await expect(service.marcarComoLida(NOT_FOUND_OBJECT_ID, {})).rejects.toMatchObject({
+            statusCode: 401,
+        });
+    });
+
+    it('deletar sem usuario autenticado -> 401', async () => {
+        const service = new NotificacaoService();
+
+        await expect(service.deletar(NOT_FOUND_OBJECT_ID, {})).rejects.toMatchObject({
+            statusCode: 401,
+        });
+    });
+});
+
+describe('NotificacaoRepository - ramos defensivos', () => {
+    it('listar sem usuario autenticado lança erro', async () => {
+        const repository = new NotificacaoRepository();
+
+        await expect(repository.listar({ query: {} })).rejects.toThrow(/autenticado/);
+    });
+
+    it('buscarPorID retorna 404 quando findById nao encontra documento', async () => {
+        const repository = new NotificacaoRepository({
+            NotificacaoModel: {
+                findById: jest.fn().mockResolvedValue(null),
+            },
+        });
+
+        await expect(repository.buscarPorID(NOT_FOUND_OBJECT_ID)).rejects.toMatchObject({
+            statusCode: 404,
+        });
+    });
+
+    it('marcarComoLida retorna 404 quando findById nao encontra documento', async () => {
+        const repository = new NotificacaoRepository({
+            NotificacaoModel: {
+                findById: jest.fn().mockResolvedValue(null),
+            },
+        });
+
+        await expect(repository.marcarComoLida(NOT_FOUND_OBJECT_ID)).rejects.toMatchObject({
+            statusCode: 404,
+        });
+    });
+
+    it('deletar retorna 404 quando findByIdAndDelete nao encontra documento', async () => {
+        const repository = new NotificacaoRepository({
+            NotificacaoModel: {
+                findByIdAndDelete: jest.fn().mockResolvedValue(null),
+            },
+        });
+
+        await expect(repository.deletar(NOT_FOUND_OBJECT_ID)).rejects.toMatchObject({
+            statusCode: 404,
+        });
+    });
+
+    it('deleta notificacoes por usuario', async () => {
+        const deleteMany = jest.fn().mockResolvedValue({ deletedCount: 2 });
+        const repository = new NotificacaoRepository({
+            NotificacaoModel: { deleteMany },
+        });
+
+        const data = await repository.deletarPorUsuario(usuarioAuthId);
+
+        expect(deleteMany).toHaveBeenCalledWith({ usuario_id: usuarioAuthId });
+        expect(data.deletedCount).toBe(2);
+    });
+
+    it('normaliza docs que ja sao objetos simples na listagem', async () => {
+        const paginate = jest.fn().mockResolvedValue({
+            docs: [{ _id: '1', titulo: 'Objeto simples' }],
+            totalDocs: 1,
+        });
+        const repository = new NotificacaoRepository({
+            NotificacaoModel: { paginate },
+        });
+
+        const data = await repository.listarPorUsuario(usuarioAuthId, { query: {} });
+
+        expect(data.docs).toEqual([{ _id: '1', titulo: 'Objeto simples' }]);
+    });
+});
