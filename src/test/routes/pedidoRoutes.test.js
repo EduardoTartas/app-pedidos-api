@@ -82,3 +82,27 @@ async function criarUsuario(nome, extra = {}, track = false) {
     if (track) seedDocumentos.usuarios.push(usuario._id);
     return usuario._id;
 }
+
+async function criarRestaurante(nome, donoId, extra = {}, track = false) {
+    const restaurante = await Restaurante.create({
+        nome,
+        cnpj: `${Math.random().toString().slice(2, 14)}`,
+        dono_id: donoId,
+        ...extra,
+    });
+    if (track) seedDocumentos.restaurantes.push(restaurante._id);
+    return restaurante._id;
+}
+
+async function criarPrato(restauranteId, extra = {}, track = false) {
+    const pratoCriado = await Prato.create({
+        restaurante_id: restauranteId,
+        nome: nextId('Prato'),
+        preco: 10,
+        descricao: 'Prato de teste',
+        secao: 'Principais',
+        ...extra,
+    });
+    if (track) seedDocumentos.pratos.push(pratoCriado._id);
+    return pratoCriado;
+}
