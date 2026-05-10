@@ -535,3 +535,29 @@ describe('DELETE /usuarios/:usuarioId/enderecos/:enderecoId', () => {
         expect(res.status).toBe(404);
     });
 });
+describe('GET /restaurantes/:restauranteId/enderecos', () => {
+    it('busca endereco de restaurante em rota publica -> 200', async () => {
+        const endereco = await criarEnderecoRestaurante(restauranteId, { label: 'Sede' });
+
+        const res = await request(app).get(`/api/restaurantes/${restauranteId}/enderecos`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.data._id).toBe(endereco._id.toString());
+        expect(res.body.data.restaurante_id).toBe(restauranteId.toString());
+    });
+
+    it('retorna null quando restaurante nao possui endereco -> 200', async () => {
+        const restauranteSemEnderecoId = await criarRestaurante(nextId('Restaurante Sem Endereco'), ownerId);
+
+        const res = await request(app).get(`/api/restaurantes/${restauranteSemEnderecoId}/enderecos`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.data).toBeNull();
+    });
+
+    it('restauranteId invalido -> 400', async () => {
+        const res = await request(app).get(`/api/restaurantes/${INVALID_OBJECT_ID}/enderecos`);
+
+        expect(res.status).toBe(400);
+    });
+});
