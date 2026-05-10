@@ -106,3 +106,57 @@ async function criarPrato(restauranteId, extra = {}, track = false) {
     if (track) seedDocumentos.pratos.push(pratoCriado._id);
     return pratoCriado;
 }
+async function criarGrupo(restauranteId, extra = {}, track = false) {
+    const grupoCriado = await AdicionalGrupo.create({
+        restaurante_id: restauranteId,
+        nome: nextId('Grupo'),
+        tipo: 'adicional',
+        obrigatorio: true,
+        min: 1,
+        max: 1,
+        ativo: true,
+        ...extra,
+    });
+    if (track) seedDocumentos.grupos.push(grupoCriado._id);
+    return grupoCriado;
+}
+
+async function criarOpcao(grupoId, extra = {}, track = false) {
+    const opcaoCriada = await AdicionalOpcao.create({
+        grupo_id: grupoId,
+        nome: nextId('Opcao'),
+        preco: 3,
+        ativo: true,
+        ...extra,
+    });
+    if (track) seedDocumentos.opcoes.push(opcaoCriada._id);
+    return opcaoCriada;
+}
+
+beforeAll(async () => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    mongoServer = await MongoMemoryServer.create();
+    await mongoose.connect(mongoServer.getUri());
+
+    app = express();
+    app.use(express.json());
+    app.use('/api', pedidoRoutes);
+    app.use(errorHandler);
+
+    donoId = await criarUsuario('Dono Restaurante', {}, true);
+    clienteId = await criarUsuario('Cliente Pedido', {}, true);
+    restauranteId = await criarRestaurante('Restaurante Pedido', donoId, {
+        status: 'aberto',
+        taxa_entrega: 5
+    }, true);
+
+    prato = await criarPrato(restauranteId, {}, true);
+    grupo = await criarGrupo(restauranteId, {}, true);
+    opcao = await criarOpcao(grupo._id, {}, true);
+    await Prato.findByIdAndUpdate(prato._id, { $addToSet: { adicionais_grupo_ids: grupo._id } });
+
+    asAutenticado();
+}, 30000);
