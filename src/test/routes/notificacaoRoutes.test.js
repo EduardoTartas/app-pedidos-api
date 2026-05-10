@@ -588,3 +588,17 @@ describe('NotificacaoRepository - ramos defensivos', () => {
         expect(data.docs).toEqual([{ _id: '1', titulo: 'Objeto simples' }]);
     });
 });
+describe('NotificacaoSchema', () => {
+    it('mantem mensagem customizada para tipo invalido', () => {
+        const mensagem = NotificacaoSchema.shape.tipo._def.errorMap().message;
+
+        expect(mensagem).toContain('pedido_confirmado');
+        expect(mensagem).toContain('geral');
+    });
+
+    it('permite atualizacao parcial de notificacao', () => {
+        const parsed = NotificacaoUpdateSchema.parse({ titulo: 'Atualizada' });
+
+        expect(parsed).toEqual({ titulo: 'Atualizada' });
+    });
+});
