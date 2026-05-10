@@ -196,3 +196,29 @@ afterAll(async () => {
 beforeEach(() => {
     asAutenticado();
 });
+
+
+describe('GET /usuarios/:usuarioId/enderecos', () => {
+    it('lista enderecos do proprio usuario com principal primeiro -> 200', async () => {
+        await criarEnderecoUsuario(usuarioAuthId, { label: 'Trabalho', principal: false });
+        await criarEnderecoUsuario(usuarioAuthId, { label: 'Casa', principal: true });
+
+        const res = await request(app).get(`/api/usuarios/${usuarioAuthId}/enderecos`);
+
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body.data)).toBe(true);
+        expect(res.body.data).toHaveLength(2);
+        expect(res.body.data[0].label).toBe('Casa');
+        expect(res.body.data[0].principal).toBe(true);
+    });
+
+    it('administrador lista enderecos de qualquer usuario -> 200', async () => {
+        await criarEnderecoUsuario(outroUsuarioId, { label: 'Outro' });
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).get(`/api/usuarios/${outroUsuarioId}/enderecos`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.data).toHaveLength(1);
+        expect(res.body.data[0].usuario_id).toBe(outroUsuarioId.toString());
+    });
