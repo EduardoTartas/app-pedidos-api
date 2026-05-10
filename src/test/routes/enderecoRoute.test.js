@@ -1032,3 +1032,81 @@ describe('EnderecoService - ramos internos da regra de negocio', () => {
         });
     });
 });
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+describe('EnderecoRepository - ramos defensivos', () => {
+    it('atualizar retorna 404 quando findByIdAndUpdate nao encontra documento', async () => {
+        const repository = new EnderecoRepository({
+            EnderecoModel: {
+                findByIdAndUpdate: jest.fn().mockResolvedValue(null),
+            },
+        });
+
+        await expect(repository.atualizar(NOT_FOUND_OBJECT_ID, { label: 'Nao Existe' }))
+            .rejects.toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('deletar retorna 404 quando findByIdAndDelete nao encontra documento', async () => {
+        const repository = new EnderecoRepository({
+            EnderecoModel: {
+                findByIdAndDelete: jest.fn().mockResolvedValue(null),
+            },
+        });
+
+        await expect(repository.deletar(NOT_FOUND_OBJECT_ID))
+            .rejects.toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('busca endereco por label sem id ignorado', async () => {
+        const findOne = jest.fn().mockResolvedValue(null);
+        const repository = new EnderecoRepository({
+            EnderecoModel: { findOne },
+        });
+
+        const data = await repository.buscarPorLabel(usuarioAuthId, 'Casa');
+
+        expect(data).toBeNull();
+        expect(findOne).toHaveBeenCalledWith({ usuario_id: usuarioAuthId, label: 'Casa' });
+    });
+
+    it('deleta enderecos por usuario', async () => {
+        const deleteMany = jest.fn().mockResolvedValue({ deletedCount: 2 });
+        const repository = new EnderecoRepository({
+            EnderecoModel: { deleteMany },
+        });
+
+        const data = await repository.deletarPorUsuario(usuarioAuthId);
+
+        expect(deleteMany).toHaveBeenCalledWith({ usuario_id: usuarioAuthId });
+        expect(data.deletedCount).toBe(2);
+    });
+
+    it('deleta enderecos por restaurante', async () => {
+        const deleteMany = jest.fn().mockResolvedValue({ deletedCount: 1 });
+        const repository = new EnderecoRepository({
+            EnderecoModel: { deleteMany },
+        });
+
+        const data = await repository.deletarPorRestaurante(restauranteId);
+
+        expect(deleteMany).toHaveBeenCalledWith({ restaurante_id: restauranteId });
+        expect(data.deletedCount).toBe(1);
+    });
+});
