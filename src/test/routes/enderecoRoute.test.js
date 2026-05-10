@@ -561,3 +561,34 @@ describe('GET /restaurantes/:restauranteId/enderecos', () => {
         expect(res.status).toBe(400);
     });
 });
+
+describe('POST /restaurantes/:restauranteId/enderecos', () => {
+    it('cria endereco como dono do restaurante -> 201', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .post(`/api/restaurantes/${restauranteId}/enderecos`)
+            .send(payloadEndereco({ label: 'Sede', principal: true }));
+
+        expect(res.status).toBe(201);
+        expect(res.body.data.label).toBe('Sede');
+        expect(res.body.data.restaurante_id).toBe(restauranteId.toString());
+        expect(res.body.data.usuario_id).toBeNull();
+        expect(res.body.data.principal).toBe(false);
+
+        tempEnderecos.push(res.body.data._id);
+    });
+
+    it('administrador cria endereco para restaurante -> 201', async () => {
+        const restauranteAdminId = await criarRestaurante(nextId('Restaurante Admin'), ownerId);
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .post(`/api/restaurantes/${restauranteAdminId}/enderecos`)
+            .send(payloadEndereco({ label: 'Sede Admin' }));
+
+        expect(res.status).toBe(201);
+        expect(res.body.data.restaurante_id).toBe(restauranteAdminId.toString());
+
+        tempEnderecos.push(res.body.data._id);
+    });
