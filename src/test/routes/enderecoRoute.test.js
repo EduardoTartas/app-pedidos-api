@@ -395,3 +395,101 @@ describe('PATCH /usuarios/:usuarioId/enderecos/:enderecoId', () => {
         const antigoAtualizado = await Endereco.findById(antigoPrincipal._id);
         expect(antigoAtualizado.principal).toBe(false);
     });
+
+       it('nao permite alterar vinculo do endereco pelo payload -> 200', async () => {
+        const endereco = await criarEnderecoUsuario(usuarioAuthId, { label: 'Casa' });
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuarioAuthId}/enderecos/${endereco._id}`)
+            .send({ usuario_id: outroUsuarioId.toString(), restaurante_id: restauranteId.toString(), label: 'Casa Nova' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.label).toBe('Casa Nova');
+        expect(res.body.data.usuario_id).toBe(usuarioAuthId.toString());
+        expect(res.body.data.restaurante_id).toBeNull();
+    });
+
+    it('label duplicado ao atualizar -> 409', async () => {
+        await criarEnderecoUsuario(usuarioAuthId, { label: 'Casa' });
+        const endereco = await criarEnderecoUsuario(usuarioAuthId, { label: 'Trabalho' });
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuarioAuthId}/enderecos/${endereco._id}`)
+            .send({ label: 'Casa' });
+
+        expect(res.status).toBe(409);
+    });
+
+    it('atualiza somente complemento sem mexer em label ou principal -> 200', async () => {
+        const endereco = await criarEnderecoUsuario(usuarioAuthId, {
+            label: 'Casa',
+            principal: false,
+        });
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuarioAuthId}/enderecos/${endereco._id}`)
+            .send({ complemento: 'Bloco B' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.complemento).toBe('Bloco B');
+        expect(res.body.data.label).toBe('Casa');
+        expect(res.body.data.principal).toBe(false);
+    });
+
+    it('endereco de outro usuario -> 403', async () => {
+        const endereco = await criarEnderecoUsuario(outroUsuarioId, { label: 'Outro' });
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuarioAuthId}/enderecos/${endereco._id}`)
+            .send({ label: 'Tentativa' });
+
+        expect(res.status).toBe(403);
+    });
+
+    it('id invalido -> 400', async () => {
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuarioAuthId}/enderecos/${INVALID_OBJECT_ID}`)
+            .send({ label: 'Novo Nome' });
+
+        expect(res.status).toBe(400);
+    });
+
+    it('payload invalido -> 400', async () => {
+        const endereco = await criarEnderecoUsuario(usuarioAuthId);
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuarioAuthId}/enderecos/${endereco._id}`)
+            .send({ cep: '123' });
+
+        expect(res.status).toBe(400);
+    });
+
+    it('corpo vazio -> 400', async () => {
+        const endereco = await criarEnderecoUsuario(usuarioAuthId);
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuarioAuthId}/enderecos/${endereco._id}`)
+            .send({});
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const endereco = await criarEnderecoUsuario(usuarioAuthId);
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuarioAuthId}/enderecos/${endereco._id}`)
+            .send({ label: 'Bloqueado' });
+
+        expect(res.status).toBe(401);
+    });
+
+    it('endereco inexistente -> 404', async () => {
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuarioAuthId}/enderecos/${NOT_FOUND_OBJECT_ID}`)
+            .send({ label: 'Nao Existe' });
+
+        expect(res.status).toBe(404);
+    });
+});
