@@ -283,3 +283,52 @@ describe('pedidoRoutes', () => {
             expect.objectContaining({ path: 'body', message: 'O corpo da requisição não pode ser vazio.' })
         ]);
     });
+    
+
+
+
+
+
+
+
+
+    it('PATCH /api/pedidos/:id/status atualiza pedido para em_preparo quando feito pelo dono', async () => {
+        const pedido = await Pedido.create({
+            cliente_id: clienteId,
+            restaurante_id: restauranteId,
+            status: 'criado',
+            itens: [
+                {
+                    prato_id: prato._id,
+                    prato_nome: prato.nome,
+                    preco_unitario: prato.preco,
+                    quantidade: 1,
+                    adicionais: []
+                }
+            ],
+            totais: { subtotal: 10, taxa_entrega: 5, total: 15 },
+            historico_status: [{ status: 'criado', data: new Date() }]
+        });
+        testDocumentos.pedidos.push(pedido._id);
+
+        autenticarComo(donoId);
+        const res = await request(app)
+            .patch(`/api/pedidos/${pedido._id.toString()}/status`)
+            .send({ status: 'em_preparo' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.message).toBe('Status do pedido atualizado com sucesso.');
+        expect(res.body.data.status).toBe('em_preparo');
+        expect(res.body.data.historico_status).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ status: 'criado' }),
+                expect.objectContaining({ status: 'em_preparo' })
+            ])
+        );
+
+        const notificacao = await Notificacao.findOne({ pedido_id: pedido._id, tipo: 'em_preparo' });
+        expect(notificacao).not.toBeNull();
+        expect(notificacao.titulo).toBe('Pedido em preparo');
+        testDocumentos.notificacoes.push(notificacao._id);
+    });
+});
