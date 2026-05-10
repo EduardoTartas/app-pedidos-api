@@ -493,3 +493,45 @@ describe('PATCH /usuarios/:usuarioId/enderecos/:enderecoId', () => {
         expect(res.status).toBe(404);
     });
 });
+
+describe('DELETE /usuarios/:usuarioId/enderecos/:enderecoId', () => {
+    it('deleta endereco do proprio usuario -> 200', async () => {
+        const endereco = await criarEnderecoUsuario(usuarioAuthId);
+
+        const res = await request(app).delete(`/api/usuarios/${usuarioAuthId}/enderecos/${endereco._id}`);
+
+        expect(res.status).toBe(200);
+
+        const removido = await Endereco.findById(endereco._id);
+        expect(removido).toBeNull();
+    });
+
+    it('endereco de outro usuario -> 403', async () => {
+        const endereco = await criarEnderecoUsuario(outroUsuarioId);
+
+        const res = await request(app).delete(`/api/usuarios/${usuarioAuthId}/enderecos/${endereco._id}`);
+
+        expect(res.status).toBe(403);
+    });
+
+    it('id invalido -> 400', async () => {
+        const res = await request(app).delete(`/api/usuarios/${usuarioAuthId}/enderecos/${INVALID_OBJECT_ID}`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const endereco = await criarEnderecoUsuario(usuarioAuthId);
+        asNaoAutenticado();
+
+        const res = await request(app).delete(`/api/usuarios/${usuarioAuthId}/enderecos/${endereco._id}`);
+
+        expect(res.status).toBe(401);
+    });
+
+    it('endereco inexistente -> 404', async () => {
+        const res = await request(app).delete(`/api/usuarios/${usuarioAuthId}/enderecos/${NOT_FOUND_OBJECT_ID}`);
+
+        expect(res.status).toBe(404);
+    });
+});
