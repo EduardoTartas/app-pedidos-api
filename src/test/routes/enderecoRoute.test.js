@@ -160,3 +160,39 @@ beforeAll(async () => {
 
     asAutenticado();
 }, 30000);
+
+afterEach(async () => {
+    if (tempEnderecos.length > 0) {
+        await Endereco.deleteMany({ _id: { $in: tempEnderecos } }).catch(() => {});
+        tempEnderecos.length = 0;
+    }
+
+    asAutenticado();
+});
+
+afterAll(async () => {
+    if (tempEnderecos.length > 0) {
+        await Endereco.deleteMany({ _id: { $in: tempEnderecos } }).catch(() => {});
+    }
+
+    if (tempRestaurantes.length > 0) {
+        await Restaurante.deleteMany({ _id: { $in: tempRestaurantes } }).catch(() => {});
+    }
+
+    if (tempUsuarios.length > 0) {
+        await Usuario.deleteMany({ _id: { $in: tempUsuarios } }).catch(() => {});
+    }
+
+    await mongoose.disconnect();
+    if (mongoServer) {
+        await mongoServer.stop();
+    }
+
+    warnSpy?.mockRestore();
+    errorSpy?.mockRestore();
+    logSpy?.mockRestore();
+}, 30000);
+
+beforeEach(() => {
+    asAutenticado();
+});
