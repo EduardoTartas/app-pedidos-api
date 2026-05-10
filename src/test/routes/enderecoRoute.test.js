@@ -99,3 +99,27 @@ async function criarRestaurante(nome, donoId, extra = {}) {
     tempRestaurantes.push(restaurante._id);
     return restaurante._id;
 }
+
+
+async function criarEnderecoUsuario(usuarioId, extra = {}) {
+    const endereco = await Endereco.create({
+        usuario_id: usuarioId,
+        restaurante_id: null,
+        ...payloadEndereco(),
+        ...extra,
+    });
+    tempEnderecos.push(endereco._id);
+    return endereco;
+}
+
+async function criarEnderecoRestaurante(restId, extra = {}) {
+    const endereco = await Endereco.create({
+        usuario_id: null,
+        restaurante_id: restId,
+        principal: false,
+        ...payloadEndereco({ label: 'Sede' }),
+        ...extra,
+    });
+    tempEnderecos.push(endereco._id);
+    return endereco;
+}
