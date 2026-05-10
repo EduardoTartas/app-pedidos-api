@@ -223,7 +223,7 @@ describe('GET /usuarios/:usuarioId/enderecos', () => {
         expect(res.body.data[0].usuario_id).toBe(outroUsuarioId.toString());
     });
 
-   it('retorna lista vazia quando usuario nao possui enderecos -> 200', async () => {
+    it('retorna lista vazia quando usuario nao possui enderecos -> 200', async () => {
         const res = await request(app).get(`/api/usuarios/${usuarioAuthId}/enderecos`);
 
         expect(res.status).toBe(200);
@@ -251,3 +251,34 @@ describe('GET /usuarios/:usuarioId/enderecos', () => {
         expect(res.status).toBe(400);
     });
 });
+describe('POST /usuarios/:usuarioId/enderecos', () => {
+    it('cria endereco para o proprio usuario -> 201', async () => {
+        const res = await request(app)
+            .post(`/api/usuarios/${usuarioAuthId}/enderecos`)
+            .send(payloadEndereco({ label: 'Casa Principal', principal: true }));
+
+        expect(res.status).toBe(201);
+        expect(res.body.data.label).toBe('Casa Principal');
+        expect(res.body.data.usuario_id).toBe(usuarioAuthId.toString());
+        expect(res.body.data.restaurante_id).toBeNull();
+        expect(res.body.data.principal).toBe(true);
+
+        tempEnderecos.push(res.body.data._id);
+    });
+
+    it('ao criar endereco principal desmarca os demais do usuario -> 201', async () => {
+        const antigoPrincipal = await criarEnderecoUsuario(usuarioAuthId, {
+            label: 'Casa Antiga',
+            principal: true,
+        });
+
+        const res = await request(app)
+            .post(`/api/usuarios/${usuarioAuthId}/enderecos`)
+            .send(payloadEndereco({ label: 'Casa Nova', principal: true }));
+
+        expect(res.status).toBe(201);
+        tempEnderecos.push(res.body.data._id);
+
+        const antigoAtualizado = await Endereco.findById(antigoPrincipal._id);
+        expect(antigoAtualizado.principal).toBe(false);
+    });
