@@ -76,3 +76,26 @@ function asNaoAutenticado() {
         });
     });
 }
+
+async function criarUsuario(nome, extra = {}) {
+    const slug = nome.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const usuario = await Usuario.create({
+        nome,
+        email: `${slug}-${nextId('mail')}@test.local`,
+        senha: 'teste123',
+        ...extra,
+    });
+    tempUsuarios.push(usuario._id);
+    return usuario._id;
+}
+
+async function criarRestaurante(nome, donoId, extra = {}) {
+    const restaurante = await Restaurante.create({
+        nome,
+        cnpj: nextId('cnpj'),
+        dono_id: donoId,
+        ...extra,
+    });
+    tempRestaurantes.push(restaurante._id);
+    return restaurante._id;
+}
