@@ -138,3 +138,28 @@ afterEach(async () => {
 
     asAutenticado();
 });
+afterAll(async () => {
+    await Notificacao.deleteMany({
+        $or: [
+            { _id: { $in: tempNotificacoes } },
+            { usuario_id: { $in: tempUsuarios } },
+        ],
+    }).catch(() => {});
+
+    if (tempUsuarios.length > 0) {
+        await Usuario.deleteMany({ _id: { $in: tempUsuarios } }).catch(() => {});
+    }
+
+    await mongoose.disconnect();
+    if (mongoServer) {
+        await mongoServer.stop();
+    }
+
+    warnSpy?.mockRestore();
+    errorSpy?.mockRestore();
+    logSpy?.mockRestore();
+}, 30000);
+
+beforeEach(() => {
+    asAutenticado();
+});
