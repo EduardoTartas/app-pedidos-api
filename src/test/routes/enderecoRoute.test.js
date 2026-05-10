@@ -820,3 +820,215 @@ describe('DELETE /restaurantes/:restauranteId/enderecos/:enderecoId', () => {
         expect(res.status).toBe(404);
     });
 });
+describe('EnderecoController - ramos defensivos', () => {
+    it('trata retorno nulo ao listar enderecos de usuario', async () => {
+        const controller = new EnderecoController();
+        controller.service = {
+            listarPorUsuario: jest.fn().mockResolvedValue(null),
+        };
+        const req = {
+            params: { usuarioId: usuarioAuthId.toString() },
+            user_id: usuarioAuthId,
+        };
+        const res = {
+            status: jest.fn().mockReturnThis(),
+            json: jest.fn(),
+        };
+
+        await controller.listarPorUsuario(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            data: null,
+            message: expect.stringContaining('Nenhum'),
+        }));
+    });
+});
+
+describe('EnderecoService - ramos internos da regra de negocio', () => {
+    it('cria endereco de restaurante quando dono_id vem populado', async () => {
+        const service = new EnderecoService();
+        service.restauranteRepository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: restauranteId, dono_id: { _id: ownerId } }),
+        };
+        service.usuarioRepository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: ownerId, isAdmin: false }),
+        };
+        service.repository = {
+            buscarPorRestaurante: jest.fn().mockResolvedValue(null),
+            criar: jest.fn(async dados => dados),
+        };
+
+        const data = await service.criarParaRestaurante(
+            restauranteId,
+            payloadEndereco({ label: 'Sede Populada' }),
+            { user_id: ownerId },
+        );
+
+        expect(data.restaurante_id).toBe(restauranteId);
+        expect(data.usuario_id).toBeNull();
+    });
+
+    it('cria endereco de restaurante quando dono_id vem como string', async () => {
+        const service = new EnderecoService();
+        service.restauranteRepository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: restauranteId, dono_id: ownerId.toString() }),
+        };
+        service.usuarioRepository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: ownerId, isAdmin: false }),
+        };
+        service.repository = {
+            buscarPorRestaurante: jest.fn().mockResolvedValue(null),
+            criar: jest.fn(async dados => dados),
+        };
+
+        const data = await service.criarParaRestaurante(
+            restauranteId,
+            payloadEndereco({ principal: true }),
+            { user_id: ownerId },
+        );
+
+        expect(data.restaurante_id).toBe(restauranteId);
+        expect(data.usuario_id).toBeNull();
+        expect(data.principal).toBe(false);
+    });
+
+    it('atualiza endereco de restaurante quando dono_id vem populado', async () => {
+        const enderecoId = new ObjectId().toString();
+        const service = new EnderecoService();
+        service.restauranteRepository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: restauranteId, dono_id: { _id: ownerId } }),
+        };
+        service.usuarioRepository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: ownerId, isAdmin: false }),
+        };
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: enderecoId, restaurante_id: { _id: restauranteId } }),
+            atualizar: jest.fn(async (id, dados) => ({ _id: id, ...dados })),
+        };
+
+        const data = await service.atualizarDeRestaurante(
+            restauranteId,
+            enderecoId,
+            { numero: '789' },
+            { user_id: ownerId },
+        );
+
+        expect(data.numero).toBe('789');
+    });
+
+    it('atualiza endereco de restaurante quando dono_id vem como string', async () => {
+        const enderecoId = new ObjectId().toString();
+        const service = new EnderecoService();
+        service.restauranteRepository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: restauranteId, dono_id: ownerId.toString() }),
+        };
+        service.usuarioRepository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: ownerId, isAdmin: false }),
+        };
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: enderecoId, restaurante_id: restauranteId }),
+            atualizar: jest.fn(async (id, dados) => ({ _id: id, restaurante_id: restauranteId, ...dados })),
+        };
+
+        const data = await service.atualizarDeRestaurante(
+            restauranteId,
+            enderecoId,
+            { label: 'Sede', principal: true, usuario_id: usuarioAuthId },
+            { user_id: ownerId },
+        );
+
+        expect(data.label).toBe('Sede');
+        expect(data.principal).toBeUndefined();
+        expect(data.usuario_id).toBeUndefined();
+    });
+
+    it('deleta endereco de restaurante quando dono_id vem populado', async () => {
+        const enderecoId = new ObjectId().toString();
+        const service = new EnderecoService();
+        service.restauranteRepository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: restauranteId, dono_id: { _id: ownerId } }),
+        };
+        service.usuarioRepository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: ownerId, isAdmin: false }),
+        };
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: enderecoId, restaurante_id: { _id: restauranteId } }),
+            deletar: jest.fn(async id => ({ _id: id })),
+        };
+
+        const data = await service.deletarDeRestaurante(restauranteId, enderecoId, { user_id: ownerId });
+
+        expect(data._id).toBe(enderecoId);
+    });
+
+    it('deleta endereco de restaurante quando dono_id vem como string', async () => {
+        const enderecoId = new ObjectId().toString();
+        const service = new EnderecoService();
+        service.restauranteRepository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: restauranteId, dono_id: ownerId.toString() }),
+        };
+        service.usuarioRepository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: ownerId, isAdmin: false }),
+        };
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: enderecoId, restaurante_id: restauranteId }),
+            deletar: jest.fn(async id => ({ _id: id })),
+        };
+
+        const data = await service.deletarDeRestaurante(restauranteId, enderecoId, { user_id: ownerId });
+
+        expect(data._id).toBe(enderecoId);
+    });
+
+    it('aceita endereco pertencente quando referencia vem populada', () => {
+        const service = new EnderecoService();
+
+        expect(() => service.ensureEnderecoPertence(
+            { usuario_id: { _id: usuarioAuthId } },
+            'usuario_id',
+            usuarioAuthId,
+        )).not.toThrow();
+    });
+
+    it('rejeita endereco sem referencia ao recurso informado', () => {
+        const service = new EnderecoService();
+
+        expect(() => service.ensureEnderecoPertence({}, 'usuario_id', usuarioAuthId))
+            .toThrow(/recurso informado/);
+    });
+
+    it('ensureEnderecoExists retorna 404 quando repositorio retorna null', async () => {
+        const service = new EnderecoService();
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.ensureEnderecoExists(NOT_FOUND_OBJECT_ID)).rejects.toMatchObject({
+            statusCode: 404,
+        });
+    });
+
+    it('ensureUsuarioExists retorna 404 quando repositorio retorna null', async () => {
+        const service = new EnderecoService();
+        service.usuarioRepository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.ensureUsuarioExists(NOT_FOUND_OBJECT_ID)).rejects.toMatchObject({
+            statusCode: 404,
+        });
+    });
+
+    it('ensureRestauranteExists retorna 404 quando repositorio retorna null', async () => {
+        const service = new EnderecoService();
+        service.restauranteRepository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.ensureRestauranteExists(NOT_FOUND_OBJECT_ID)).rejects.toMatchObject({
+            statusCode: 404,
+            field: 'Restaurante',
+        });
+    });
+});
