@@ -222,3 +222,32 @@ describe('GET /usuarios/:usuarioId/enderecos', () => {
         expect(res.body.data).toHaveLength(1);
         expect(res.body.data[0].usuario_id).toBe(outroUsuarioId.toString());
     });
+
+   it('retorna lista vazia quando usuario nao possui enderecos -> 200', async () => {
+        const res = await request(app).get(`/api/usuarios/${usuarioAuthId}/enderecos`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.data).toEqual([]);
+        expect(res.body.message).toContain('Nenhum');
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const res = await request(app).get(`/api/usuarios/${outroUsuarioId}/enderecos`);
+
+        expect(res.status).toBe(403);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        asNaoAutenticado();
+
+        const res = await request(app).get(`/api/usuarios/${usuarioAuthId}/enderecos`);
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuarioId invalido -> 400', async () => {
+        const res = await request(app).get(`/api/usuarios/${INVALID_OBJECT_ID}/enderecos`);
+
+        expect(res.status).toBe(400);
+    });
+});
