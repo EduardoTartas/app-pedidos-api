@@ -653,3 +653,113 @@ describe('POST /restaurantes/:restauranteId/enderecos', () => {
         expect(res.status).toBe(404);
     });
 });
+
+describe('PATCH /restaurantes/:restauranteId/enderecos/:enderecoId', () => {
+    it('atualiza endereco como dono do restaurante -> 200', async () => {
+        const endereco = await criarEnderecoRestaurante(restauranteId, { label: 'Sede' });
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restauranteId}/enderecos/${endereco._id}`)
+            .send({ label: 'Sede Nova', numero: '456' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.label).toBe('Sede Nova');
+        expect(res.body.data.numero).toBe('456');
+    });
+
+    it('nao permite alterar vinculo nem principal de endereco de restaurante -> 200', async () => {
+        const endereco = await criarEnderecoRestaurante(restauranteId, { label: 'Sede', principal: false });
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restauranteId}/enderecos/${endereco._id}`)
+            .send({
+                usuario_id: usuarioAuthId.toString(),
+                restaurante_id: new ObjectId().toString(),
+                principal: true,
+                label: 'Sede Atualizada',
+            });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.label).toBe('Sede Atualizada');
+        expect(res.body.data.usuario_id).toBeNull();
+        expect(res.body.data.restaurante_id).toBe(restauranteId.toString());
+        expect(res.body.data.principal).toBe(false);
+    });
+
+    it('endereco de outro restaurante -> 403', async () => {
+        const outroRestauranteId = await criarRestaurante(nextId('Outro Restaurante'), ownerId);
+        const endereco = await criarEnderecoRestaurante(outroRestauranteId);
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restauranteId}/enderecos/${endereco._id}`)
+            .send({ label: 'Tentativa' });
+
+        expect(res.status).toBe(403);
+    });
+
+    it('id invalido -> 400', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restauranteId}/enderecos/${INVALID_OBJECT_ID}`)
+            .send({ label: 'Novo Nome' });
+
+        expect(res.status).toBe(400);
+    });
+
+    it('payload invalido -> 400', async () => {
+        const endereco = await criarEnderecoRestaurante(restauranteId);
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restauranteId}/enderecos/${endereco._id}`)
+            .send({ estado: 'ROO' });
+
+        expect(res.status).toBe(400);
+    });
+
+    it('corpo vazio -> 400', async () => {
+        const endereco = await criarEnderecoRestaurante(restauranteId);
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restauranteId}/enderecos/${endereco._id}`)
+            .send({});
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const endereco = await criarEnderecoRestaurante(restauranteId);
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restauranteId}/enderecos/${endereco._id}`)
+            .send({ label: 'Bloqueado' });
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const endereco = await criarEnderecoRestaurante(restauranteId);
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restauranteId}/enderecos/${endereco._id}`)
+            .send({ label: 'Sem Permissao' });
+
+        expect(res.status).toBe(403);
+    });
+
+    it('endereco inexistente -> 404', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restauranteId}/enderecos/${NOT_FOUND_OBJECT_ID}`)
+            .send({ label: 'Nao Existe' });
+
+        expect(res.status).toBe(404);
+    });
+});
