@@ -233,3 +233,119 @@ describe('POST /notificacoes', () => {
         expect(res.status).toBe(401);
     });
 });
+describe('GET /notificacoes', () => {
+    it('lista minhas notificacoes ordenadas por criacao recente -> 200', async () => {
+        await criarNotificacao(usuarioAuthId, { titulo: 'Antiga' });
+        await criarNotificacao(usuarioAuthId, { titulo: 'Nova' });
+        await criarNotificacao(outroUsuarioId, { titulo: 'De outro usuario' });
+
+        const res = await request(app).get('/api/notificacoes');
+
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body.data.docs)).toBe(true);
+        expect(res.body.data.totalDocs).toBe(2);
+        expect(res.body.data.page).toBe(1);
+        expect(res.body.data.limit).toBe(10);
+        expect(res.body.data.docs.map(notificacao => notificacao.titulo)).toEqual(['Nova', 'Antiga']);
+    });
+
+    it('retorna lista vazia sem filtros -> 200', async () => {
+        const res = await request(app).get('/api/notificacoes');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.totalDocs).toBe(0);
+        expect(res.body.message).toContain('Nenhuma');
+    });
+
+    it('filtra notificacoes lidas -> 200', async () => {
+        await criarNotificacao(usuarioAuthId, { titulo: 'Lida', lida_em: new Date() });
+        await criarNotificacao(usuarioAuthId, { titulo: 'Nao lida', lida_em: null });
+
+        const res = await request(app).get('/api/notificacoes?lida=true');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.totalDocs).toBe(1);
+        expect(res.body.data.docs[0].titulo).toBe('Lida');
+        expect(res.body.data.docs[0].lida_em).not.toBeNull();
+    });
+
+    it('filtra notificacoes nao lidas -> 200', async () => {
+        await criarNotificacao(usuarioAuthId, { titulo: 'Lida', lida_em: new Date() });
+        await criarNotificacao(usuarioAuthId, { titulo: 'Nao lida', lida_em: null });
+
+        const res = await request(app).get('/api/notificacoes?lida=false');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.totalDocs).toBe(1);
+        expect(res.body.data.docs[0].titulo).toBe('Nao lida');
+        expect(res.body.data.docs[0].lida_em).toBeNull();
+    });
+
+    it('ignora valor de lida diferente de true ou false -> 200', async () => {
+        await criarNotificacao(usuarioAuthId, { titulo: 'Qualquer' });
+
+        const res = await request(app).get('/api/notificacoes?lida=todas');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.totalDocs).toBe(1);
+    });
+
+    it('filtra por tipo -> 200', async () => {
+        await criarNotificacao(usuarioAuthId, { tipo: 'geral', titulo: 'Geral' });
+        await criarNotificacao(usuarioAuthId, { tipo: 'a_caminho', titulo: 'Entrega' });
+
+        const res = await request(app).get('/api/notificacoes?tipo=a_caminho');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.totalDocs).toBe(1);
+        expect(res.body.data.docs[0].tipo).toBe('a_caminho');
+    });
+
+    it('retorna lista vazia com filtros -> 200', async () => {
+        await criarNotificacao(usuarioAuthId, { tipo: 'geral' });
+
+        const res = await request(app).get('/api/notificacoes?tipo=cancelado');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.totalDocs).toBe(0);
+        expect(res.body.message).toContain('filtros');
+    });
+
+    it('ignora tipo vazio -> 200', async () => {
+        await criarNotificacao(usuarioAuthId, { tipo: 'geral' });
+
+        const res = await request(app).get('/api/notificacoes?tipo=');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.totalDocs).toBe(1);
+    });
+
+    it('respeita paginacao customizada -> 200', async () => {
+        await criarNotificacao(usuarioAuthId, { titulo: 'Primeira' });
+        await criarNotificacao(usuarioAuthId, { titulo: 'Segunda' });
+
+        const res = await request(app).get('/api/notificacoes?page=2&limite=1');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.page).toBe(2);
+        expect(res.body.data.limit).toBe(1);
+        expect(res.body.data.docs).toHaveLength(1);
+    });
+
+    it('limita paginacao a no maximo 100 registros -> 200', async () => {
+        await criarNotificacao(usuarioAuthId);
+
+        const res = await request(app).get('/api/notificacoes?limite=500');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.limit).toBe(100);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        asNaoAutenticado();
+
+        const res = await request(app).get('/api/notificacoes');
+
+        expect(res.status).toBe(401);
+    });
+});
