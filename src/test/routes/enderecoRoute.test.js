@@ -592,3 +592,64 @@ describe('POST /restaurantes/:restauranteId/enderecos', () => {
 
         tempEnderecos.push(res.body.data._id);
     });
+
+    
+    it('restaurante com endereco existente -> 409', async () => {
+        await criarEnderecoRestaurante(restauranteId, { label: 'Sede' });
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .post(`/api/restaurantes/${restauranteId}/enderecos`)
+            .send(payloadEndereco({ label: 'Filial' }));
+
+        expect(res.status).toBe(409);
+    });
+
+    it('payload invalido -> 400', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .post(`/api/restaurantes/${restauranteId}/enderecos`)
+            .send(payloadEndereco({ rua: 'A' }));
+
+        expect(res.status).toBe(400);
+    });
+
+    it('corpo vazio -> 400', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .post(`/api/restaurantes/${restauranteId}/enderecos`)
+            .send({});
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .post(`/api/restaurantes/${restauranteId}/enderecos`)
+            .send(payloadEndereco());
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const res = await request(app)
+            .post(`/api/restaurantes/${restauranteId}/enderecos`)
+            .send(payloadEndereco());
+
+        expect(res.status).toBe(403);
+    });
+
+    it('restaurante inexistente -> 404', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .post(`/api/restaurantes/${NOT_FOUND_OBJECT_ID}/enderecos`)
+            .send(payloadEndereco());
+
+        expect(res.status).toBe(404);
+    });
+});
