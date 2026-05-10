@@ -39,3 +39,35 @@ function nextId(prefix = 'item') {
     sequence += 1;
     return `${prefix}-${RUN_ID}-${sequence}`;
 }
+function asAutenticado() {
+    AuthMiddleware.mockImplementation((req, res, next) => {
+        req.user_id = usuarioAuthId;
+        next();
+    });
+}
+
+function autenticarComo(userId) {
+    AuthMiddleware.mockImplementation((req, res, next) => {
+        req.user_id = userId;
+        next();
+    });
+}
+
+function autenticarComoUmaVez(userId) {
+    AuthMiddleware.mockImplementationOnce((req, res, next) => {
+        req.user_id = userId;
+        next();
+    });
+}
+
+function asNaoAutenticado() {
+    AuthMiddleware.mockImplementationOnce((req, res) => {
+        res.status(401).json({
+            error: true,
+            code: 401,
+            message: 'Nao autorizado. Faca login para continuar.',
+            data: null,
+            errors: [],
+        });
+    });
+}
