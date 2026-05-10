@@ -361,3 +361,37 @@ describe('POST /usuarios/:usuarioId/enderecos', () => {
         expect(res.status).toBe(404);
     });
 });
+
+describe('PATCH /usuarios/:usuarioId/enderecos/:enderecoId', () => {
+    it('atualiza endereco do proprio usuario -> 200', async () => {
+        const endereco = await criarEnderecoUsuario(usuarioAuthId, { label: 'Casa' });
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuarioAuthId}/enderecos/${endereco._id}`)
+            .send({ label: 'Trabalho', complemento: 'Sala 2' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.label).toBe('Trabalho');
+        expect(res.body.data.complemento).toBe('Sala 2');
+    });
+
+    it('ao atualizar para principal desmarca os demais do usuario -> 200', async () => {
+        const antigoPrincipal = await criarEnderecoUsuario(usuarioAuthId, {
+            label: 'Casa',
+            principal: true,
+        });
+        const novoPrincipal = await criarEnderecoUsuario(usuarioAuthId, {
+            label: 'Trabalho',
+            principal: false,
+        });
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuarioAuthId}/enderecos/${novoPrincipal._id}`)
+            .send({ principal: true });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.principal).toBe(true);
+
+        const antigoAtualizado = await Endereco.findById(antigoPrincipal._id);
+        expect(antigoAtualizado.principal).toBe(false);
+    });
