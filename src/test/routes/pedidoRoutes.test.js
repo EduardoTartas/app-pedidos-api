@@ -50,3 +50,35 @@ const testDocumentos = {
     pedidos: [],
     notificacoes: []
 };
+
+
+function nextId(prefix = 'item') {
+    sequence += 1;
+    return `${prefix}-${RUN_ID}-${sequence}`;
+}
+
+function asAutenticado() {
+    AuthMiddleware.mockImplementation((req, res, next) => {
+        req.user_id = clienteId;
+        next();
+    });
+}
+
+function autenticarComo(userId) {
+    AuthMiddleware.mockImplementation((req, res, next) => {
+        req.user_id = userId;
+        next();
+    });
+}
+
+async function criarUsuario(nome, extra = {}, track = false) {
+    const slug = nome.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const usuario = await Usuario.create({
+        nome,
+        email: `${slug}-${nextId('mail')}@test.local`,
+        senha: 'teste123',
+        ...extra,
+    });
+    if (track) seedDocumentos.usuarios.push(usuario._id);
+    return usuario._id;
+}
