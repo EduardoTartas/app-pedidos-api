@@ -402,3 +402,86 @@ describe('PATCH /notificacoes/:id/lida', () => {
         expect(res.status).toBe(401);
     });
 });
+describe('DELETE /notificacoes/:id', () => {
+    it('deleta notificacao do usuario autenticado -> 200', async () => {
+        const notificacao = await criarNotificacao(usuarioAuthId);
+
+        const res = await request(app).delete(`/api/notificacoes/${notificacao._id}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.data).toBeNull();
+
+        const removida = await Notificacao.findById(notificacao._id);
+        expect(removida).toBeNull();
+    });
+
+    it('id invalido -> 400', async () => {
+        const res = await request(app).delete(`/api/notificacoes/${INVALID_OBJECT_ID}`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('notificacao inexistente -> 404', async () => {
+        const res = await request(app).delete(`/api/notificacoes/${NOT_FOUND_OBJECT_ID}`);
+
+        expect(res.status).toBe(404);
+    });
+
+    it('notificacao de outro usuario -> 403', async () => {
+        const notificacao = await criarNotificacao(outroUsuarioId);
+
+        const res = await request(app).delete(`/api/notificacoes/${notificacao._id}`);
+
+        expect(res.status).toBe(403);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const notificacao = await criarNotificacao(usuarioAuthId);
+        asNaoAutenticado();
+
+        const res = await request(app).delete(`/api/notificacoes/${notificacao._id}`);
+
+        expect(res.status).toBe(401);
+    });
+});
+describe('NotificacaoController - ramos internos', () => {
+    it('usa docs.length quando totalDocs nao existe na listagem', async () => {
+        const controller = new NotificacaoController();
+        controller.service = {
+            listarMinhasNotificacoes: jest.fn().mockResolvedValue({ docs: [{ _id: '1' }] }),
+        };
+        const req = { user_id: usuarioAuthId, query: {} };
+        const res = {
+            status: jest.fn().mockReturnThis(),
+            json: jest.fn(),
+        };
+
+        await controller.listarMinhas(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            message: expect.stringContaining('1'),
+            data: { docs: [{ _id: '1' }] },
+        }));
+    });
+
+    it('trata data nula na listagem como vazia', async () => {
+        const controller = new NotificacaoController();
+        controller.service = {
+            listarMinhasNotificacoes: jest.fn().mockResolvedValue(null),
+        };
+        const req = { user_id: usuarioAuthId };
+        const res = {
+            status: jest.fn().mockReturnThis(),
+            json: jest.fn(),
+        };
+
+        await controller.listarMinhas(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            data: null,
+            message: expect.stringContaining('Nenhuma'),
+        }));
+    });
+});
