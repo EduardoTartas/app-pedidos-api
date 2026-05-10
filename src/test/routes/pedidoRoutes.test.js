@@ -223,3 +223,63 @@ describe('pedidoRoutes', () => {
         expect(res.status).toBe(200);
         expect(res.body.message).toBe('Nenhum pedido encontrado com os filtros informados.');
     });
+        it('POST /api/pedidos cria pedido e recalcula valores de preços e frete', async () => {
+        const payload = {
+            restaurante_id: restauranteId.toString(),
+            itens: [
+                {
+                    prato_id: prato._id.toString(),
+                    quantidade: 1,
+                    adicionais: [
+                        {
+                            opcao_id: opcao._id.toString(),
+                            quantidade: 1
+                        }
+                    ]
+                }
+            ]
+        };
+
+        const res = await request(app).post('/api/pedidos').send(payload);
+
+        expect(res.status).toBe(201);
+        expect(res.body.message).toBe('Pedido criado com sucesso.');
+        expect(res.body.data).toMatchObject({
+            status: 'criado',
+            restaurante_id: restauranteId.toString(),
+            itens: [
+                expect.objectContaining({
+                    prato_nome: prato.nome,
+                    preco_unitario: prato.preco,
+                    quantidade: 1,
+                    adicionais: [
+                        expect.objectContaining({
+                            opcao_nome: opcao.nome,
+                            preco_unitario: opcao.preco,
+                            quantidade: 1
+                        })
+                    ]
+                })
+            ]
+        });
+        expect(res.body.data.totais.subtotal).toBe(13);
+        expect(res.body.data.totais.taxa_entrega).toBe(5);
+        expect(res.body.data.totais.total).toBe(18);
+
+        testDocumentos.pedidos.push(res.body.data._id);
+
+        const notificacao = await Notificacao.findOne({ pedido_id: res.body.data._id });
+        expect(notificacao).not.toBeNull();
+        expect(notificacao.tipo).toBe('pedido_confirmado');
+        testDocumentos.notificacoes.push(notificacao._id);
+    });
+
+    it('POST /api/pedidos com corpo vazio retorna erro de validação', async () => {
+        const res = await request(app).post('/api/pedidos').send({});
+
+        expect(res.status).toBe(400);
+        expect(res.body.message).toBe('O corpo da requisição é obrigatório para criar um pedido.');
+        expect(res.body.errors).toEqual([
+            expect.objectContaining({ path: 'body', message: 'O corpo da requisição não pode ser vazio.' })
+        ]);
+    });
