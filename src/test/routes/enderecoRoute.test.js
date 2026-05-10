@@ -58,3 +58,21 @@ function autenticarComo(userId) {
         next();
     });
 }
+function autenticarComoUmaVez(userId) {
+    AuthMiddleware.mockImplementationOnce((req, res, next) => {
+        req.user_id = userId;
+        next();
+    });
+}
+
+function asNaoAutenticado() {
+    AuthMiddleware.mockImplementationOnce((req, res) => {
+        res.status(401).json({
+            error: true,
+            code: 401,
+            message: 'Nao autorizado. Faca login para continuar.',
+            data: null,
+            errors: [],
+        });
+    });
+}
