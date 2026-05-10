@@ -123,3 +123,40 @@ async function criarEnderecoRestaurante(restId, extra = {}) {
     tempEnderecos.push(endereco._id);
     return endereco;
 }
+
+function payloadEndereco(extra = {}) {
+    return {
+        label: nextId('Casa'),
+        cep: '76800000',
+        rua: 'Rua Teste',
+        numero: '123',
+        bairro: 'Centro',
+        complemento: 'Apto 1',
+        cidade: 'Porto Velho',
+        estado: 'RO',
+        principal: false,
+        ...extra,
+    };
+}
+
+beforeAll(async () => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    mongoServer = await MongoMemoryServer.create();
+    await mongoose.connect(mongoServer.getUri());
+
+    app = express();
+    app.use(express.json());
+    app.use('/api', enderecoRoutes);
+    app.use(errorHandler);
+
+    adminId = await criarUsuario('Admin Endereco', { isAdmin: true });
+    ownerId = await criarUsuario('Dono Endereco');
+    usuarioAuthId = await criarUsuario('Usuario Auth Endereco');
+    outroUsuarioId = await criarUsuario('Outro Usuario Endereco');
+    restauranteId = await criarRestaurante(`Restaurante Endereco ${RUN_ID}`, ownerId);
+
+    asAutenticado();
+}, 30000);
