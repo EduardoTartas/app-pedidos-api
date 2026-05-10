@@ -163,3 +163,73 @@ afterAll(async () => {
 beforeEach(() => {
     asAutenticado();
 });
+describe('POST /notificacoes', () => {
+    it('cria notificacao com payload valido -> 201', async () => {
+        const res = await request(app)
+            .post('/api/notificacoes')
+            .send(payloadNotificacao({ titulo: 'Pedido confirmado', tipo: 'pedido_confirmado' }));
+
+        expect(res.status).toBe(201);
+        expect(res.body.data).toHaveProperty('_id');
+        expect(res.body.data.usuario_id).toBe(usuarioAuthId.toString());
+        expect(res.body.data.tipo).toBe('pedido_confirmado');
+        expect(res.body.data.titulo).toBe('Pedido confirmado');
+        expect(res.body.data.lida_em).toBeNull();
+
+        tempNotificacoes.push(res.body.data._id);
+    });
+
+    it('cria notificacao com pedido_id e lida_em opcionais -> 201', async () => {
+        const pedidoId = new ObjectId().toString();
+        const lidaEm = new Date('2026-01-01T12:00:00.000Z').toISOString();
+
+        const res = await request(app)
+            .post('/api/notificacoes')
+            .send(payloadNotificacao({
+                pedido_id: pedidoId,
+                lida_em: lidaEm,
+                tipo: 'entregue',
+            }));
+
+        expect(res.status).toBe(201);
+        expect(res.body.data.pedido_id).toBe(pedidoId);
+        expect(res.body.data.tipo).toBe('entregue');
+        expect(res.body.data.lida_em).toBe('01/01/2026');
+
+        tempNotificacoes.push(res.body.data._id);
+    });
+
+    it('payload invalido -> 400', async () => {
+        const res = await request(app)
+            .post('/api/notificacoes')
+            .send(payloadNotificacao({ tipo: 'invalido', titulo: 'A', mensagem: 'curt' }));
+
+        expect(res.status).toBe(400);
+    });
+
+    it('usuario_id invalido -> 400', async () => {
+        const res = await request(app)
+            .post('/api/notificacoes')
+            .send(payloadNotificacao({ usuario_id: INVALID_OBJECT_ID }));
+
+        expect(res.status).toBe(400);
+    });
+
+    it('lida_em invalido -> 400', async () => {
+        const res = await request(app)
+            .post('/api/notificacoes')
+            .send(payloadNotificacao({ lida_em: 'data-invalida' }));
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .post('/api/notificacoes')
+            .send(payloadNotificacao());
+
+        expect(res.status).toBe(401);
+    });
+});
