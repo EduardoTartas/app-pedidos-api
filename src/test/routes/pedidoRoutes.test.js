@@ -160,3 +160,49 @@ beforeAll(async () => {
 
     asAutenticado();
 }, 30000);
+
+afterEach(async () => {
+    for (const [modelName, ids] of Object.entries(testDocumentos)) {
+        if (ids.length === 0) continue;
+        const model = {
+            pedidos: Pedido,
+            notificacoes: Notificacao
+        }[modelName];
+        if (model) {
+            await model.deleteMany({ _id: { $in: ids } }).catch(() => {});
+        }
+        ids.length = 0;
+    }
+    asAutenticado();
+});
+
+afterAll(async () => {
+    for (const [modelName, ids] of Object.entries(seedDocumentos)) {
+        if (ids.length === 0) continue;
+        const model = {
+            usuarios: Usuario,
+            restaurantes: Restaurante,
+            pratos: Prato,
+            grupos: AdicionalGrupo,
+            opcoes: AdicionalOpcao
+        }[modelName];
+        if (model) {
+            await model.deleteMany({ _id: { $in: ids } }).catch(() => {});
+        }
+    }
+
+    await mongoose.disconnect();
+    if (mongoServer) {
+        await mongoServer.stop();
+    }
+
+    if (console.warn.mockRestore) {
+        console.warn.mockRestore();
+    }
+    if (console.error.mockRestore) {
+        console.error.mockRestore();
+    }
+    if (console.log.mockRestore) {
+        console.log.mockRestore();
+    }
+});
