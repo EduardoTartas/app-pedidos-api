@@ -206,3 +206,20 @@ afterAll(async () => {
         console.log.mockRestore();
     }
 });
+describe('pedidoRoutes', () => {
+    it('GET /api/pedidos/meus retorna nenhum pedido quando não há histórico', async () => {
+        const res = await request(app).get('/api/pedidos/meus');
+
+        expect(res.status).toBe(200);
+        expect(res.body.message).toBe('Nenhum pedido encontrado.');
+        expect(res.body.data).toBeDefined();
+        expect(res.body.data).toEqual(expect.any(Object));
+    });
+
+    it('GET /api/pedidos/restaurante/:restauranteId com filtro inválido retorna mensagem de filtro', async () => {
+        autenticarComo(donoId);
+        const res = await request(app).get(`/api/pedidos/restaurante/${restauranteId}?status=criado`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.message).toBe('Nenhum pedido encontrado com os filtros informados.');
+    });
