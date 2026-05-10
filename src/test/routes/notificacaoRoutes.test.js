@@ -349,3 +349,56 @@ describe('GET /notificacoes', () => {
         expect(res.status).toBe(401);
     });
 });
+describe('PATCH /notificacoes/:id/lida', () => {
+    it('marca notificacao como lida -> 200', async () => {
+        const notificacao = await criarNotificacao(usuarioAuthId, { lida_em: null });
+
+        const res = await request(app).patch(`/api/notificacoes/${notificacao._id}/lida`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.data._id).toBe(notificacao._id.toString());
+        expect(res.body.data.lida_em).not.toBeNull();
+
+        const atualizada = await Notificacao.findById(notificacao._id);
+        expect(atualizada.lida_em).not.toBeNull();
+    });
+
+    it('retorna notificacao quando ja esta lida -> 200', async () => {
+        const lidaEm = new Date('2026-01-01T12:00:00.000Z');
+        const notificacao = await criarNotificacao(usuarioAuthId, { lida_em: lidaEm });
+
+        const res = await request(app).patch(`/api/notificacoes/${notificacao._id}/lida`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.lida_em).toBe('01/01/2026');
+    });
+
+    it('id invalido -> 400', async () => {
+        const res = await request(app).patch(`/api/notificacoes/${INVALID_OBJECT_ID}/lida`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('notificacao inexistente -> 404', async () => {
+        const res = await request(app).patch(`/api/notificacoes/${NOT_FOUND_OBJECT_ID}/lida`);
+
+        expect(res.status).toBe(404);
+    });
+
+    it('notificacao de outro usuario -> 403', async () => {
+        const notificacao = await criarNotificacao(outroUsuarioId);
+
+        const res = await request(app).patch(`/api/notificacoes/${notificacao._id}/lida`);
+
+        expect(res.status).toBe(403);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const notificacao = await criarNotificacao(usuarioAuthId);
+        asNaoAutenticado();
+
+        const res = await request(app).patch(`/api/notificacoes/${notificacao._id}/lida`);
+
+        expect(res.status).toBe(401);
+    });
+});
