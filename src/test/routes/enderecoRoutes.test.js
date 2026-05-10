@@ -1033,20 +1033,6 @@ describe('EnderecoService - ramos internos da regra de negocio', () => {
     });
 });
 
-
-
-
-
-
-
-  
-
-
-
-
-
-
-
 describe('EnderecoRepository - ramos defensivos', () => {
     it('atualizar retorna 404 quando findByIdAndUpdate nao encontra documento', async () => {
         const repository = new EnderecoRepository({
