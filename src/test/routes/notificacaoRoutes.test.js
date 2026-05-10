@@ -71,3 +71,70 @@ function asNaoAutenticado() {
         });
     });
 }
+async function criarUsuario(nome, extra = {}) {
+    const slug = nome.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const usuario = await Usuario.create({
+        nome,
+        email: `${slug}-${nextId('mail')}@test.local`,
+        senha: 'teste123',
+        ...extra,
+    });
+    tempUsuarios.push(usuario._id);
+    return usuario._id;
+}
+
+async function criarNotificacao(usuarioId = usuarioAuthId, extra = {}) {
+    const notificacao = await Notificacao.create({
+        usuario_id: usuarioId,
+        pedido_id: null,
+        tipo: 'geral',
+        titulo: nextId('Titulo'),
+        mensagem: 'Mensagem de teste para notificacao',
+        lida_em: null,
+        ...extra,
+    });
+    tempNotificacoes.push(notificacao._id);
+    return notificacao;
+}
+
+function payloadNotificacao(extra = {}) {
+    return {
+        usuario_id: usuarioAuthId.toString(),
+        pedido_id: null,
+        tipo: 'geral',
+        titulo: nextId('TituloPayload'),
+        mensagem: 'Mensagem de teste valida',
+        ...extra,
+    };
+}
+
+beforeAll(async () => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    mongoServer = await MongoMemoryServer.create();
+    await mongoose.connect(mongoServer.getUri());
+
+    app = express();
+    app.use(express.json());
+    app.use('/api', notificacaoRoutes);
+    app.use(errorHandler);
+
+    usuarioAuthId = await criarUsuario('Usuario Auth Notificacao');
+    outroUsuarioId = await criarUsuario('Outro Usuario Notificacao');
+
+    asAutenticado();
+}, 30000);
+
+afterEach(async () => {
+    await Notificacao.deleteMany({
+        $or: [
+            { _id: { $in: tempNotificacoes } },
+            { usuario_id: { $in: tempUsuarios } },
+        ],
+    }).catch(() => {});
+    tempNotificacoes.length = 0;
+
+    asAutenticado();
+});
