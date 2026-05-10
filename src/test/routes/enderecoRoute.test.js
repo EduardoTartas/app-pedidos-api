@@ -282,3 +282,37 @@ describe('POST /usuarios/:usuarioId/enderecos', () => {
         const antigoAtualizado = await Endereco.findById(antigoPrincipal._id);
         expect(antigoAtualizado.principal).toBe(false);
     });
+    
+    it('label duplicado para o mesmo usuario -> 409', async () => {
+        await criarEnderecoUsuario(usuarioAuthId, { label: 'Casa' });
+
+        const res = await request(app)
+            .post(`/api/usuarios/${usuarioAuthId}/enderecos`)
+            .send(payloadEndereco({ label: 'Casa' }));
+
+        expect(res.status).toBe(409);
+    });
+
+    it('mesmo label permitido para usuarios diferentes -> 201', async () => {
+        await criarEnderecoUsuario(outroUsuarioId, { label: 'Casa' });
+
+        const res = await request(app)
+            .post(`/api/usuarios/${usuarioAuthId}/enderecos`)
+            .send(payloadEndereco({ label: 'Casa' }));
+
+        expect(res.status).toBe(201);
+        expect(res.body.data.label).toBe('Casa');
+        tempEnderecos.push(res.body.data._id);
+    });
+
+    it('cria endereco sem label opcional -> 201', async () => {
+        const { label, ...payloadSemLabel } = payloadEndereco();
+
+        const res = await request(app)
+            .post(`/api/usuarios/${usuarioAuthId}/enderecos`)
+            .send(payloadSemLabel);
+
+        expect(res.status).toBe(201);
+        expect(res.body.data.label).toBe('');
+        tempEnderecos.push(res.body.data._id);
+    });
