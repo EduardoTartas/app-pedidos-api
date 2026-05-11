@@ -27,9 +27,11 @@ jest.mock('../../service/UsuarioService.js', () => ({
     }
 }));
 
+const mockVerifyIdToken = jest.fn();
+
 jest.mock('google-auth-library', () => ({
     OAuth2Client: jest.fn().mockImplementation(() => ({
-        verifyIdToken: jest.fn(),
+        verifyIdToken: (...args) => mockVerifyIdToken(...args),
     })),
 }));
 
@@ -52,6 +54,7 @@ import {
 } from '@jest/globals';
 
 import authRoutes from '../../routes/authRoutes.js';
+import AuthController from '../../controllers/AuthController.js';
 import Usuario from '../../models/Usuario.js';
 import AuthService from '../../service/AuthService.js';
 import errorHandler from '../../utils/helpers/errorHandler.js';
@@ -119,6 +122,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
     jest.clearAllMocks();
+    mockVerifyIdToken.mockReset();
 });
 
 afterEach(async () => {
@@ -129,6 +133,11 @@ afterEach(async () => {
 
         usuariosTemp.length = 0;
     }
+
+    await Usuario.deleteMany({
+        email: { $regex: /@test\.local$/ },
+    }).catch(() => {});
+
 });
 
 afterAll(async () => {
@@ -160,6 +169,80 @@ describe('POST /api/auth/login', () => {
         expect(res.body.data.user).toHaveProperty('refreshtoken');
 
         expect(res.body.data.user.email).toBe(usuario.email);
+    });
+
+    it('mantém refresh token válido já cadastrado no login -> 200', async () => {
+        const usuario = await criarUsuario({
+            cpf: '08573215099',
+            telefone: '69999998888',
+            profileComplete: false,
+        });
+
+        const refreshToken = jwt.sign(
+            { id: usuario._id.toString() },
+            process.env.JWT_SECRET_REFRESH_TOKEN,
+        );
+
+        await Usuario.findByIdAndUpdate(usuario._id, {
+            refreshtoken: refreshToken,
+        });
+
+        const res = await request(app)
+            .post('/api/auth/login')
+            .send({
+                email: usuario.email.toUpperCase(),
+                senha: 'Senha@123',
+            });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.user.refreshtoken).toBe(refreshToken);
+        expect(res.body.data.user.profileComplete).toBe(true);
+    });
+
+    it('renova refresh token expirado durante o login -> 200', async () => {
+        const usuario = await criarUsuario();
+
+        const refreshTokenExpirado = jwt.sign(
+            { id: usuario._id.toString() },
+            process.env.JWT_SECRET_REFRESH_TOKEN,
+            { expiresIn: '-1s' },
+        );
+
+        await Usuario.findByIdAndUpdate(usuario._id, {
+            refreshtoken: refreshTokenExpirado,
+        });
+
+        const res = await request(app)
+            .post('/api/auth/login')
+            .send({
+                email: usuario.email,
+                senha: 'Senha@123',
+            });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.user.refreshtoken).not.toBe(refreshTokenExpirado);
+    });
+
+    it('falha quando refresh token salvo tem erro inesperado de validação -> 500', async () => {
+        const usuario = await criarUsuario();
+
+        const refreshTokenNaoAtivo = jwt.sign(
+            { id: usuario._id.toString(), nbf: Math.floor(Date.now() / 1000) + 60 },
+            process.env.JWT_SECRET_REFRESH_TOKEN,
+        );
+
+        await Usuario.findByIdAndUpdate(usuario._id, {
+            refreshtoken: refreshTokenNaoAtivo,
+        });
+
+        const res = await request(app)
+            .post('/api/auth/login')
+            .send({
+                email: usuario.email,
+                senha: 'Senha@123',
+            });
+
+        expect(res.status).toBe(500);
     });
 
     it('email inexistente -> 401', async () => {
@@ -259,12 +342,53 @@ describe('POST /api/auth/logout', () => {
         expect(res.status).toBe(200);
     });
 
+    it('realiza logout com token enviado no header Authorization -> 200', async () => {
+        const usuario = await criarUsuario();
+
+        const token = jwt.sign(
+            { id: usuario._id.toString() },
+            process.env.JWT_SECRET_ACCESS_TOKEN,
+        );
+
+        const res = await request(app)
+            .post('/api/auth/logout')
+            .set('Authorization', `Bearer ${token}`)
+            .send({});
+
+        expect(res.status).toBe(200);
+    });
+
     it('sem token -> 400', async () => {
         const res = await request(app)
             .post('/api/auth/logout')
             .send({});
 
         expect(res.status).toBe(400);
+    });
+
+    it('token null textual -> 400', async () => {
+        const res = await request(app)
+            .post('/api/auth/logout')
+            .send({
+                access_token: 'null',
+            });
+
+        expect(res.status).toBe(400);
+    });
+
+    it('token sem id -> 498', async () => {
+        const token = jwt.sign(
+            { sub: 'sem-id' },
+            process.env.JWT_SECRET_ACCESS_TOKEN,
+        );
+
+        const res = await request(app)
+            .post('/api/auth/logout')
+            .send({
+                access_token: token,
+            });
+
+        expect(res.status).toBe(498);
     });
 
     it('token inválido -> 500', async () => {
@@ -303,10 +427,60 @@ describe('POST /api/auth/refresh', () => {
         expect(res.body.data.user).toHaveProperty('refreshtoken');
     });
 
+    it('refresh token diferente do armazenado -> 401', async () => {
+        const usuario = await criarUsuario();
+
+        const refreshTokenArmazenado = jwt.sign(
+            { id: usuario._id.toString(), origem: 'banco' },
+            process.env.JWT_SECRET_REFRESH_TOKEN,
+        );
+        const refreshTokenEnviado = jwt.sign(
+            { id: usuario._id.toString(), origem: 'cliente' },
+            process.env.JWT_SECRET_REFRESH_TOKEN,
+        );
+
+        await Usuario.findByIdAndUpdate(usuario._id, {
+            refreshtoken: refreshTokenArmazenado,
+        });
+
+        const res = await request(app)
+            .post('/api/auth/refresh')
+            .send({
+                refresh_token: refreshTokenEnviado,
+            });
+
+        expect(res.status).toBe(401);
+    });
+
+    it('refresh token de usuário inexistente -> 404', async () => {
+        const refreshToken = jwt.sign(
+            { id: new mongoose.Types.ObjectId().toString() },
+            process.env.JWT_SECRET_REFRESH_TOKEN,
+        );
+
+        const res = await request(app)
+            .post('/api/auth/refresh')
+            .send({
+                refresh_token: refreshToken,
+            });
+
+        expect(res.status).toBe(404);
+    });
+
     it('refresh token ausente -> 400', async () => {
         const res = await request(app)
             .post('/api/auth/refresh')
             .send({});
+
+        expect(res.status).toBe(400);
+    });
+
+    it('refresh token undefined textual -> 400', async () => {
+        const res = await request(app)
+            .post('/api/auth/refresh')
+            .send({
+                refresh_token: 'undefined',
+            });
 
         expect(res.status).toBe(400);
     });
@@ -329,7 +503,7 @@ describe('POST /api/auth/recover', () => {
         const res = await request(app)
             .post('/api/auth/recover')
             .send({
-                email: usuario.email,
+                email: `  ${usuario.email.toUpperCase()}  `,
             });
 
         expect(res.status).toBe(200);
@@ -440,9 +614,6 @@ describe('GET /api/auth/verificar-email', () => {
     });
 
     it('token inválido -> 400', async () => {
-        jest.spyOn(AuthService.prototype, 'verificarEmail')
-            .mockRejectedValue(new Error('Token inválido'));
-
         const res = await request(app)
             .get('/api/auth/verificar-email?token=invalido');
 
@@ -450,15 +621,29 @@ describe('GET /api/auth/verificar-email', () => {
     });
 
     it('verifica email com sucesso -> 200', async () => {
-        jest.spyOn(AuthService.prototype, 'verificarEmail')
-            .mockResolvedValue({
-                message: 'Email verificado',
-            });
+        await criarUsuario({
+            token_verificacao_email: 'token-verificacao',
+            exp_token_verificacao_email: new Date(Date.now() + 100000),
+            email_verificado: false,
+        });
 
         const res = await request(app)
-            .get('/api/auth/verificar-email?token=valido');
+            .get('/api/auth/verificar-email?token=token-verificacao');
 
         expect(res.status).toBe(200);
+    });
+
+    it('token expirado reenvia email de verificação -> 400', async () => {
+        await criarUsuario({
+            token_verificacao_email: 'token-verificacao-expirado',
+            exp_token_verificacao_email: new Date(Date.now() - 1000),
+            email_verificado: false,
+        });
+
+        const res = await request(app)
+            .get('/api/auth/verificar-email?token=token-verificacao-expirado');
+
+        expect(res.status).toBe(400);
     });
 });
 
@@ -471,15 +656,15 @@ describe('POST /api/auth/google', () => {
         expect(res.status).toBe(400);
     });
 
-    it('login google com sucesso -> 200', async () => {
-        jest.spyOn(AuthService.prototype, 'loginWithGoogle')
-            .mockResolvedValue({
-                user: {
-                    accessToken: 'access-token',
-                    refreshtoken: 'refresh-token',
-                    email: 'google@test.local',
-                },
-            });
+    it('login google cria usuário novo -> 200', async () => {
+        mockVerifyIdToken.mockResolvedValue({
+            getPayload: () => ({
+                sub: nextId('google-sub'),
+                email: `${nextId('google')}@test.local`,
+                name: 'Usuário Google',
+                picture: 'perfil.png',
+            }),
+        });
 
         const res = await request(app)
             .post('/api/auth/google')
@@ -489,6 +674,328 @@ describe('POST /api/auth/google', () => {
 
         expect(res.status).toBe(200);
 
-        expect(res.body.data.user.email).toBe('google@test.local');
+        expect(res.body.data.user.authProvider).toBe('google');
+        expect(res.body.data.user.email_verificado).toBe(true);
+    });
+
+    it('login google cria usuário novo sem foto -> 200', async () => {
+        mockVerifyIdToken.mockResolvedValue({
+            getPayload: () => ({
+                sub: nextId('google-sub'),
+                email: `${nextId('google-sem-foto')}@test.local`,
+                name: 'Usuário Google Sem Foto',
+            }),
+        });
+
+        const res = await request(app)
+            .post('/api/auth/google')
+            .send({
+                idToken: 'google-token',
+            });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.user.foto_perfil).toBe('');
+    });
+
+    it('login google vincula conta local existente pelo email -> 200', async () => {
+        const usuario = await criarUsuario({
+            foto_perfil: '',
+        });
+
+        mockVerifyIdToken.mockResolvedValue({
+            getPayload: () => ({
+                sub: nextId('google-sub'),
+                email: usuario.email,
+                name: usuario.nome,
+                picture: 'perfil-google.png',
+            }),
+        });
+
+        const res = await request(app)
+            .post('/api/auth/google')
+            .send({
+                idToken: 'google-token',
+            });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.user.email).toBe(usuario.email);
+        expect(res.body.data.user.authProvider).toBe('local');
+    });
+
+    it('login google vincula conta sem senha existente pelo email -> 200', async () => {
+        const usuario = await criarUsuario({
+            senha: null,
+            authProvider: 'google',
+            foto_perfil: '',
+        });
+
+        mockVerifyIdToken.mockResolvedValue({
+            getPayload: () => ({
+                sub: nextId('google-sub'),
+                email: usuario.email,
+                name: usuario.nome,
+                picture: '',
+            }),
+        });
+
+        const res = await request(app)
+            .post('/api/auth/google')
+            .send({
+                idToken: 'google-token',
+            });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.user.email).toBe(usuario.email);
+        expect(res.body.data.user.authProvider).toBe('google');
+    });
+
+    it('login google reutiliza usuário pelo googleId e renova refresh expirado -> 200', async () => {
+        const googleId = nextId('google-id');
+        const usuario = await criarUsuario({
+            senha: null,
+            googleId,
+            authProvider: 'google',
+            cpf: '08573215099',
+            telefone: '69999998888',
+            profileComplete: false,
+        });
+        const refreshTokenExpirado = jwt.sign(
+            { id: usuario._id.toString() },
+            process.env.JWT_SECRET_REFRESH_TOKEN,
+            { expiresIn: '-1s' },
+        );
+
+        await Usuario.findByIdAndUpdate(usuario._id, {
+            refreshtoken: refreshTokenExpirado,
+        });
+
+        mockVerifyIdToken.mockResolvedValue({
+            getPayload: () => ({
+                sub: googleId,
+                email: usuario.email,
+                name: usuario.nome,
+                picture: '',
+            }),
+        });
+
+        const res = await request(app)
+            .post('/api/auth/google')
+            .send({
+                idToken: 'google-token',
+            });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.user.refreshtoken).not.toBe(refreshTokenExpirado);
+        expect(res.body.data.user.profileComplete).toBe(true);
+    });
+
+    it('login google rejeita token inválido -> 401', async () => {
+        mockVerifyIdToken.mockRejectedValue(new Error('token invalido'));
+
+        const res = await request(app)
+            .post('/api/auth/google')
+            .send({
+                idToken: 'google-token',
+            });
+
+        expect(res.status).toBe(401);
+    });
+
+    it('login google rejeita usuário inativo -> 403', async () => {
+        const googleId = nextId('google-id');
+        const usuario = await criarUsuario({
+            senha: null,
+            googleId,
+            authProvider: 'google',
+            status: 'inativo',
+        });
+
+        mockVerifyIdToken.mockResolvedValue({
+            getPayload: () => ({
+                sub: googleId,
+                email: usuario.email,
+                name: usuario.nome,
+                picture: '',
+            }),
+        });
+
+        const res = await request(app)
+            .post('/api/auth/google')
+            .send({
+                idToken: 'google-token',
+            });
+
+        expect(res.status).toBe(403);
+    });
+});
+
+describe('AuthController - fallbacks de entrada', () => {
+    function createResponse() {
+        const res = {
+            status: jest.fn().mockReturnThis(),
+            json: jest.fn().mockReturnThis(),
+            send: jest.fn().mockReturnThis(),
+        };
+
+        return res;
+    }
+
+    it('login trata body ausente como objeto vazio', async () => {
+        const controller = new AuthController();
+
+        await expect(controller.login({}, createResponse()))
+            .rejects
+            .toBeDefined();
+    });
+
+    it('googleLogin trata body ausente como objeto vazio', async () => {
+        const controller = new AuthController();
+
+        await expect(controller.googleLogin({}, createResponse()))
+            .rejects
+            .toBeDefined();
+    });
+
+    it('recuperaSenha trata body ausente como objeto vazio', async () => {
+        const controller = new AuthController();
+
+        await expect(controller.recuperaSenha({}, createResponse()))
+            .rejects
+            .toMatchObject({
+                statusCode: 400,
+                field: 'email',
+            });
+    });
+
+    it('signup trata body ausente como objeto vazio', async () => {
+        const controller = new AuthController();
+
+        await expect(controller.signup({}, createResponse()))
+            .rejects
+            .toBeDefined();
+    });
+
+    it('verificarEmail usa mensagem padrão quando erro não possui mensagem', async () => {
+        const controller = new AuthController();
+        const res = createResponse();
+        controller.service = {
+            verificarEmail: jest.fn().mockRejectedValue({}),
+        };
+
+        await controller.verificarEmail({
+            query: {
+                token: 'token-com-erro-sem-mensagem',
+            },
+        }, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.send.mock.calls[0][0])
+            .toContain('Falha ao processar o token');
+    });
+});
+
+describe('AuthService - regras internas de autenticação', () => {
+    it('carrega tokens do usuário pelo repositório', async () => {
+        const service = new AuthService();
+        const usuario = { _id: new mongoose.Types.ObjectId() };
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue(usuario),
+        };
+
+        await expect(service.carregatokens(usuario._id)).resolves.toEqual({
+            data: usuario,
+        });
+
+        expect(service.repository.buscarPorID)
+            .toHaveBeenCalledWith(usuario._id, true);
+    });
+
+    it('refresh retorna 404 quando o repositório não encontra usuário', async () => {
+        const service = new AuthService();
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.refresh('id-inexistente', 'token'))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+                field: 'Token',
+            });
+    });
+
+    it('refresh atualiza profileComplete quando CPF e telefone completam o perfil', async () => {
+        const service = new AuthService({
+            tokenUtil: {
+                generateAccessToken: jest.fn().mockResolvedValue('access-token'),
+            },
+        });
+
+        const id = new mongoose.Types.ObjectId().toString();
+        const usuarioComToken = {
+            _id: id,
+            refreshtoken: 'refresh-token',
+            cpf: '08573215099',
+            telefone: '69999998888',
+            profileComplete: false,
+        };
+        const usuarioSemTokens = {
+            toObject: () => ({
+                _id: id,
+                email: 'refresh@test.local',
+            }),
+        };
+
+        service.repository = {
+            buscarPorID: jest.fn()
+                .mockResolvedValueOnce(usuarioComToken)
+                .mockResolvedValueOnce(usuarioSemTokens),
+            armazenarTokens: jest.fn().mockResolvedValue(usuarioComToken),
+            atualizar: jest.fn().mockResolvedValue({
+                ...usuarioComToken,
+                profileComplete: true,
+            }),
+        };
+
+        const result = await service.refresh(id, 'refresh-token');
+
+        expect(result.user.profileComplete).toBe(true);
+        expect(service.repository.atualizar)
+            .toHaveBeenCalledWith(id, { profileComplete: true });
+    });
+
+    it('atualizarSenhaToken rejeita token expirado pela data bruta do documento', async () => {
+        const service = new AuthService();
+        service.repository = {
+            buscarPorTokenUnico: jest.fn().mockResolvedValue({
+                _id: new mongoose.Types.ObjectId(),
+                exp_codigo_recupera_senha: new Date(Date.now() - 1000),
+            }),
+        };
+
+        await expect(service.atualizarSenhaToken('token-expirado', 'NovaSenha@123'))
+            .rejects
+            .toMatchObject({
+                statusCode: 401,
+                field: 'Token de Recuperação',
+            });
+    });
+
+    it('atualizarSenhaToken retorna erro quando a senha não é persistida', async () => {
+        const service = new AuthService();
+        service.repository = {
+            buscarPorTokenUnico: jest.fn().mockResolvedValue({
+                _id: new mongoose.Types.ObjectId(),
+                get: jest.fn().mockReturnValue(new Date(Date.now() + 100000)),
+            }),
+            atualizarSenha: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.atualizarSenhaToken('token-valido', 'NovaSenha@123'))
+            .rejects
+            .toMatchObject({
+                statusCode: 500,
+                field: 'Senha',
+            });
     });
 });
