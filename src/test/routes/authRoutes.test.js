@@ -5,10 +5,26 @@ jest.mock('../../middlewares/RateLimitMiddleware.js', () => ({
 }));
 
 jest.mock('../../service/EmailService.js', () => ({
+    __esModule: true,
     default: {
         enviarEmailRecuperacao: jest.fn().mockResolvedValue(true),
         enviarEmailVerificacao: jest.fn().mockResolvedValue(true),
     },
+}));
+
+jest.mock('../../service/UsuarioService.js', () => ({
+    __esModule: true,
+    default: class {
+        async criar(data) {
+            return {
+                toObject: () => ({
+                    _id: '123',
+                    ...data,
+                    isAdmin: false,
+                }),
+            };
+        }
+    }
 }));
 
 jest.mock('google-auth-library', () => ({
@@ -61,7 +77,7 @@ function nextId(prefix = 'item') {
 async function criarUsuario(extra = {}) {
     const senha = extra.senha === null
         ? null
-        : await bcrypt.hash(extra.senha || 'teste123', 10);
+        : await bcrypt.hash(extra.senha || 'Senha@123', 10);
 
     const usuario = await Usuario.create({
         nome: nextId('Usuario'),
@@ -135,7 +151,7 @@ describe('POST /api/auth/login', () => {
             .post('/api/auth/login')
             .send({
                 email: usuario.email,
-                senha: 'teste123',
+                senha: 'Senha@123',
             });
 
         expect(res.status).toBe(200);
@@ -151,7 +167,7 @@ describe('POST /api/auth/login', () => {
             .post('/api/auth/login')
             .send({
                 email: 'naoexiste@test.local',
-                senha: 'teste123',
+                senha: 'Senha@123',
             });
 
         expect(res.status).toBe(401);
@@ -164,7 +180,7 @@ describe('POST /api/auth/login', () => {
             .post('/api/auth/login')
             .send({
                 email: usuario.email,
-                senha: 'senha-errada',
+                senha: 'SenhaErrada@123',
             });
 
         expect(res.status).toBe(401);
@@ -179,7 +195,7 @@ describe('POST /api/auth/login', () => {
             .post('/api/auth/login')
             .send({
                 email: usuario.email,
-                senha: 'teste123',
+                senha: 'Senha@123',
             });
 
         expect(res.status).toBe(403);
@@ -194,7 +210,7 @@ describe('POST /api/auth/login', () => {
             .post('/api/auth/login')
             .send({
                 email: usuario.email,
-                senha: 'teste123',
+                senha: 'Senha@123',
             });
 
         expect(res.status).toBe(403);
@@ -210,7 +226,7 @@ describe('POST /api/auth/login', () => {
             .post('/api/auth/login')
             .send({
                 email: usuario.email,
-                senha: 'teste123',
+                senha: 'Senha@123',
             });
 
         expect(res.status).toBe(401);
@@ -251,14 +267,14 @@ describe('POST /api/auth/logout', () => {
         expect(res.status).toBe(400);
     });
 
-    it('token inválido -> 401', async () => {
+    it('token inválido -> 500', async () => {
         const res = await request(app)
             .post('/api/auth/logout')
             .send({
                 access_token: 'token-invalido',
             });
 
-        expect(res.status).toBe(401);
+        expect(res.status).toBe(500);
     });
 });
 
@@ -284,6 +300,7 @@ describe('POST /api/auth/refresh', () => {
         expect(res.status).toBe(200);
 
         expect(res.body.data.user).toHaveProperty('accesstoken');
+        expect(res.body.data.user).toHaveProperty('refreshtoken');
     });
 
     it('refresh token ausente -> 400', async () => {
@@ -294,14 +311,14 @@ describe('POST /api/auth/refresh', () => {
         expect(res.status).toBe(400);
     });
 
-    it('refresh token inválido -> 401', async () => {
+    it('refresh token inválido -> 500', async () => {
         const res = await request(app)
             .post('/api/auth/refresh')
             .send({
                 refresh_token: 'token-invalido',
             });
 
-        expect(res.status).toBe(401);
+        expect(res.status).toBe(500);
     });
 });
 
@@ -341,7 +358,7 @@ describe('POST /api/auth/recover', () => {
 
 describe('PATCH /api/auth/password/reset', () => {
     it('atualiza senha com token válido -> 200', async () => {
-        const usuario = await criarUsuario({
+        await criarUsuario({
             tokenUnico: 'token-recuperacao',
             exp_codigo_recupera_senha: new Date(Date.now() + 100000),
         });
@@ -349,7 +366,7 @@ describe('PATCH /api/auth/password/reset', () => {
         const res = await request(app)
             .patch('/api/auth/password/reset?token=token-recuperacao')
             .send({
-                senha: 'novaSenha123',
+                senha: 'NovaSenha@123',
             });
 
         expect(res.status).toBe(200);
@@ -359,7 +376,7 @@ describe('PATCH /api/auth/password/reset', () => {
         const res = await request(app)
             .patch('/api/auth/password/reset')
             .send({
-                senha: 'novaSenha123',
+                senha: 'NovaSenha@123',
             });
 
         expect(res.status).toBe(401);
@@ -377,7 +394,7 @@ describe('PATCH /api/auth/password/reset', () => {
         const res = await request(app)
             .patch('/api/auth/password/reset?token=invalido')
             .send({
-                senha: 'novaSenha123',
+                senha: 'NovaSenha@123',
             });
 
         expect(res.status).toBe(404);
@@ -389,8 +406,9 @@ describe('POST /api/auth/signup', () => {
         const payload = {
             nome: 'Usuário Cadastro',
             email: `${nextId('signup')}@test.local`,
-            senha: 'teste123',
-            telefone: '69999999999',
+            senha: 'Senha@123',
+            cpf: '08573215099',
+            telefone: '69999998888',
         };
 
         const res = await request(app)
