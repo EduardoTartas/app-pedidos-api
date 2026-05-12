@@ -56,3 +56,42 @@ const NOT_FOUND_OBJECT_ID = new ObjectId().toString();
 const seedUsuarios = [];
 const tempUsuarios = [];
 
+function nextId(prefix = 'item') {
+    sequence += 1;
+    return `${prefix}-${RUN_ID}-${sequence}`;
+}
+
+function gerarCpf() {
+    return cpfUtil.generate(false);
+}
+
+function asAutenticado() {
+    AuthMiddleware.mockImplementation((req, res, next) => {
+        req.user_id = usuarioAuthId;
+        next();
+    });
+}
+
+function autenticarComo(userId) {
+    AuthMiddleware.mockImplementation((req, res, next) => {
+        req.user_id = userId;
+        next();
+    });
+}
+
+function autenticarComoUmaVez(userId) {
+    AuthMiddleware.mockImplementationOnce((req, res, next) => {
+        req.user_id = userId;
+        next();
+    });
+}
+
+function asNaoAutenticado() {
+    AuthMiddleware.mockImplementationOnce((req, res) => {
+        res.status(401).json({
+            message: 'Nao autorizado. Faca login para continuar.',
+            data: null,
+            errors: [],
+        });
+    });
+}
