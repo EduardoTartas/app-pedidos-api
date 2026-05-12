@@ -25,6 +25,10 @@ import mongoose from 'mongoose';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import pratoRoutes from '../../routes/pratoRoutes.js';
 import '../../models/Categoria.js';
+import PratoController from '../../controllers/PratoController.js';
+import PratoService from '../../service/PratoService.js';
+import PratoRepository from '../../repository/PratoRepository.js';
+import PratoFilterBuild from '../../repository/filters/PratoFilterBuild.js';
 import Prato from '../../models/Prato.js';
 import Restaurante from '../../models/Restaurante.js';
 import Usuario from '../../models/Usuario.js';
@@ -723,5 +727,194 @@ describe('DELETE /pratos/:id/foto', () => {
         const res = await request(app).delete(`/api/pratos/${NOT_FOUND_OBJECT_ID}/foto`);
 
         expect(res.status).toBe(404);
+    });
+});
+
+describe('PratoService - ramos internos', () => {
+    it('agrupa cardapio com objetos simples, documentos e secao padrao', async () => {
+        const service = new PratoService();
+        service.ensureRestauranteExists = jest.fn().mockResolvedValue({});
+        service.repository = {
+            buscarCardapio: jest.fn().mockResolvedValue([
+                {
+                    secao: 'Massas',
+                    toObject: () => ({ nome: 'Lasanha', secao: 'Massas' }),
+                },
+                { nome: 'Agua' },
+            ]),
+        };
+
+        const data = await service.buscarCardapio(restauranteId);
+
+        expect(data.Massas[0]).toEqual({ nome: 'Lasanha', secao: 'Massas' });
+        expect(data.Geral[0]).toEqual({ nome: 'Agua' });
+    });
+
+    it('lista pratos por restaurante apos validar restaurante', async () => {
+        const service = new PratoService();
+        service.ensureRestauranteExists = jest.fn().mockResolvedValue({});
+        service.repository = {
+            listarPorRestaurante: jest.fn().mockResolvedValue({ docs: [] }),
+        };
+
+        await expect(service.listarPorRestaurante(restauranteId, { query: {} }))
+            .resolves
+            .toEqual({ docs: [] });
+        expect(service.repository.listarPorRestaurante)
+            .toHaveBeenCalledWith(restauranteId, { query: {} });
+    });
+
+    it('fotoUpload retorna 404 quando repository devolve nulo', async () => {
+        const service = new PratoService();
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.fotoUpload(NOT_FOUND_OBJECT_ID, {}, { user_id: ownerId }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+                field: 'Prato',
+            });
+    });
+
+    it('fotoDelete retorna 404 quando repository devolve nulo', async () => {
+        const service = new PratoService();
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.fotoDelete(NOT_FOUND_OBJECT_ID, { user_id: ownerId }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+                field: 'Prato',
+            });
+    });
+
+    it('ensurePratoExists retorna 404 quando repository devolve nulo', async () => {
+        const service = new PratoService();
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.ensurePratoExists(NOT_FOUND_OBJECT_ID))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+                field: 'Prato',
+            });
+    });
+
+    it('ensureRestauranteExists retorna 404 quando repository devolve nulo', async () => {
+        const service = new PratoService();
+        service.restauranteRepository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.ensureRestauranteExists(NOT_FOUND_OBJECT_ID))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+                field: 'Restaurante',
+            });
+    });
+
+    it('ensureUsuarioExists normaliza erro inesperado do repository', async () => {
+        const service = new PratoService();
+        service.usuarioRepository = {
+            buscarPorID: jest.fn().mockRejectedValue(new Error('falha banco')),
+        };
+
+        await expect(service.ensureUsuarioExists(ownerId))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+});
+
+describe('PratoRepository e filtros - ramos internos', () => {
+    it('lista pratos por restaurante e remove faixa de preco invalida do filtro', async () => {
+        const prato = await criarPrato(restauranteId, {
+            nome: 'Prato Repository',
+            preco: 22,
+        });
+        const repository = new PratoRepository();
+
+        const data = await repository.listarPorRestaurante(restauranteId, {
+            query: {
+                preco_min: '',
+                page: '1',
+                limite: '5',
+            },
+        });
+
+        expect(data.docs.map(item => item._id.toString())).toContain(prato._id.toString());
+    });
+
+    it('mantem restaurante textual quando id nao e ObjectId valido', () => {
+        const filtros = new PratoFilterBuild()
+            .comRestaurante('restaurante-texto')
+            .comPreco('', '')
+            .build();
+
+        expect(filtros).toEqual({ restaurante_id: 'restaurante-texto' });
+    });
+
+    it('atualizar retorna 404 quando findByIdAndUpdate nao encontra prato', async () => {
+        const populate = jest.fn().mockResolvedValue(null);
+        const findByIdAndUpdate = jest.fn(() => ({ populate }));
+        const repository = new PratoRepository({
+            PratoModel: { findByIdAndUpdate },
+        });
+
+        await expect(repository.atualizar(NOT_FOUND_OBJECT_ID, { nome: 'Novo' }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+                field: 'Prato',
+            });
+    });
+
+    it('deletar retorna 404 quando findByIdAndDelete nao encontra prato', async () => {
+        const repository = new PratoRepository({
+            PratoModel: {
+                findByIdAndDelete: jest.fn().mockResolvedValue(null),
+            },
+        });
+
+        await expect(repository.deletar(NOT_FOUND_OBJECT_ID))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+                field: 'Prato',
+            });
+    });
+
+    it('remove grupo de adicional do prato', async () => {
+        const findByIdAndUpdate = jest.fn().mockResolvedValue({ _id: 'prato' });
+        const repository = new PratoRepository({
+            PratoModel: { findByIdAndUpdate },
+        });
+
+        await expect(repository.removerGrupo('prato', 'grupo'))
+            .resolves
+            .toEqual({ _id: 'prato' });
+        expect(findByIdAndUpdate).toHaveBeenCalledWith(
+            'prato',
+            { $pull: { adicionais_grupo_ids: 'grupo' } },
+            { new: true },
+        );
+    });
+});
+
+describe('PratoController - ramos defensivos', () => {
+    it('deletar sem id rejeita antes de chamar service', async () => {
+        const controller = new PratoController();
+
+        await expect(controller.deletar({ params: {} }, {}))
+            .rejects
+            .toBeDefined();
     });
 });

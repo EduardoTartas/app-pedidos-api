@@ -1,22 +1,29 @@
 jest.mock('../../middlewares/AuthMiddleware.js');
+
+const mockSubstituirImagem = jest.fn();
+const mockDeleteImagemComRetry = jest.fn();
+
 jest.mock('../../service/UploadService.js', () => ({
     __esModule: true,
     default: class {
         constructor() {}
         async processarImagem() { return { url: 'http://test.com/image.jpg', fileName: 'test.jpg', metadata: {} }; }
-        async substituirImagem() { return { url: 'http://test.com/image.jpg', fileName: 'test.jpg', metadata: {} }; }
-        async deleteImagemComRetry() { return true; }
+        async substituirImagem(...args) { return mockSubstituirImagem(...args); }
+        async deleteImagemComRetry(...args) { return mockDeleteImagemComRetry(...args); }
     }
 }));
 
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { ObjectId } from 'mongodb';
 import express from 'express';
+import expressFileUpload from 'express-fileupload';
 import request from 'supertest';
 import mongoose from 'mongoose';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import adicionalOpcaoRoutes from '../../routes/adicionalOpcaoRoutes.js';
 import '../../models/Categoria.js';
+import AdicionalOpcaoService from '../../service/AdicionalOpcaoService.js';
+import AdicionalOpcaoRepository from '../../repository/AdicionalOpcaoRepository.js';
 import AdicionalOpcao from '../../models/AdicionalOpcao.js';
 import AdicionalGrupo from '../../models/AdicionalGrupo.js';
 import Usuario from '../../models/Usuario.js';
@@ -172,6 +179,7 @@ beforeAll(async () => {
 
     app = express();
     app.use(express.json());
+    app.use(expressFileUpload());
     app.use('/api', adicionalOpcaoRoutes);
     app.use(errorHandler);
 
@@ -233,6 +241,16 @@ afterAll(async () => {
 }, 30000);
 
 beforeEach(() => {
+    mockSubstituirImagem.mockReset();
+    mockSubstituirImagem.mockResolvedValue({
+        url: 'http://test.com/image.jpg',
+        fileName: 'test.jpg',
+        metadata: { width: 800, height: 800 },
+    });
+
+    mockDeleteImagemComRetry.mockReset();
+    mockDeleteImagemComRetry.mockResolvedValue(true);
+
     asAutenticado();
 });
 
@@ -556,5 +574,232 @@ describe('DELETE /adicionais/opcoes/:id', () => {
 
         const res = await request(app).delete(`/api/adicionais/opcoes/${NOT_FOUND_OBJECT_ID}`);
         expect(res.status).toBe(404);
+    });
+});
+
+describe('POST /adicionais/opcoes/:id/foto', () => {
+    it('faz upload de foto pelo campo file como dono -> 200', async () => {
+        const prato = await criarPrato(restauranteId);
+        const grupo = await criarGrupo(prato._id, restauranteId);
+        const opcao = await criarOpcao(grupo._id, { foto_adicional: '' });
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .post(`/api/adicionais/opcoes/${opcao._id}/foto`)
+            .attach('file', Buffer.from('imagem-test'), 'opcao.jpg');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.dados.foto_adicional).toBe('http://test.com/image.jpg');
+        expect(mockSubstituirImagem).toHaveBeenCalledWith(
+            expect.objectContaining({ name: 'opcao.jpg' }),
+            '',
+            { width: 800, height: 800, fit: 'cover', quality: 80 },
+        );
+
+        const opcaoAtualizada = await AdicionalOpcao.findById(opcao._id);
+        expect(opcaoAtualizada.foto_adicional).toBe('http://test.com/image.jpg');
+    });
+
+    it('faz upload de foto pelo campo imagem -> 200', async () => {
+        const prato = await criarPrato(restauranteId);
+        const grupo = await criarGrupo(prato._id, restauranteId);
+        const opcao = await criarOpcao(grupo._id, { foto_adicional: 'http://old.test/opcao.jpg' });
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .post(`/api/adicionais/opcoes/${opcao._id}/foto`)
+            .attach('imagem', Buffer.from('imagem-test'), 'opcao.png');
+
+        expect(res.status).toBe(200);
+        expect(mockSubstituirImagem).toHaveBeenCalledWith(
+            expect.objectContaining({ name: 'opcao.png' }),
+            'http://old.test/opcao.jpg',
+            { width: 800, height: 800, fit: 'cover', quality: 80 },
+        );
+    });
+
+    it('sem arquivo -> 400', async () => {
+        const prato = await criarPrato(restauranteId);
+        const grupo = await criarGrupo(prato._id, restauranteId);
+        const opcao = await criarOpcao(grupo._id);
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).post(`/api/adicionais/opcoes/${opcao._id}/foto`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('id invalido -> 400', async () => {
+        const res = await request(app)
+            .post(`/api/adicionais/opcoes/${INVALID_OBJECT_ID}/foto`)
+            .attach('file', Buffer.from('imagem-test'), 'opcao.jpg');
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const prato = await criarPrato(restauranteId);
+        const grupo = await criarGrupo(prato._id, restauranteId);
+        const opcao = await criarOpcao(grupo._id);
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .post(`/api/adicionais/opcoes/${opcao._id}/foto`)
+            .attach('file', Buffer.from('imagem-test'), 'opcao.jpg');
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const prato = await criarPrato(restauranteId);
+        const grupo = await criarGrupo(prato._id, restauranteId);
+        const opcao = await criarOpcao(grupo._id);
+
+        const res = await request(app)
+            .post(`/api/adicionais/opcoes/${opcao._id}/foto`)
+            .attach('file', Buffer.from('imagem-test'), 'opcao.jpg');
+
+        expect(res.status).toBe(403);
+    });
+
+    it('opcao inexistente -> 404', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .post(`/api/adicionais/opcoes/${NOT_FOUND_OBJECT_ID}/foto`)
+            .attach('file', Buffer.from('imagem-test'), 'opcao.jpg');
+
+        expect(res.status).toBe(404);
+    });
+});
+
+describe('DELETE /adicionais/opcoes/:id/foto', () => {
+    it('remove foto como dono -> 200', async () => {
+        const prato = await criarPrato(restauranteId);
+        const grupo = await criarGrupo(prato._id, restauranteId);
+        const opcao = await criarOpcao(grupo._id, { foto_adicional: 'http://test.com/old.jpg' });
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).delete(`/api/adicionais/opcoes/${opcao._id}/foto`);
+
+        expect(res.status).toBe(200);
+        expect(mockDeleteImagemComRetry).toHaveBeenCalledWith('http://test.com/old.jpg');
+
+        const opcaoAtualizada = await AdicionalOpcao.findById(opcao._id);
+        expect(opcaoAtualizada.foto_adicional).toBe('');
+    });
+
+    it('remove foto mesmo quando exclusao em background falha -> 200', async () => {
+        const prato = await criarPrato(restauranteId);
+        const grupo = await criarGrupo(prato._id, restauranteId);
+        const opcao = await criarOpcao(grupo._id, { foto_adicional: 'http://test.com/falha.jpg' });
+        mockDeleteImagemComRetry.mockRejectedValueOnce(new Error('falha garage'));
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).delete(`/api/adicionais/opcoes/${opcao._id}/foto`);
+        await new Promise(resolve => setImmediate(resolve));
+
+        expect(res.status).toBe(200);
+        expect(mockDeleteImagemComRetry).toHaveBeenCalledWith('http://test.com/falha.jpg');
+    });
+
+    it('sem foto cadastrada -> 400', async () => {
+        const prato = await criarPrato(restauranteId);
+        const grupo = await criarGrupo(prato._id, restauranteId);
+        const opcao = await criarOpcao(grupo._id, { foto_adicional: '' });
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).delete(`/api/adicionais/opcoes/${opcao._id}/foto`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('id invalido -> 400', async () => {
+        const res = await request(app).delete(`/api/adicionais/opcoes/${INVALID_OBJECT_ID}/foto`);
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const prato = await criarPrato(restauranteId);
+        const grupo = await criarGrupo(prato._id, restauranteId);
+        const opcao = await criarOpcao(grupo._id, { foto_adicional: 'http://test.com/old.jpg' });
+        asNaoAutenticado();
+
+        const res = await request(app).delete(`/api/adicionais/opcoes/${opcao._id}/foto`);
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const prato = await criarPrato(restauranteId);
+        const grupo = await criarGrupo(prato._id, restauranteId);
+        const opcao = await criarOpcao(grupo._id, { foto_adicional: 'http://test.com/old.jpg' });
+
+        const res = await request(app).delete(`/api/adicionais/opcoes/${opcao._id}/foto`);
+        expect(res.status).toBe(403);
+    });
+
+    it('opcao inexistente -> 404', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).delete(`/api/adicionais/opcoes/${NOT_FOUND_OBJECT_ID}/foto`);
+        expect(res.status).toBe(404);
+    });
+});
+
+describe('AdicionalOpcaoService - ramos internos', () => {
+    it('fotoUpload retorna 404 quando repository devolve nulo', async () => {
+        const service = new AdicionalOpcaoService();
+        service.opcaoRepository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.fotoUpload(NOT_FOUND_OBJECT_ID, {}, { user_id: ownerId }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+                field: 'Adicional',
+            });
+    });
+
+    it('fotoDelete retorna 404 quando repository devolve nulo', async () => {
+        const service = new AdicionalOpcaoService();
+        service.opcaoRepository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.fotoDelete(NOT_FOUND_OBJECT_ID, { user_id: ownerId }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+                field: 'Adicional',
+            });
+    });
+});
+
+describe('AdicionalOpcaoRepository - ramos internos', () => {
+    it('busca opcoes por lista de ids', async () => {
+        const find = jest.fn().mockResolvedValue([{ _id: 'opcao' }]);
+        const repository = new AdicionalOpcaoRepository({
+            AdicionalOpcaoModel: { find },
+        });
+
+        const data = await repository.buscarPorIDs(['a', 'b']);
+
+        expect(find).toHaveBeenCalledWith({ _id: { $in: ['a', 'b'] } });
+        expect(data).toEqual([{ _id: 'opcao' }]);
+    });
+
+    it('atualizar retorna 404 quando opcao nao existe', async () => {
+        const repository = new AdicionalOpcaoRepository({
+            AdicionalOpcaoModel: {
+                findByIdAndUpdate: jest.fn().mockResolvedValue(null),
+            },
+        });
+
+        await expect(repository.atualizar(NOT_FOUND_OBJECT_ID, { nome: 'Novo' }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
     });
 });

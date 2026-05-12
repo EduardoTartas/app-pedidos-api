@@ -349,6 +349,39 @@ describe('GET /notificacoes', () => {
         expect(res.status).toBe(401);
     });
 });
+
+describe('GET /notificacoes/:id', () => {
+    it('busca notificacao do usuario autenticado -> 200', async () => {
+        const notificacao = await criarNotificacao(usuarioAuthId, { titulo: 'Detalhe' });
+
+        const res = await request(app).get(`/api/notificacoes/${notificacao._id}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.data._id).toBe(notificacao._id.toString());
+        expect(res.body.data.titulo).toBe('Detalhe');
+    });
+
+    it('id invalido -> 400', async () => {
+        const res = await request(app).get(`/api/notificacoes/${INVALID_OBJECT_ID}`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('notificacao inexistente -> 404', async () => {
+        const res = await request(app).get(`/api/notificacoes/${NOT_FOUND_OBJECT_ID}`);
+
+        expect(res.status).toBe(404);
+    });
+
+    it('notificacao de outro usuario -> 403', async () => {
+        const notificacao = await criarNotificacao(outroUsuarioId);
+
+        const res = await request(app).get(`/api/notificacoes/${notificacao._id}`);
+
+        expect(res.status).toBe(403);
+    });
+});
+
 describe('PATCH /notificacoes/:id/lida', () => {
     it('marca notificacao como lida -> 200', async () => {
         const notificacao = await criarNotificacao(usuarioAuthId, { lida_em: null });

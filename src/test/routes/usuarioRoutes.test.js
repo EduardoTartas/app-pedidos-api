@@ -32,7 +32,13 @@ import request from 'supertest';
 import mongoose from 'mongoose';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import usuarioRoutes from '../../routes/usuarioRoutes.js';
+import EmailService from '../../service/EmailService.js';
+import UsuarioService from '../../service/UsuarioService.js';
+import UsuarioRepository from '../../repository/UsuarioRepository.js';
+import UsuarioFilterBuild from '../../repository/filters/UsuarioFilterBuild.js';
 import Usuario from '../../models/Usuario.js';
+import { UsuarioStatusUpdateSchema } from '../../utils/validators/schemas/zod/UsuarioSchema.js';
+import { UsuarioQuerySchema } from '../../utils/validators/schemas/zod/querys/UsuarioQuerySchema.js';
 import AuthMiddleware from '../../middlewares/AuthMiddleware.js';
 import errorHandler from '../../utils/helpers/errorHandler.js';
 
@@ -753,5 +759,237 @@ describe('DELETE /usuarios/:id/foto', () => {
         const res = await request(app).delete(`/api/usuarios/${NOT_FOUND_OBJECT_ID}/foto`);
 
         expect(res.status).toBe(404);
+    });
+});
+
+describe('UsuarioService - ramos internos', () => {
+    it('criar nao falha quando envio de email em background rejeita', async () => {
+        const service = new UsuarioService();
+        service.validateEmail = jest.fn().mockResolvedValue();
+        service.validateCpf = jest.fn().mockResolvedValue();
+        service.repository = {
+            criar: jest.fn().mockResolvedValue({
+                nome: 'Email Background',
+                email: 'background@test.local',
+            }),
+        };
+        EmailService.enviarEmailVerificacao.mockRejectedValueOnce(new Error('smtp off'));
+
+        const data = await service.criar({
+            nome: 'Email Background',
+            email: 'background@test.local',
+            senha: 'Senha@123',
+        });
+        await new Promise(resolve => setImmediate(resolve));
+
+        expect(data.email).toBe('background@test.local');
+        expect(EmailService.enviarEmailVerificacao).toHaveBeenCalled();
+    });
+
+    it('deletar registra falhas de limpeza em cascata sem bloquear retorno', async () => {
+        const service = new UsuarioService();
+        service.ensureUserExists = jest.fn().mockResolvedValue({ _id: usuarioAuthId });
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: usuarioAuthId, isAdmin: false }),
+            deletar: jest.fn().mockResolvedValue({ _id: usuarioAuthId, foto_perfil: 'foto.jpg' }),
+        };
+        service.enderecoRepository = {
+            deletarPorUsuario: jest.fn().mockRejectedValue(new Error('endereco')),
+        };
+        service.notificacaoRepository = {
+            deletarPorUsuario: jest.fn().mockRejectedValue(new Error('notificacao')),
+        };
+        service.pedidoRepository = {
+            removerVinculosCliente: jest.fn().mockRejectedValue(new Error('pedido')),
+        };
+        service.uploadService = {
+            deleteImagemComRetry: jest.fn().mockRejectedValue(new Error('foto')),
+        };
+
+        const data = await service.deletar(usuarioAuthId, { user_id: usuarioAuthId });
+        await new Promise(resolve => setImmediate(resolve));
+
+        expect(data.foto_perfil).toBe('foto.jpg');
+        expect(service.pedidoRepository.removerVinculosCliente).toHaveBeenCalledWith(usuarioAuthId);
+        expect(service.uploadService.deleteImagemComRetry).toHaveBeenCalledWith('foto.jpg');
+    });
+
+    it('fotoDelete registra falha de exclusao em background sem bloquear retorno', async () => {
+        const service = new UsuarioService();
+        service.ensureUserExists = jest.fn().mockResolvedValue({
+            _id: usuarioAuthId,
+            foto_perfil: 'foto.jpg',
+        });
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: usuarioAuthId, isAdmin: false }),
+            atualizar: jest.fn().mockResolvedValue({}),
+        };
+        service.uploadService = {
+            deleteImagemComRetry: jest.fn().mockRejectedValue(new Error('foto')),
+        };
+
+        await expect(service.fotoDelete(usuarioAuthId, { user_id: usuarioAuthId }))
+            .resolves
+            .toBe(true);
+        await new Promise(resolve => setImmediate(resolve));
+
+        expect(service.repository.atualizar).toHaveBeenCalledWith(usuarioAuthId, { foto_perfil: '' });
+    });
+
+    it('ensureUserExists retorna 404 quando repository devolve nulo', async () => {
+        const service = new UsuarioService();
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.ensureUserExists(NOT_FOUND_OBJECT_ID))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+});
+
+describe('UsuarioRepository e filtros - ramos internos', () => {
+    function querySelect(resultado) {
+        return {
+            select: jest.fn().mockResolvedValue(resultado),
+        };
+    }
+
+    it('armazenarTokens retorna 401 quando usuario nao existe', async () => {
+        const repository = new UsuarioRepository({
+            usuarioModel: {
+                findById: jest.fn().mockResolvedValue(null),
+            },
+        });
+
+        await expect(repository.armazenarTokens(NOT_FOUND_OBJECT_ID, 'access', 'refresh'))
+            .rejects
+            .toMatchObject({
+                statusCode: 401,
+            });
+    });
+
+    it('removerTokens retorna 404 quando usuario nao existe', async () => {
+        const exec = jest.fn().mockResolvedValue(null);
+        const repository = new UsuarioRepository({
+            usuarioModel: {
+                findByIdAndUpdate: jest.fn(() => ({ exec })),
+            },
+        });
+
+        await expect(repository.removerTokens(NOT_FOUND_OBJECT_ID))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('buscarPorEmail aplica idIgnorado', async () => {
+        const findOne = jest.fn(() => querySelect({ email: 'teste@test.local' }));
+        const repository = new UsuarioRepository({
+            usuarioModel: { findOne },
+        });
+
+        const data = await repository.buscarPorEmail('teste@test.local', usuarioAuthId);
+
+        expect(data.email).toBe('teste@test.local');
+        expect(findOne).toHaveBeenCalledWith({
+            email: 'teste@test.local',
+            _id: { $ne: usuarioAuthId },
+        });
+    });
+
+    it('buscarPorCpf aplica idIgnorado', async () => {
+        const findOne = jest.fn(() => querySelect({ cpf: '12345678901' }));
+        const repository = new UsuarioRepository({
+            usuarioModel: { findOne },
+        });
+
+        const data = await repository.buscarPorCpf('12345678901', usuarioAuthId);
+
+        expect(data.cpf).toBe('12345678901');
+        expect(findOne).toHaveBeenCalledWith({
+            cpf: '12345678901',
+            _id: { $ne: usuarioAuthId },
+        });
+    });
+
+    it('atualizar retorna 404 quando usuario nao existe', async () => {
+        const repository = new UsuarioRepository({
+            usuarioModel: {
+                findByIdAndUpdate: jest.fn().mockResolvedValue(null),
+            },
+        });
+
+        await expect(repository.atualizar(NOT_FOUND_OBJECT_ID, { nome: 'Novo' }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('atualizarSenha retorna 404 quando usuario nao existe', async () => {
+        const repository = new UsuarioRepository({
+            usuarioModel: {
+                findByIdAndUpdate: jest.fn().mockResolvedValue(null),
+            },
+        });
+
+        await expect(repository.atualizarSenha(NOT_FOUND_OBJECT_ID, 'hash'))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('atualizarVerificacaoEmail retorna 404 quando usuario nao existe', async () => {
+        const repository = new UsuarioRepository({
+            usuarioModel: {
+                findByIdAndUpdate: jest.fn().mockResolvedValue(null),
+            },
+        });
+
+        await expect(repository.atualizarVerificacaoEmail(NOT_FOUND_OBJECT_ID))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('atualizarTokenVerificacao retorna 404 quando usuario nao existe', async () => {
+        const repository = new UsuarioRepository({
+            usuarioModel: {
+                findByIdAndUpdate: jest.fn().mockResolvedValue(null),
+            },
+        });
+
+        await expect(repository.atualizarTokenVerificacao(NOT_FOUND_OBJECT_ID, 'token', new Date()))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('UsuarioFilterBuild interpreta isAdmin numerico', () => {
+        const filtros = new UsuarioFilterBuild()
+            .comIsAdmin(1)
+            .build();
+
+        expect(filtros.isAdmin).toBe(true);
+    });
+
+    it('UsuarioQuerySchema converte isAdmin false textual', async () => {
+        const parsed = await UsuarioQuerySchema.parseAsync({ isAdmin: 'false' });
+
+        expect(parsed.isAdmin).toBe(false);
+    });
+
+    it('UsuarioStatusUpdateSchema preserva mensagem customizada de status invalido', () => {
+        const mensagem = UsuarioStatusUpdateSchema.shape.status._def.errorMap().message;
+
+        expect(mensagem).toContain('ativo');
+        expect(mensagem).toContain('inativo');
     });
 });

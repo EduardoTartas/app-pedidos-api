@@ -24,8 +24,11 @@ import request from 'supertest';
 import mongoose from 'mongoose';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import categoriaRoutes from '../../routes/categoriaRoutes.js';
+import CategoriaService from '../../service/CategoriaService.js';
+import CategoriaRepository from '../../repository/CategoriaRepository.js';
 import Categoria from '../../models/Categoria.js';
 import Usuario from '../../models/Usuario.js';
+import { CategoriaQuerySchema } from '../../utils/validators/schemas/zod/querys/CategoriaQuerySchema.js';
 import AuthMiddleware from '../../middlewares/AuthMiddleware.js';
 import errorHandler from '../../utils/helpers/errorHandler.js';
 
@@ -497,4 +500,103 @@ describe('DELETE /categorias/:id/foto', () => {
         expect(res.status).toBe(403);
     });
   });
+});
+
+describe('CategoriaService e repository - ramos internos', () => {
+    it('ensureCategoriaExists retorna 404 quando repository devolve nulo', async () => {
+        const service = new CategoriaService();
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.ensureCategoriaExists(NOT_FOUND_OBJECT_ID))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('fotoUpload retorna 404 quando categoria nao existe', async () => {
+        const service = new CategoriaService();
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.fotoUpload(NOT_FOUND_OBJECT_ID, {}, { user_id: adminId }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('fotoDelete retorna 404 quando categoria nao existe', async () => {
+        const service = new CategoriaService();
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.fotoDelete(NOT_FOUND_OBJECT_ID, { user_id: adminId }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('fotoDelete registra falha de exclusao em background sem bloquear retorno', async () => {
+        const service = new CategoriaService();
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue({ icone_categoria: 'icone.jpg' }),
+            atualizar: jest.fn().mockResolvedValue({}),
+        };
+        service.usuarioRepository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: adminId, isAdmin: true }),
+        };
+        service.uploadService = {
+            deleteImagemComRetry: jest.fn().mockRejectedValue(new Error('falha icone')),
+        };
+
+        await expect(service.fotoDelete(NOT_FOUND_OBJECT_ID, { user_id: adminId }))
+            .resolves
+            .toBe(true);
+        await new Promise(resolve => setImmediate(resolve));
+
+        expect(service.repository.atualizar).toHaveBeenCalledWith(NOT_FOUND_OBJECT_ID, { icone_categoria: '' });
+    });
+
+    it('deletar registra falha da limpeza em background sem bloquear retorno', async () => {
+        const categoria = { _id: NOT_FOUND_OBJECT_ID };
+        const service = new CategoriaService();
+        service.validarAdmin = jest.fn().mockResolvedValue();
+        service.ensureCategoriaExists = jest.fn().mockResolvedValue(categoria);
+        service.repository = {
+            deletar: jest.fn().mockResolvedValue(categoria),
+        };
+        const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+        const data = await service.deletar(NOT_FOUND_OBJECT_ID, { user_id: adminId });
+        await new Promise(resolve => setImmediate(resolve));
+
+        expect(data).toBe(categoria);
+        error.mockRestore();
+    });
+
+    it('repository.atualizar retorna 404 quando categoria nao existe', async () => {
+        const repository = new CategoriaRepository({
+            CategoriaModel: {
+                findByIdAndUpdate: jest.fn().mockResolvedValue(null),
+            },
+        });
+
+        await expect(repository.atualizar(NOT_FOUND_OBJECT_ID, { nome: 'Nova' }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('CategoriaQuerySchema converte ativo true textual', () => {
+        const parsed = CategoriaQuerySchema.parse({ ativo: 'true' });
+
+        expect(parsed.ativo).toBe(true);
+    });
 });

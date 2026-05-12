@@ -25,9 +25,13 @@ import request from 'supertest';
 import mongoose from 'mongoose';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import restauranteRoutes from '../../routes/restauranteRoutes.js';
+import RestauranteService from '../../service/RestauranteService.js';
+import RestauranteRepository from '../../repository/RestauranteRepository.js';
+import RestauranteFilterBuild from '../../repository/filters/RestauranteFilterBuild.js';
 import Categoria from '../../models/Categoria.js';
 import Restaurante from '../../models/Restaurante.js';
 import Usuario from '../../models/Usuario.js';
+import { RestauranteQuerySchema } from '../../utils/validators/schemas/zod/querys/RestauranteQuerySchema.js';
 import AuthMiddleware from '../../middlewares/AuthMiddleware.js';
 import errorHandler from '../../utils/helpers/errorHandler.js';
 
@@ -784,6 +788,178 @@ describe('DELETE /restaurantes/:id/foto', () => {
         const res = await request(app).delete(`/api/restaurantes/${NOT_FOUND_OBJECT_ID}/foto`);
 
         expect(res.status).toBe(404);
+    });
+});
+
+describe('RestauranteService - ramos internos', () => {
+    it('listarMeus sem user_id retorna 401', async () => {
+        const service = new RestauranteService();
+
+        await expect(service.listarMeus({ query: {} }))
+            .rejects
+            .toMatchObject({
+                statusCode: 401,
+            });
+    });
+
+    it('criar sem user_id retorna 401', async () => {
+        const service = new RestauranteService();
+
+        await expect(service.criar({ nome: 'Sem dono' }, {}))
+            .rejects
+            .toMatchObject({
+                statusCode: 401,
+            });
+    });
+
+    it('deletar registra falhas de limpeza em cascata sem bloquear retorno', async () => {
+        const service = new RestauranteService();
+        service.ensureRestauranteExists = jest.fn().mockResolvedValue({ dono_id: ownerId });
+        service.ensureUsuarioExists = jest.fn().mockResolvedValue({ _id: ownerId, isAdmin: false });
+        service.repository = {
+            deletar: jest.fn().mockResolvedValue({ _id: NOT_FOUND_OBJECT_ID, foto_restaurante: 'foto.jpg' }),
+        };
+        service.pratoRepository = {
+            deletarPorRestaurante: jest.fn().mockRejectedValue(new Error('pratos')),
+        };
+        service.enderecoRepository = {
+            deletarPorRestaurante: jest.fn().mockRejectedValue(new Error('endereco')),
+        };
+        service.pedidoRepository = {
+            deletarPorRestaurante: jest.fn().mockRejectedValue(new Error('pedidos')),
+        };
+        service.uploadService = {
+            deleteImagemComRetry: jest.fn().mockRejectedValue(new Error('foto')),
+        };
+
+        const data = await service.deletar(NOT_FOUND_OBJECT_ID, { user_id: ownerId });
+        await new Promise(resolve => setImmediate(resolve));
+
+        expect(data.foto_restaurante).toBe('foto.jpg');
+        expect(service.pratoRepository.deletarPorRestaurante).toHaveBeenCalledWith(NOT_FOUND_OBJECT_ID);
+        expect(service.uploadService.deleteImagemComRetry).toHaveBeenCalledWith('foto.jpg');
+    });
+
+    it('fotoDelete registra falha de exclusao em background sem bloquear retorno', async () => {
+        const service = new RestauranteService();
+        service.ensureRestauranteExists = jest.fn().mockResolvedValue({
+            dono_id: ownerId,
+            foto_restaurante: 'foto.jpg',
+        });
+        service.ensureUsuarioExists = jest.fn().mockResolvedValue({ _id: ownerId, isAdmin: false });
+        service.repository = {
+            atualizar: jest.fn().mockResolvedValue({}),
+        };
+        service.uploadService = {
+            deleteImagemComRetry: jest.fn().mockRejectedValue(new Error('falha foto')),
+        };
+
+        await expect(service.fotoDelete(NOT_FOUND_OBJECT_ID, { user_id: ownerId }))
+            .resolves
+            .toBe(true);
+        await new Promise(resolve => setImmediate(resolve));
+
+        expect(service.repository.atualizar).toHaveBeenCalledWith(NOT_FOUND_OBJECT_ID, { foto_restaurante: '' });
+    });
+
+    it('ensureRestauranteExists retorna 404 quando repository devolve nulo', async () => {
+        const service = new RestauranteService();
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.ensureRestauranteExists(NOT_FOUND_OBJECT_ID))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('ensureUsuarioExists normaliza erro inesperado do repository', async () => {
+        const service = new RestauranteService();
+        service.usuarioRepository = {
+            buscarPorID: jest.fn().mockRejectedValue(new Error('falha banco')),
+        };
+
+        await expect(service.ensureUsuarioExists(ownerId))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('ensureUsuarioExists retorna 404 quando repository devolve nulo', async () => {
+        const service = new RestauranteService();
+        service.usuarioRepository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.ensureUsuarioExists(ownerId))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+});
+
+describe('RestauranteRepository e filtros - ramos internos', () => {
+    it('busca restaurantes por dono e popula categorias', async () => {
+        const populate = jest.fn().mockResolvedValue([{ nome: 'Restaurante' }]);
+        const find = jest.fn(() => ({ populate }));
+        const repository = new RestauranteRepository({
+            RestauranteModel: { find },
+        });
+
+        const data = await repository.buscarPorDonoId(ownerId);
+
+        expect(find).toHaveBeenCalledWith({ dono_id: ownerId });
+        expect(populate).toHaveBeenCalledWith('categoria_ids');
+        expect(data).toEqual([{ nome: 'Restaurante' }]);
+    });
+
+    it('atualizar retorna 404 quando restaurante nao existe', async () => {
+        const populateDono = jest.fn().mockResolvedValue(null);
+        const populateCategoria = jest.fn(() => ({ populate: populateDono }));
+        const findByIdAndUpdate = jest.fn(() => ({ populate: populateCategoria }));
+        const repository = new RestauranteRepository({
+            RestauranteModel: { findByIdAndUpdate },
+        });
+
+        await expect(repository.atualizar(NOT_FOUND_OBJECT_ID, { nome: 'Novo' }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('deletar retorna 404 quando restaurante nao existe', async () => {
+        const repository = new RestauranteRepository({
+            RestauranteModel: {
+                findByIdAndDelete: jest.fn().mockResolvedValue(null),
+            },
+        });
+
+        await expect(repository.deletar(NOT_FOUND_OBJECT_ID))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('filtro aceita categorias em array e ignora ids invalidos', () => {
+        const filtros = new RestauranteFilterBuild()
+            .comCategorias([categoriaPrincipalId.toString(), 'invalido'])
+            .build();
+
+        expect(filtros.categoria_ids.$in).toHaveLength(1);
+    });
+
+    it('RestauranteQuerySchema valida dono_id', async () => {
+        const parsed = await RestauranteQuerySchema.parseAsync({
+            dono_id: ownerId.toString(),
+        });
+
+        expect(parsed.dono_id).toBe(ownerId.toString());
     });
 });
 
