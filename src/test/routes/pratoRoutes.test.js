@@ -587,3 +587,84 @@ describe('DELETE /pratos/:id', () => {
         expect(res.status).toBe(404);
     });
 });
+
+
+describe('POST /pratos/:id/foto', () => {
+    it('atualiza foto do prato como dono -> 200', async () => {
+        const prato = await criarPrato(restauranteId);
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .post(`/api/pratos/${prato._id}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'prato.jpg');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.dados.foto_prato).toBe('http://test.com/prato.jpg');
+
+        const atualizado = await Prato.findById(prato._id);
+        expect(atualizado.foto_prato).toBe('http://test.com/prato.jpg');
+    });
+
+    it('aceita arquivo no campo imagem -> 200', async () => {
+        const prato = await criarPrato(restauranteId);
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .post(`/api/pratos/${prato._id}/foto`)
+            .attach('imagem', Buffer.from('fake-image'), 'prato.jpg');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.dados.foto_prato).toBe('http://test.com/prato.jpg');
+    });
+
+    it('sem arquivo -> 400', async () => {
+        const prato = await criarPrato(restauranteId);
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).post(`/api/pratos/${prato._id}/foto`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('id invalido -> 400', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .post(`/api/pratos/${INVALID_OBJECT_ID}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'prato.jpg');
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const prato = await criarPrato(restauranteId);
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .post(`/api/pratos/${prato._id}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'prato.jpg');
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const prato = await criarPrato(restauranteId);
+        autenticarComoUmaVez(outroUsuarioId);
+
+        const res = await request(app)
+            .post(`/api/pratos/${prato._id}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'prato.jpg');
+
+        expect(res.status).toBe(403);
+    });
+
+    it('prato inexistente -> 404', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .post(`/api/pratos/${NOT_FOUND_OBJECT_ID}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'prato.jpg');
+
+        expect(res.status).toBe(404);
+    });
+});
