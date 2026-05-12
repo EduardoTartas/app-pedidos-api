@@ -285,3 +285,42 @@ describe('GET /pratos/:id', () => {
     });
 
 });
+
+
+
+describe('GET /cardapio/:restauranteId', () => {
+    it('retorna cardapio publico agrupado por secao apenas com pratos ativos -> 200', async () => {
+        await criarPrato(restauranteId, { nome: 'Burger', secao: 'Principais', status: 'ativo' });
+        await criarPrato(restauranteId, { nome: 'Refrigerante', secao: 'Bebidas', status: 'ativo' });
+        await criarPrato(restauranteId, { nome: 'Sem Secao', secao: '', status: 'ativo' });
+        await criarPrato(restauranteId, { nome: 'Fora do Cardapio', secao: 'Principais', status: 'inativo' });
+
+        const res = await request(app).get(`/api/cardapio/${restauranteId}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.Principais).toHaveLength(1);
+        expect(res.body.data.Bebidas).toHaveLength(1);
+        expect(res.body.data.Geral).toHaveLength(1);
+        expect(Object.values(res.body.data).flat().map(prato => prato.nome)).not.toContain('Fora do Cardapio');
+    });
+
+    it('retorna objeto vazio quando restaurante nao possui pratos ativos -> 200', async () => {
+        const res = await request(app).get(`/api/cardapio/${restauranteId}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.data).toEqual({});
+        expect(res.body.message).toContain('Nenhum prato');
+    });
+
+    it('restauranteId invalido -> 400', async () => {
+        const res = await request(app).get(`/api/cardapio/${INVALID_OBJECT_ID}`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('restaurante inexistente -> 404', async () => {
+        const res = await request(app).get(`/api/cardapio/${NOT_FOUND_OBJECT_ID}`);
+
+        expect(res.status).toBe(404);
+    });
+});
