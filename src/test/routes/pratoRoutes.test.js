@@ -529,3 +529,61 @@ describe('PATCH /pratos/:id', () => {
         expect(res.status).toBe(404);
     });
 });
+
+
+describe('DELETE /pratos/:id', () => {
+    it('deleta prato como dono do restaurante -> 200', async () => {
+        const prato = await criarPrato(restauranteId);
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).delete(`/api/pratos/${prato._id}`);
+
+        expect(res.status).toBe(200);
+
+        const removido = await Prato.findById(prato._id);
+        expect(removido).toBeNull();
+    });
+
+    it('administrador deleta prato de qualquer restaurante -> 200', async () => {
+        const prato = await criarPrato(outroRestauranteId);
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).delete(`/api/pratos/${prato._id}`);
+
+        expect(res.status).toBe(200);
+    });
+
+    it('id invalido -> 400', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).delete(`/api/pratos/${INVALID_OBJECT_ID}`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const prato = await criarPrato(restauranteId);
+        asNaoAutenticado();
+
+        const res = await request(app).delete(`/api/pratos/${prato._id}`);
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const prato = await criarPrato(restauranteId);
+        autenticarComoUmaVez(outroUsuarioId);
+
+        const res = await request(app).delete(`/api/pratos/${prato._id}`);
+
+        expect(res.status).toBe(403);
+    });
+
+    it('prato inexistente -> 404', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).delete(`/api/pratos/${NOT_FOUND_OBJECT_ID}`);
+
+        expect(res.status).toBe(404);
+    });
+});
