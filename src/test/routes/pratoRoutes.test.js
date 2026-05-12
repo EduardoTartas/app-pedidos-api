@@ -413,3 +413,119 @@ describe('POST /pratos', () => {
         expect(res.status).toBe(404);
     });
 });
+
+describe('PATCH /pratos/:id', () => {
+    it('atualiza prato como dono do restaurante -> 200', async () => {
+        const prato = await criarPrato(restauranteId, { nome: 'Nome Antigo' });
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .patch(`/api/pratos/${prato._id}`)
+            .send({ nome: 'Nome Novo', preco: 45.5, status: 'inativo' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.nome).toBe('Nome Novo');
+        expect(res.body.data.preco).toBe(45.5);
+        expect(res.body.data.status).toBe('inativo');
+    });
+
+    it('nao permite alterar restaurante_id pelo payload -> 200', async () => {
+        const prato = await criarPrato(restauranteId, { nome: 'Prato Fixo' });
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .patch(`/api/pratos/${prato._id}`)
+            .send({ restaurante_id: outroRestauranteId.toString(), nome: 'Prato Ainda Fixo' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.nome).toBe('Prato Ainda Fixo');
+        expect(res.body.data.restaurante_id).toBe(restauranteId.toString());
+    });
+
+    it('administrador atualiza prato de qualquer restaurante -> 200', async () => {
+        const prato = await criarPrato(outroRestauranteId, { nome: 'Prato Outro' });
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .patch(`/api/pratos/${prato._id}`)
+            .send({ nome: 'Prato Outro Editado' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.nome).toBe('Prato Outro Editado');
+    });
+
+    it('corpo vazio -> 400', async () => {
+        const prato = await criarPrato(restauranteId);
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .patch(`/api/pratos/${prato._id}`)
+            .send({});
+
+        expect(res.status).toBe(400);
+    });
+
+    it('id invalido -> 400', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .patch(`/api/pratos/${INVALID_OBJECT_ID}`)
+            .send({ nome: 'Novo Nome' });
+
+        expect(res.status).toBe(400);
+    });
+
+    it('payload invalido -> 400', async () => {
+        const prato = await criarPrato(restauranteId);
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .patch(`/api/pratos/${prato._id}`)
+            .send({ foto_prato: 'arquivo.txt' });
+
+        expect(res.status).toBe(400);
+    });
+
+    it('secao fora do cardapio -> 400', async () => {
+        const prato = await criarPrato(restauranteId);
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .patch(`/api/pratos/${prato._id}`)
+            .send({ secao: 'Executivos' });
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const prato = await criarPrato(restauranteId);
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .patch(`/api/pratos/${prato._id}`)
+            .send({ nome: 'Bloqueado' });
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const prato = await criarPrato(restauranteId);
+        autenticarComoUmaVez(outroUsuarioId);
+
+        const res = await request(app)
+            .patch(`/api/pratos/${prato._id}`)
+            .send({ nome: 'Sem Permissao' });
+
+        expect(res.status).toBe(403);
+    });
+
+    it('prato inexistente -> 404', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .patch(`/api/pratos/${NOT_FOUND_OBJECT_ID}`)
+            .send({ nome: 'Nao Existe' });
+
+        expect(res.status).toBe(404);
+    });
+});
