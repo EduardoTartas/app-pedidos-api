@@ -745,3 +745,61 @@ describe('DELETE /adicionais/opcoes/:id/foto', () => {
         expect(res.status).toBe(404);
     });
 });
+
+describe('AdicionalOpcaoService - ramos internos', () => {
+    it('fotoUpload retorna 404 quando repository devolve nulo', async () => {
+        const service = new AdicionalOpcaoService();
+        service.opcaoRepository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.fotoUpload(NOT_FOUND_OBJECT_ID, {}, { user_id: ownerId }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+                field: 'Adicional',
+            });
+    });
+
+    it('fotoDelete retorna 404 quando repository devolve nulo', async () => {
+        const service = new AdicionalOpcaoService();
+        service.opcaoRepository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.fotoDelete(NOT_FOUND_OBJECT_ID, { user_id: ownerId }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+                field: 'Adicional',
+            });
+    });
+});
+
+describe('AdicionalOpcaoRepository - ramos internos', () => {
+    it('busca opcoes por lista de ids', async () => {
+        const find = jest.fn().mockResolvedValue([{ _id: 'opcao' }]);
+        const repository = new AdicionalOpcaoRepository({
+            AdicionalOpcaoModel: { find },
+        });
+
+        const data = await repository.buscarPorIDs(['a', 'b']);
+
+        expect(find).toHaveBeenCalledWith({ _id: { $in: ['a', 'b'] } });
+        expect(data).toEqual([{ _id: 'opcao' }]);
+    });
+
+    it('atualizar retorna 404 quando opcao nao existe', async () => {
+        const repository = new AdicionalOpcaoRepository({
+            AdicionalOpcaoModel: {
+                findByIdAndUpdate: jest.fn().mockResolvedValue(null),
+            },
+        });
+
+        await expect(repository.atualizar(NOT_FOUND_OBJECT_ID, { nome: 'Novo' }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+});
