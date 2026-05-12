@@ -668,3 +668,61 @@ describe('POST /pratos/:id/foto', () => {
         expect(res.status).toBe(404);
     });
 });
+
+describe('DELETE /pratos/:id/foto', () => {
+    it('remove foto do prato como dono -> 200', async () => {
+        const prato = await criarPrato(restauranteId, { foto_prato: 'http://test.com/antiga.jpg' });
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).delete(`/api/pratos/${prato._id}/foto`);
+
+        expect(res.status).toBe(200);
+
+        const atualizado = await Prato.findById(prato._id);
+        expect(atualizado.foto_prato).toBe('');
+    });
+
+    it('prato sem foto -> 404', async () => {
+        const prato = await criarPrato(restauranteId, { foto_prato: '' });
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).delete(`/api/pratos/${prato._id}/foto`);
+
+        expect(res.status).toBe(404);
+    });
+
+    it('id invalido -> 400', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).delete(`/api/pratos/${INVALID_OBJECT_ID}/foto`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const prato = await criarPrato(restauranteId, { foto_prato: 'http://test.com/antiga.jpg' });
+        asNaoAutenticado();
+
+        const res = await request(app).delete(`/api/pratos/${prato._id}/foto`);
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const prato = await criarPrato(restauranteId, { foto_prato: 'http://test.com/antiga.jpg' });
+        autenticarComoUmaVez(outroUsuarioId);
+
+        const res = await request(app).delete(`/api/pratos/${prato._id}/foto`);
+
+        expect(res.status).toBe(403);
+    });
+
+    it('prato inexistente -> 404', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).delete(`/api/pratos/${NOT_FOUND_OBJECT_ID}/foto`);
+
+        expect(res.status).toBe(404);
+    });
+});
+ 
