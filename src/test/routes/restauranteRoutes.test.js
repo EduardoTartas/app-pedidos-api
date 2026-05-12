@@ -459,4 +459,146 @@ describe('POST /restaurantes', () => {
         expect(res.status).toBe(409);
     });
 });
+describe('PATCH /restaurantes/:id', () => {
+    it('atualiza restaurante como dono -> 200', async () => {
+        const restaurante = await criarRestaurante(ownerId, { nome: 'Antigo' });
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restaurante._id}`)
+            .send({ nome: 'Atualizado', status: 'aberto', taxa_entrega: 0 });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.nome).toBe('Atualizado');
+        expect(res.body.data.status).toBe('aberto');
+        expect(res.body.data.taxa_entrega).toBe(0);
+    });
+
+    it('administrador atualiza restaurante de outro dono -> 200', async () => {
+        const restaurante = await criarRestaurante(outroUsuarioId, { nome: 'Outro Dono' });
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restaurante._id}`)
+            .send({ nome: 'Editado pelo Admin' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.nome).toBe('Editado pelo Admin');
+    });
+
+    it('nao permite alterar dono_id pelo payload -> 200', async () => {
+        const restaurante = await criarRestaurante(ownerId, { nome: 'Dono Fixo' });
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restaurante._id}`)
+            .send({ dono_id: outroUsuarioId.toString(), nome: 'Ainda do Dono' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.nome).toBe('Ainda do Dono');
+        expect(res.body.data.dono_id._id).toBe(ownerId.toString());
+    });
+
+    it('atualiza categorias e cnpj valido -> 200', async () => {
+        const restaurante = await criarRestaurante(ownerId, { nome: 'Com Categoria' });
+        const cnpj = gerarCnpj();
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restaurante._id}`)
+            .send({ categoria_ids: [categoriaSecundariaId.toString()], cnpj });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.cnpj).toBe(cnpj);
+        expect(res.body.data.categoria_ids[0]._id).toBe(categoriaSecundariaId.toString());
+    });
+
+    it('corpo vazio -> 400', async () => {
+        const restaurante = await criarRestaurante(ownerId);
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restaurante._id}`)
+            .send({});
+
+        expect(res.status).toBe(400);
+    });
+
+    it('id invalido -> 400', async () => {
+        const res = await request(app)
+            .patch(`/api/restaurantes/${INVALID_OBJECT_ID}`)
+            .send({ nome: 'Novo Nome' });
+
+        expect(res.status).toBe(400);
+    });
+
+    it('payload invalido -> 400', async () => {
+        const restaurante = await criarRestaurante(ownerId);
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restaurante._id}`)
+            .send({ foto_restaurante: 'arquivo.txt' });
+
+        expect(res.status).toBe(400);
+    });
+
+    it('categoria inexistente -> 400', async () => {
+        const restaurante = await criarRestaurante(ownerId);
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restaurante._id}`)
+            .send({ categoria_ids: [NOT_FOUND_OBJECT_ID] });
+
+        expect(res.status).toBe(400);
+    });
+
+    it('nome duplicado -> 409', async () => {
+        await criarRestaurante(ownerId, { nome: 'Nome Um' });
+        const restaurante = await criarRestaurante(ownerId, { nome: 'Nome Dois' });
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restaurante._id}`)
+            .send({ nome: 'Nome Um' });
+
+        expect(res.status).toBe(409);
+    });
+
+    it('cnpj duplicado -> 409', async () => {
+        const cnpj = gerarCnpj();
+        await criarRestaurante(ownerId, { nome: 'CNPJ Um', cnpj });
+        const restaurante = await criarRestaurante(ownerId, { nome: 'CNPJ Dois' });
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restaurante._id}`)
+            .send({ cnpj });
+
+        expect(res.status).toBe(409);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const restaurante = await criarRestaurante(ownerId);
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restaurante._id}`)
+            .send({ nome: 'Bloqueado' });
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const restaurante = await criarRestaurante(ownerId);
+        autenticarComoUmaVez(outroUsuarioId);
+
+        const res = await request(app)
+            .patch(`/api/restaurantes/${restaurante._id}`)
+            .send({ nome: 'Sem Permissao' });
+
+        expect(res.status).toBe(403);
+    });
+
+    it('restaurante inexistente -> 404', async () => {
+        const res = await request(app)
+            .patch(`/api/restaurantes/${NOT_FOUND_OBJECT_ID}`)
+            .send({ nome: 'Nao Existe' });
+
+        expect(res.status).toBe(404);
+    });
+});
 
