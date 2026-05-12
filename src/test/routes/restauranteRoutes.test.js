@@ -727,3 +727,63 @@ describe('POST /restaurantes/:id/foto', () => {
     });
 });
 
+describe('DELETE /restaurantes/:id/foto', () => {
+    it('remove foto do restaurante como dono -> 200', async () => {
+        const restaurante = await criarRestaurante(ownerId, { foto_restaurante: 'http://test.com/antiga.jpg' });
+
+        const res = await request(app).delete(`/api/restaurantes/${restaurante._id}/foto`);
+
+        expect(res.status).toBe(200);
+
+        const atualizado = await Restaurante.findById(restaurante._id);
+        expect(atualizado.foto_restaurante).toBe('');
+    });
+
+    it('administrador remove foto de restaurante de outro dono -> 200', async () => {
+        const restaurante = await criarRestaurante(outroUsuarioId, { foto_restaurante: 'http://test.com/antiga.jpg' });
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).delete(`/api/restaurantes/${restaurante._id}/foto`);
+
+        expect(res.status).toBe(200);
+    });
+
+    it('restaurante sem foto -> 404', async () => {
+        const restaurante = await criarRestaurante(ownerId, { foto_restaurante: '' });
+
+        const res = await request(app).delete(`/api/restaurantes/${restaurante._id}/foto`);
+
+        expect(res.status).toBe(404);
+    });
+
+    it('id invalido -> 400', async () => {
+        const res = await request(app).delete(`/api/restaurantes/${INVALID_OBJECT_ID}/foto`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const restaurante = await criarRestaurante(ownerId, { foto_restaurante: 'http://test.com/antiga.jpg' });
+        asNaoAutenticado();
+
+        const res = await request(app).delete(`/api/restaurantes/${restaurante._id}/foto`);
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const restaurante = await criarRestaurante(ownerId, { foto_restaurante: 'http://test.com/antiga.jpg' });
+        autenticarComoUmaVez(outroUsuarioId);
+
+        const res = await request(app).delete(`/api/restaurantes/${restaurante._id}/foto`);
+
+        expect(res.status).toBe(403);
+    });
+
+    it('restaurante inexistente -> 404', async () => {
+        const res = await request(app).delete(`/api/restaurantes/${NOT_FOUND_OBJECT_ID}/foto`);
+
+        expect(res.status).toBe(404);
+    });
+});
+
