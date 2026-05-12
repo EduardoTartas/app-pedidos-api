@@ -185,3 +185,82 @@ afterAll(async () => {
 beforeEach(() => {
     asAutenticado();
 });
+
+
+describe('GET /usuarios', () => {
+    it('lista usuarios autenticados em ordem alfabetica com paginacao padrao -> 200', async () => {
+        await criarUsuario('Zeta Usuario');
+        await criarUsuario('Alpha Usuario');
+
+        const res = await request(app).get('/api/usuarios');
+
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body.data.docs)).toBe(true);
+        expect(res.body.data.totalDocs).toBeGreaterThanOrEqual(5);
+        expect(res.body.data.page).toBe(1);
+        expect(res.body.data.limit).toBe(10);
+        expect(res.body.data.docs.map(usuario => usuario.nome)).toEqual(
+            [...res.body.data.docs.map(usuario => usuario.nome)].sort(),
+        );
+    });
+
+    it('filtra por nome, email, status, cpf, telefone e isAdmin -> 200', async () => {
+        const cpf = gerarCpf();
+        await criarUsuario('Filtro Usuario', {
+            email: 'filtro.usuario@test.local',
+            cpf,
+            telefone: '11999998888',
+            status: 'ativo',
+            isAdmin: true,
+        });
+        await criarUsuario('Outro Filtro', {
+            email: 'outro.filtro@test.local',
+            cpf: gerarCpf(),
+            telefone: '21999998888',
+            status: 'inativo',
+            isAdmin: false,
+        });
+
+        const res = await request(app)
+            .get(`/api/usuarios?nome=Filtro&email=filtro.usuario@test.local&status=ativo&cpf=${cpf}&telefone=11999998888&isAdmin=true`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.totalDocs).toBe(1);
+        expect(res.body.data.docs[0].email).toBe('filtro.usuario@test.local');
+        expect(res.body.data.docs[0].isAdmin).toBe(true);
+    });
+
+    it('respeita paginacao customizada -> 200', async () => {
+        await criarUsuario('Paginado A');
+        await criarUsuario('Paginado B');
+
+        const res = await request(app).get('/api/usuarios?page=2&limite=1');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.page).toBe(2);
+        expect(res.body.data.limit).toBe(1);
+        expect(res.body.data.docs).toHaveLength(1);
+    });
+
+    it('retorna mensagem de nenhum usuario com filtros sem resultado -> 200', async () => {
+        const res = await request(app).get('/api/usuarios?nome=NaoExisteUsuario');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.totalDocs).toBe(0);
+        expect(res.body.message).toContain('filtros');
+    });
+
+    it('query invalida -> 400', async () => {
+        const res = await request(app).get('/api/usuarios?page=0');
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        asNaoAutenticado();
+
+        const res = await request(app).get('/api/usuarios');
+
+        expect(res.status).toBe(401);
+    });
+});
