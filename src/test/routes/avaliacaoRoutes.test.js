@@ -7,6 +7,8 @@ import request from 'supertest';
 import mongoose from 'mongoose';
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, jest } from '@jest/globals';
 import avaliacaoRoutes from '../../routes/avaliacaoRoute.js';
+import AvaliacaoController from '../../controllers/AvaliacaoController.js';
+import AvaliacaoRepository from '../../repository/AvaliacaoRepository.js';
 import Avaliacao from '../../models/Avaliacao.js';
 import '../../models/Categoria.js';
 import Notificacao from '../../models/Notificacao.js';
@@ -255,6 +257,76 @@ describe('GET /avaliacoes/restaurante/:restauranteId', () => {
         const res = await request(app).get(`/api/avaliacoes/restaurante/${restauranteId}`);
 
         expect(res.status).toBe(200);
+    });
+});
+
+describe('AvaliacaoController - ramos internos', () => {
+    it('usa docs.length quando totalDocs nao existe', async () => {
+        const controller = new AvaliacaoController();
+        controller.service = {
+            listarPorRestaurante: jest.fn().mockResolvedValue({ docs: [{ _id: 'avaliacao-1' }] }),
+        };
+        const res = {
+            status: jest.fn().mockReturnThis(),
+            json: jest.fn(),
+        };
+
+        await controller.listarPorRestaurante({
+            params: { restauranteId: NOT_FOUND_OBJECT_ID },
+            query: {},
+        }, res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            message: expect.stringContaining('1'),
+        }));
+    });
+});
+
+describe('AvaliacaoRepository - ramos internos', () => {
+    function modelComFindById(resultado) {
+        const populateRestaurante = jest.fn().mockResolvedValue(resultado);
+        const populateCliente = jest.fn(() => ({ populate: populateRestaurante }));
+
+        return {
+            findById: jest.fn(() => ({ populate: populateCliente })),
+        };
+    }
+
+    it('buscarPorID retorna avaliacao populada', async () => {
+        const avaliacao = { _id: 'avaliacao-1' };
+        const repository = new AvaliacaoRepository({
+            AvaliacaoModel: modelComFindById(avaliacao),
+        });
+
+        await expect(repository.buscarPorID(NOT_FOUND_OBJECT_ID))
+            .resolves
+            .toBe(avaliacao);
+    });
+
+    it('buscarPorID retorna 404 quando nao encontra avaliacao', async () => {
+        const repository = new AvaliacaoRepository({
+            AvaliacaoModel: modelComFindById(null),
+        });
+
+        await expect(repository.buscarPorID(NOT_FOUND_OBJECT_ID))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('calcula media convertendo restauranteId string para ObjectId', async () => {
+        const aggregate = jest.fn().mockResolvedValue([{ media: 4.26 }]);
+        const repository = new AvaliacaoRepository({
+            AvaliacaoModel: { aggregate },
+        });
+
+        const media = await repository.calcularMediaRestaurante(NOT_FOUND_OBJECT_ID);
+
+        expect(media).toBe(4.3);
+        expect(aggregate.mock.calls[0][0][0].$match.restaurante_id)
+            .toBeInstanceOf(mongoose.Types.ObjectId);
     });
 });
 

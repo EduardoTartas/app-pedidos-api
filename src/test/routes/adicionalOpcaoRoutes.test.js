@@ -22,6 +22,8 @@ import mongoose from 'mongoose';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import adicionalOpcaoRoutes from '../../routes/adicionalOpcaoRoutes.js';
 import '../../models/Categoria.js';
+import AdicionalOpcaoService from '../../service/AdicionalOpcaoService.js';
+import AdicionalOpcaoRepository from '../../repository/AdicionalOpcaoRepository.js';
 import AdicionalOpcao from '../../models/AdicionalOpcao.js';
 import AdicionalGrupo from '../../models/AdicionalGrupo.js';
 import Usuario from '../../models/Usuario.js';

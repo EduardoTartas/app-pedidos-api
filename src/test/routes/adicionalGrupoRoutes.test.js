@@ -8,6 +8,7 @@ import mongoose from 'mongoose';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import adicionalGrupoRoutes from '../../routes/adicionalGrupoRoutes.js';
 import '../../models/Categoria.js';
+import AdicionalGrupoRepository from '../../repository/AdicionalGrupoRepository.js';
 import AdicionalGrupo from '../../models/AdicionalGrupo.js';
 import AdicionalOpcao from '../../models/AdicionalOpcao.js';
 import Usuario from '../../models/Usuario.js';
@@ -449,6 +450,20 @@ describe('DELETE /adicionais/grupos/:id', () => {
         expect(pratoAtualizado.adicionais_grupo_ids.map(id => String(id))).not.toContain(grupo._id.toString());
     });
 
+    it('deleta grupo usando prato_id na query para remover vinculo direto -> 200', async () => {
+        const prato = await criarPrato(restauranteId);
+        const grupo = await criarGrupo(prato._id, restauranteId, { nome: 'Direto' });
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .delete(`/api/adicionais/grupos/${grupo._id}?prato_id=${prato._id}`);
+
+        expect(res.status).toBe(200);
+
+        const pratoAtualizado = await Prato.findById(prato._id);
+        expect(pratoAtualizado.adicionais_grupo_ids.map(id => String(id))).not.toContain(grupo._id.toString());
+    });
+
     it('id invalido -> 400', async () => {
         const res = await request(app).delete(`/api/adicionais/grupos/${INVALID_OBJECT_ID}`);
         expect(res.status).toBe(400);
@@ -476,5 +491,38 @@ describe('DELETE /adicionais/grupos/:id', () => {
 
         const res = await request(app).delete(`/api/adicionais/grupos/${NOT_FOUND_OBJECT_ID}`);
         expect(res.status).toBe(404);
+    });
+});
+
+describe('AdicionalGrupoRepository - ramos internos', () => {
+    it('lista grupos ativos por restaurante ordenados por nome', async () => {
+        const sort = jest.fn().mockResolvedValue([{ nome: 'A' }]);
+        const find = jest.fn(() => ({ sort }));
+        const repository = new AdicionalGrupoRepository({
+            AdicionalGrupoModel: { find },
+        });
+
+        const data = await repository.listarPorRestaurante(restauranteId);
+
+        expect(find).toHaveBeenCalledWith({
+            restaurante_id: restauranteId,
+            ativo: true,
+        });
+        expect(sort).toHaveBeenCalledWith({ nome: 1 });
+        expect(data).toEqual([{ nome: 'A' }]);
+    });
+
+    it('atualizar retorna 404 quando grupo nao existe', async () => {
+        const repository = new AdicionalGrupoRepository({
+            AdicionalGrupoModel: {
+                findByIdAndUpdate: jest.fn().mockResolvedValue(null),
+            },
+        });
+
+        await expect(repository.atualizar(NOT_FOUND_OBJECT_ID, { nome: 'Novo' }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
     });
 });
