@@ -1,5 +1,3 @@
-jest.mock('../../middlewares/AuthMiddleware.js');
-
 jest.mock('../../middlewares/RateLimitMiddleware.js', () => ({
     strictRateLimit: (req, res, next) => next(),
 }));
@@ -54,10 +52,14 @@ import {
 } from '@jest/globals';
 
 import authRoutes from '../../routes/authRoutes.js';
+import AuthMiddleware from '../../middlewares/AuthMiddleware.js';
 import AuthController from '../../controllers/AuthController.js';
 import Usuario from '../../models/Usuario.js';
 import AuthService from '../../service/AuthService.js';
 import errorHandler from '../../utils/helpers/errorHandler.js';
+import AuthenticationError from '../../utils/errors/AuthenticationError.js';
+import TokenExpiredError from '../../utils/errors/TokenExpiredError.js';
+import CustomError from '../../utils/helpers/CustomError.js';
 
 const RUN_ID = Date.now().toString(36);
 
@@ -75,6 +77,12 @@ const usuariosTemp = [];
 function nextId(prefix = 'item') {
     sequence += 1;
     return `${prefix}-${RUN_ID}-${sequence}`;
+}
+
+function criarReqMiddleware(authorization) {
+    return {
+        headers: authorization ? { authorization } : {},
+    };
 }
 
 async function criarUsuario(extra = {}) {
@@ -826,6 +834,112 @@ describe('POST /api/auth/google', () => {
             });
 
         expect(res.status).toBe(403);
+    });
+});
+
+describe('AuthMiddleware integrado ao arquivo de rotas de autenticaÃ§Ã£o', () => {
+    it('rejeita requisiÃ§Ã£o sem header Authorization', async () => {
+        const next = jest.fn();
+
+        await AuthMiddleware(criarReqMiddleware(), {}, next);
+
+        expect(next).toHaveBeenCalledWith(expect.any(AuthenticationError));
+        expect(next.mock.calls[0][0].message).toContain('token');
+    });
+
+    it('rejeita formato de token invÃ¡lido', async () => {
+        const next = jest.fn();
+
+        await AuthMiddleware(criarReqMiddleware('Basic abc'), {}, next);
+
+        expect(next).toHaveBeenCalledWith(expect.any(AuthenticationError));
+    });
+
+    it('autentica token vÃ¡lido com refresh token salvo', async () => {
+        const token = jwt.sign({ id: 'usuario-1' }, process.env.JWT_SECRET_ACCESS_TOKEN);
+        const req = criarReqMiddleware(`Bearer ${token}`);
+        const next = jest.fn();
+        const carregaTokensSpy = jest
+            .spyOn(AuthService.prototype, 'carregatokens')
+            .mockResolvedValue({ data: { refreshtoken: 'refresh-token' } });
+
+        await AuthMiddleware(req, {}, next);
+
+        expect(req.user_id).toBe('usuario-1');
+        expect(carregaTokensSpy).toHaveBeenCalledWith('usuario-1');
+        expect(next).toHaveBeenCalledWith();
+
+        carregaTokensSpy.mockRestore();
+    });
+
+    it('rejeita quando jwt.verify resolve sem decoded', async () => {
+        const verifySpy = jest
+            .spyOn(jwt, 'verify')
+            .mockImplementationOnce((token, secret, callback) => callback(null, null));
+        const req = criarReqMiddleware('Bearer token-sem-decoded');
+        const next = jest.fn();
+
+        await AuthMiddleware(req, {}, next);
+
+        expect(next).toHaveBeenCalledWith(expect.any(TokenExpiredError));
+
+        verifySpy.mockRestore();
+    });
+
+    it('rejeita token vÃ¡lido sem refresh token persistido', async () => {
+        const token = jwt.sign({ id: 'usuario-1' }, process.env.JWT_SECRET_ACCESS_TOKEN);
+        const next = jest.fn();
+        const carregaTokensSpy = jest
+            .spyOn(AuthService.prototype, 'carregatokens')
+            .mockResolvedValue({ data: {} });
+
+        await AuthMiddleware(criarReqMiddleware(`Bearer ${token}`), {}, next);
+
+        expect(next).toHaveBeenCalledWith(expect.any(CustomError));
+        expect(next.mock.calls[0][0]).toMatchObject({
+            statusCode: 401,
+            errorType: 'unauthorized',
+            field: 'Token',
+        });
+
+        carregaTokensSpy.mockRestore();
+    });
+
+    it('traduz JsonWebTokenError para AuthenticationError', async () => {
+        const next = jest.fn();
+
+        await AuthMiddleware(criarReqMiddleware('Bearer token-invalido'), {}, next);
+
+        expect(next).toHaveBeenCalledWith(expect.any(AuthenticationError));
+        expect(next.mock.calls[0][0].message).toContain('JWT');
+    });
+
+    it('traduz TokenExpiredError do JWT para erro de token expirado', async () => {
+        const token = jwt.sign(
+            { id: 'usuario-1' },
+            process.env.JWT_SECRET_ACCESS_TOKEN,
+            { expiresIn: '-1s' },
+        );
+        const next = jest.fn();
+
+        await AuthMiddleware(criarReqMiddleware(`Bearer ${token}`), {}, next);
+
+        expect(next).toHaveBeenCalledWith(expect.any(TokenExpiredError));
+    });
+
+    it('propaga erros inesperados do AuthService', async () => {
+        const token = jwt.sign({ id: 'usuario-1' }, process.env.JWT_SECRET_ACCESS_TOKEN);
+        const erro = new Error('falha inesperada');
+        const next = jest.fn();
+        const carregaTokensSpy = jest
+            .spyOn(AuthService.prototype, 'carregatokens')
+            .mockRejectedValue(erro);
+
+        await AuthMiddleware(criarReqMiddleware(`Bearer ${token}`), {}, next);
+
+        expect(next).toHaveBeenCalledWith(erro);
+
+        carregaTokensSpy.mockRestore();
     });
 });
 
