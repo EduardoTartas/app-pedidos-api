@@ -654,3 +654,76 @@ describe('DELETE /restaurantes/:id', () => {
     });
 });
 
+describe('POST /restaurantes/:id/foto', () => {
+    it('atualiza foto do restaurante como dono -> 200', async () => {
+        const restaurante = await criarRestaurante(ownerId);
+
+        const res = await request(app)
+            .post(`/api/restaurantes/${restaurante._id}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'restaurante.jpg');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.dados.foto_restaurante).toBe('http://test.com/restaurante.jpg');
+
+        const atualizado = await Restaurante.findById(restaurante._id);
+        expect(atualizado.foto_restaurante).toBe('http://test.com/restaurante.jpg');
+    });
+
+    it('aceita arquivo no campo imagem -> 200', async () => {
+        const restaurante = await criarRestaurante(ownerId);
+
+        const res = await request(app)
+            .post(`/api/restaurantes/${restaurante._id}/foto`)
+            .attach('imagem', Buffer.from('fake-image'), 'restaurante.jpg');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.dados.foto_restaurante).toBe('http://test.com/restaurante.jpg');
+    });
+
+    it('sem arquivo -> 400', async () => {
+        const restaurante = await criarRestaurante(ownerId);
+
+        const res = await request(app).post(`/api/restaurantes/${restaurante._id}/foto`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('id invalido -> 400', async () => {
+        const res = await request(app)
+            .post(`/api/restaurantes/${INVALID_OBJECT_ID}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'restaurante.jpg');
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const restaurante = await criarRestaurante(ownerId);
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .post(`/api/restaurantes/${restaurante._id}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'restaurante.jpg');
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const restaurante = await criarRestaurante(ownerId);
+        autenticarComoUmaVez(outroUsuarioId);
+
+        const res = await request(app)
+            .post(`/api/restaurantes/${restaurante._id}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'restaurante.jpg');
+
+        expect(res.status).toBe(403);
+    });
+
+    it('restaurante inexistente -> 404', async () => {
+        const res = await request(app)
+            .post(`/api/restaurantes/${NOT_FOUND_OBJECT_ID}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'restaurante.jpg');
+
+        expect(res.status).toBe(404);
+    });
+});
+
