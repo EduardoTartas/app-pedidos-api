@@ -29,6 +29,7 @@ let app;
 let mongoServer;
 let donoId;
 let clienteId;
+let outroUsuarioId;
 let restauranteId;
 let prato;
 let grupo;
@@ -69,6 +70,26 @@ function autenticarComo(userId) {
         req.user_id = userId;
         next();
     });
+}
+
+function pedidoBase(extra = {}) {
+    return {
+        cliente_id: clienteId,
+        restaurante_id: restauranteId,
+        status: 'criado',
+        itens: [
+            {
+                prato_id: prato._id,
+                prato_nome: prato.nome,
+                preco_unitario: prato.preco,
+                quantidade: 1,
+                adicionais: []
+            }
+        ],
+        totais: { subtotal: 10, taxa_entrega: 5, total: 15 },
+        historico_status: [{ status: 'criado', data: new Date() }],
+        ...extra
+    };
 }
 
 async function criarUsuario(nome, extra = {}, track = false) {
@@ -148,6 +169,7 @@ beforeAll(async () => {
 
     donoId = await criarUsuario('Dono Restaurante', {}, true);
     clienteId = await criarUsuario('Cliente Pedido', {}, true);
+    outroUsuarioId = await criarUsuario('Outro Cliente Pedido', {}, true);
     restauranteId = await criarRestaurante('Restaurante Pedido', donoId, {
         status: 'aberto',
         taxa_entrega: 5
@@ -216,12 +238,37 @@ describe('pedidoRoutes', () => {
         expect(res.body.data).toEqual(expect.any(Object));
     });
 
+    it('GET /api/pedidos/meus aplica filtros e retorna pedidos encontrados', async () => {
+        const pedido = await Pedido.create(pedidoBase());
+        testDocumentos.pedidos.push(pedido._id);
+
+        const res = await request(app)
+            .get('/api/pedidos/meus?status=criado&data_inicio=2020-01-01&data_fim=2030-12-31&page=1&limite=5');
+
+        expect(res.status).toBe(200);
+        expect(res.body.message).toBe('1 pedido(s) encontrado(s).');
+        expect(res.body.data.docs[0]._id).toBe(pedido._id.toString());
+    });
+
     it('GET /api/pedidos/restaurante/:restauranteId com filtro inválido retorna mensagem de filtro', async () => {
         autenticarComo(donoId);
         const res = await request(app).get(`/api/pedidos/restaurante/${restauranteId}?status=criado`);
 
         expect(res.status).toBe(200);
         expect(res.body.message).toBe('Nenhum pedido encontrado com os filtros informados.');
+    });
+
+    it('GET /api/pedidos/restaurante/:restauranteId retorna pedidos encontrados', async () => {
+        const pedido = await Pedido.create(pedidoBase());
+        testDocumentos.pedidos.push(pedido._id);
+
+        autenticarComo(donoId);
+        const res = await request(app)
+            .get(`/api/pedidos/restaurante/${restauranteId}?status=criado&data_inicio=2020-01-01&data_fim=2030-12-31`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.message).toBe('1 pedido(s) encontrado(s).');
+        expect(res.body.data.docs[0]._id).toBe(pedido._id.toString());
     });
         it('POST /api/pedidos cria pedido e recalcula valores de preços e frete', async () => {
         const payload = {
@@ -283,32 +330,100 @@ describe('pedidoRoutes', () => {
             expect.objectContaining({ path: 'body', message: 'O corpo da requisição não pode ser vazio.' })
         ]);
     });
-    
 
+    it('POST /api/pedidos rejeita restaurante fechado', async () => {
+        const restauranteFechadoId = await criarRestaurante('Restaurante Fechado Pedido', donoId, {
+            status: 'fechado',
+        }, true);
+        const pratoFechado = await criarPrato(restauranteFechadoId, { status: 'ativo' }, true);
 
-
-
-
-
-
-
-    it('PATCH /api/pedidos/:id/status atualiza pedido para em_preparo quando feito pelo dono', async () => {
-        const pedido = await Pedido.create({
-            cliente_id: clienteId,
-            restaurante_id: restauranteId,
-            status: 'criado',
-            itens: [
-                {
-                    prato_id: prato._id,
-                    prato_nome: prato.nome,
-                    preco_unitario: prato.preco,
-                    quantidade: 1,
-                    adicionais: []
-                }
-            ],
-            totais: { subtotal: 10, taxa_entrega: 5, total: 15 },
-            historico_status: [{ status: 'criado', data: new Date() }]
+        const res = await request(app).post('/api/pedidos').send({
+            restaurante_id: restauranteFechadoId.toString(),
+            itens: [{ prato_id: pratoFechado._id.toString(), quantidade: 1 }],
         });
+
+        expect(res.status).toBe(400);
+        expect(res.body.message).toContain('aberto');
+    });
+
+    it('POST /api/pedidos rejeita prato de outro restaurante', async () => {
+        const outroRestauranteId = await criarRestaurante('Restaurante Outro Pedido', donoId, {
+            status: 'aberto',
+        }, true);
+        const pratoOutro = await criarPrato(outroRestauranteId, { status: 'ativo' }, true);
+
+        const res = await request(app).post('/api/pedidos').send({
+            restaurante_id: restauranteId.toString(),
+            itens: [{ prato_id: pratoOutro._id.toString(), quantidade: 1 }],
+        });
+
+        expect(res.status).toBe(400);
+        expect(res.body.message).toContain('pertence');
+    });
+
+    it('POST /api/pedidos rejeita prato inativo', async () => {
+        const pratoInativo = await criarPrato(restauranteId, { status: 'inativo' }, true);
+
+        const res = await request(app).post('/api/pedidos').send({
+            restaurante_id: restauranteId.toString(),
+            itens: [{ prato_id: pratoInativo._id.toString(), quantidade: 1 }],
+        });
+
+        expect(res.status).toBe(400);
+        expect(res.body.message).toContain('dispon');
+    });
+
+    it('POST /api/pedidos exige adicional obrigatorio do prato', async () => {
+        const grupoAvulso = await criarGrupo(restauranteId, { obrigatorio: false }, true);
+        const opcaoAvulsa = await criarOpcao(grupoAvulso._id, {}, true);
+
+        const res = await request(app).post('/api/pedidos').send({
+            restaurante_id: restauranteId.toString(),
+            itens: [{
+                prato_id: prato._id.toString(),
+                quantidade: 1,
+                adicionais: [{ opcao_id: opcaoAvulsa._id.toString(), quantidade: 1 }],
+            }],
+        });
+
+        expect(res.status).toBe(400);
+        expect(res.body.message).toContain('obrigat');
+    });
+
+    it('POST /api/pedidos rejeita adicional abaixo do minimo do grupo', async () => {
+        const pratoComGrupo = await criarPrato(restauranteId, { status: 'ativo' }, true);
+        const grupoMinimo = await criarGrupo(restauranteId, { min: 2, max: 3 }, true);
+        const opcaoMinimo = await criarOpcao(grupoMinimo._id, {}, true);
+        await Prato.findByIdAndUpdate(pratoComGrupo._id, { $addToSet: { adicionais_grupo_ids: grupoMinimo._id } });
+
+        const res = await request(app).post('/api/pedidos').send({
+            restaurante_id: restauranteId.toString(),
+            itens: [{
+                prato_id: pratoComGrupo._id.toString(),
+                quantidade: 1,
+                adicionais: [{ opcao_id: opcaoMinimo._id.toString(), quantidade: 1 }],
+            }],
+        });
+
+        expect(res.status).toBe(400);
+        expect(res.body.message).toContain('selecionadas');
+    });
+
+    it('POST /api/pedidos rejeita adicional acima do maximo do grupo', async () => {
+        const res = await request(app).post('/api/pedidos').send({
+            restaurante_id: restauranteId.toString(),
+            itens: [{
+                prato_id: prato._id.toString(),
+                quantidade: 1,
+                adicionais: [{ opcao_id: opcao._id.toString(), quantidade: 2 }],
+            }],
+        });
+
+        expect(res.status).toBe(400);
+        expect(res.body.message).toContain('permite');
+    });
+    it('PATCH /api/pedidos/:id/status atualiza pedido para em_preparo quando feito pelo dono', async () => {
+        const pedido = await Pedido.create(pedidoBase());
         testDocumentos.pedidos.push(pedido._id);
 
         autenticarComo(donoId);
@@ -330,5 +445,55 @@ describe('pedidoRoutes', () => {
         expect(notificacao).not.toBeNull();
         expect(notificacao.titulo).toBe('Pedido em preparo');
         testDocumentos.notificacoes.push(notificacao._id);
+    });
+
+    it('PATCH /api/pedidos/:id/status com corpo vazio retorna erro de validaÃ§Ã£o', async () => {
+        const pedido = await Pedido.create(pedidoBase());
+        testDocumentos.pedidos.push(pedido._id);
+
+        const res = await request(app)
+            .patch(`/api/pedidos/${pedido._id.toString()}/status`)
+            .send({});
+
+        expect(res.status).toBe(400);
+        expect(res.body.message).toBe('Informe o novo status do pedido.');
+    });
+
+    it('PATCH /api/pedidos/:id/status nao cancela pedido entregue', async () => {
+        const pedido = await Pedido.create(pedidoBase({ status: 'entregue' }));
+        testDocumentos.pedidos.push(pedido._id);
+
+        const res = await request(app)
+            .patch(`/api/pedidos/${pedido._id.toString()}/status`)
+            .send({ status: 'cancelado' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.message).toContain('entregue');
+    });
+
+    it('PATCH /api/pedidos/:id/status rejeita cancelamento por usuario sem relacao com o pedido', async () => {
+        const pedido = await Pedido.create(pedidoBase());
+        testDocumentos.pedidos.push(pedido._id);
+
+        autenticarComo(outroUsuarioId);
+        const res = await request(app)
+            .patch(`/api/pedidos/${pedido._id.toString()}/status`)
+            .send({ status: 'cancelado' });
+
+        expect(res.status).toBe(403);
+        expect(res.body.message).toContain('cancelar');
+    });
+
+    it('PATCH /api/pedidos/:id/status rejeita transicao fora do fluxo', async () => {
+        const pedido = await Pedido.create(pedidoBase());
+        testDocumentos.pedidos.push(pedido._id);
+
+        autenticarComo(donoId);
+        const res = await request(app)
+            .patch(`/api/pedidos/${pedido._id.toString()}/status`)
+            .send({ status: 'entregue' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.message).toContain('inv');
     });
 });
