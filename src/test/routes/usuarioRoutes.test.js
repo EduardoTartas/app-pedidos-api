@@ -95,3 +95,93 @@ function asNaoAutenticado() {
         });
     });
 }
+
+async function criarUsuario(nome, extra = {}, { seed = false } = {}) {
+    const slug = nome.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const usuario = await Usuario.create({
+        nome,
+        email: `${slug}-${nextId('mail')}@test.local`,
+        senha: 'teste123',
+        status: 'ativo',
+        isAdmin: false,
+        foto_perfil: '',
+        ...extra,
+    });
+
+    if (seed) {
+        seedUsuarios.push(usuario._id);
+    } else {
+        tempUsuarios.push(usuario._id);
+    }
+
+    return usuario;
+}
+
+function payloadUsuario(extra = {}) {
+    return {
+        nome: nextId('UsuarioPayload'),
+        email: `${nextId('usuario')}@test.local`,
+        senha: 'Senha@123',
+        cpf: gerarCpf(),
+        telefone: '11987654321',
+        foto_perfil: 'http://test.com/perfil.png',
+        ...extra,
+    };
+}
+
+beforeAll(async () => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    mongoServer = await MongoMemoryServer.create();
+    await mongoose.connect(mongoServer.getUri());
+
+    app = express();
+    app.use(express.json());
+    app.use(expressFileUpload());
+    app.use('/api', usuarioRoutes);
+    app.use(errorHandler);
+
+    const admin = await criarUsuario('Admin Usuario', { isAdmin: true }, { seed: true });
+    const usuarioAuth = await criarUsuario('Usuario Auth', {}, { seed: true });
+    const outroUsuario = await criarUsuario('Outro Usuario', {}, { seed: true });
+
+    adminId = admin._id;
+    usuarioAuthId = usuarioAuth._id;
+    outroUsuarioId = outroUsuario._id;
+
+    asAutenticado();
+}, 30000);
+
+afterEach(async () => {
+    if (tempUsuarios.length > 0) {
+        await Usuario.deleteMany({ _id: { $in: tempUsuarios } }).catch(() => {});
+        tempUsuarios.length = 0;
+    }
+
+    asAutenticado();
+});
+
+afterAll(async () => {
+    if (tempUsuarios.length > 0) {
+        await Usuario.deleteMany({ _id: { $in: tempUsuarios } }).catch(() => {});
+    }
+
+    if (seedUsuarios.length > 0) {
+        await Usuario.deleteMany({ _id: { $in: seedUsuarios } }).catch(() => {});
+    }
+
+    await mongoose.disconnect();
+    if (mongoServer) {
+        await mongoServer.stop();
+    }
+
+    warnSpy?.mockRestore();
+    errorSpy?.mockRestore();
+    logSpy?.mockRestore();
+}, 30000);
+
+beforeEach(() => {
+    asAutenticado();
+});
