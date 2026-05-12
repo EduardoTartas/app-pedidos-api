@@ -264,3 +264,118 @@ describe('GET /usuarios', () => {
         expect(res.status).toBe(401);
     });
 });
+
+describe('GET /usuarios/:id', () => {
+    it('busca usuario por id autenticado -> 200', async () => {
+        const usuario = await criarUsuario('Detalhe Usuario');
+
+        const res = await request(app).get(`/api/usuarios/${usuario._id}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.data._id).toBe(usuario._id.toString());
+        expect(res.body.data.nome).toBe('Detalhe Usuario');
+    });
+
+    it('id invalido -> 400', async () => {
+        const res = await request(app).get(`/api/usuarios/${INVALID_OBJECT_ID}`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('usuario inexistente -> 404', async () => {
+        const res = await request(app).get(`/api/usuarios/${NOT_FOUND_OBJECT_ID}`);
+
+        expect(res.status).toBe(404);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        asNaoAutenticado();
+
+        const res = await request(app).get(`/api/usuarios/${usuarioAuthId}`);
+
+        expect(res.status).toBe(401);
+    });
+});
+
+describe('POST /usuarios', () => {
+    it('cria usuario autenticado removendo senha da resposta -> 201', async () => {
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .post('/api/usuarios')
+            .send(payloadUsuario({ nome: 'Novo Usuario' }));
+
+        expect(res.status).toBe(201);
+        expect(res.body.data.nome).toBe('Novo Usuario');
+        expect(res.body.data.email_verificado).toBe(false);
+        expect(res.body.data).not.toHaveProperty('senha');
+
+        tempUsuarios.push(res.body.data._id);
+    });
+
+    it('cria usuario sem senha opcional -> 201', async () => {
+        const { senha, ...payloadSemSenha } = payloadUsuario({ nome: 'Sem Senha' });
+
+        const res = await request(app)
+            .post('/api/usuarios')
+            .send(payloadSemSenha);
+
+        expect(res.status).toBe(201);
+        expect(res.body.data.nome).toBe('Sem Senha');
+
+        tempUsuarios.push(res.body.data._id);
+    });
+
+    it('corpo vazio -> 400', async () => {
+        const res = await request(app).post('/api/usuarios').send({});
+
+        expect(res.status).toBe(400);
+    });
+
+    it('payload invalido -> 400', async () => {
+        const res = await request(app)
+            .post('/api/usuarios')
+            .send(payloadUsuario({ email: 'email-invalido', senha: 'fraca' }));
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .post('/api/usuarios')
+            .send(payloadUsuario());
+
+        expect(res.status).toBe(401);
+    });
+
+    it('email duplicado -> 400', async () => {
+        await criarUsuario('Email Duplicado', { email: 'duplicado@test.local' });
+
+        const res = await request(app)
+            .post('/api/usuarios')
+            .send(payloadUsuario({ email: 'duplicado@test.local' }));
+
+        expect(res.status).toBe(400);
+    });
+
+    it('cpf invalido -> 400', async () => {
+        const res = await request(app)
+            .post('/api/usuarios')
+            .send(payloadUsuario({ cpf: '11111111111' }));
+
+        expect(res.status).toBe(400);
+    });
+
+    it('cpf duplicado -> 400', async () => {
+        const cpf = gerarCpf();
+        await criarUsuario('CPF Duplicado', { cpf });
+
+        const res = await request(app)
+            .post('/api/usuarios')
+            .send(payloadUsuario({ cpf }));
+
+        expect(res.status).toBe(400);
+    });
+});
