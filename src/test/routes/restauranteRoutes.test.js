@@ -602,3 +602,55 @@ describe('PATCH /restaurantes/:id', () => {
     });
 });
 
+describe('DELETE /restaurantes/:id', () => {
+    it('deleta restaurante como dono -> 200', async () => {
+        const restaurante = await criarRestaurante(ownerId, { foto_restaurante: 'http://test.com/antiga.jpg' });
+
+        const res = await request(app).delete(`/api/restaurantes/${restaurante._id}`);
+
+        expect(res.status).toBe(200);
+
+        const removido = await Restaurante.findById(restaurante._id);
+        expect(removido).toBeNull();
+    });
+
+    it('administrador deleta restaurante de outro dono -> 200', async () => {
+        const restaurante = await criarRestaurante(outroUsuarioId);
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).delete(`/api/restaurantes/${restaurante._id}`);
+
+        expect(res.status).toBe(200);
+    });
+
+    it('id invalido -> 400', async () => {
+        const res = await request(app).delete(`/api/restaurantes/${INVALID_OBJECT_ID}`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const restaurante = await criarRestaurante(ownerId);
+        asNaoAutenticado();
+
+        const res = await request(app).delete(`/api/restaurantes/${restaurante._id}`);
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const restaurante = await criarRestaurante(ownerId);
+        autenticarComoUmaVez(outroUsuarioId);
+
+        const res = await request(app).delete(`/api/restaurantes/${restaurante._id}`);
+
+        expect(res.status).toBe(403);
+    });
+
+    it('restaurante inexistente -> 404', async () => {
+        const res = await request(app).delete(`/api/restaurantes/${NOT_FOUND_OBJECT_ID}`);
+
+        expect(res.status).toBe(404);
+    });
+});
+
