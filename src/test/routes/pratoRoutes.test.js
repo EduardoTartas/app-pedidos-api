@@ -324,3 +324,92 @@ describe('GET /cardapio/:restauranteId', () => {
         expect(res.status).toBe(404);
     });
 });
+
+describe('POST /pratos', () => {
+    it('cria prato como dono do restaurante -> 201', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .post('/api/pratos')
+            .send(payloadPrato(restauranteId, { nome: 'Pizza Especial' }));
+
+        expect(res.status).toBe(201);
+        expect(res.body.data.nome).toBe('Pizza Especial');
+        expect(res.body.data.restaurante_id).toBe(restauranteId.toString());
+        expect(res.body.data.secao).toBe('Principais');
+
+        tempPratos.push(res.body.data._id);
+    });
+
+    it('administrador cria prato em qualquer restaurante -> 201', async () => {
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .post('/api/pratos')
+            .send(payloadPrato(outroRestauranteId, { nome: 'Admin Burger' }));
+
+        expect(res.status).toBe(201);
+        expect(res.body.data.nome).toBe('Admin Burger');
+        expect(res.body.data.restaurante_id).toBe(outroRestauranteId.toString());
+
+        tempPratos.push(res.body.data._id);
+    });
+
+    it('corpo vazio -> 400', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app).post('/api/pratos').send({});
+
+        expect(res.status).toBe(400);
+    });
+
+    it('payload invalido -> 400', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .post('/api/pratos')
+            .send(payloadPrato(restauranteId, { preco: -1 }));
+
+        expect(res.status).toBe(400);
+    });
+
+    it('secao fora do cardapio do restaurante -> 400', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .post('/api/pratos')
+            .send(payloadPrato(restauranteId, { secao: 'Executivos' }));
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .post('/api/pratos')
+            .send(payloadPrato(restauranteId));
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        autenticarComoUmaVez(outroUsuarioId);
+
+        const res = await request(app)
+            .post('/api/pratos')
+            .send(payloadPrato(restauranteId));
+
+        expect(res.status).toBe(403);
+    });
+
+    it('restaurante inexistente -> 404', async () => {
+        autenticarComoUmaVez(ownerId);
+
+        const res = await request(app)
+            .post('/api/pratos')
+            .send(payloadPrato(NOT_FOUND_OBJECT_ID));
+
+        expect(res.status).toBe(404);
+    });
+});
