@@ -725,4 +725,3 @@ describe('DELETE /pratos/:id/foto', () => {
         expect(res.status).toBe(404);
     });
 });
- 
