@@ -1,3 +1,24 @@
+jest.mock('../../middlewares/AuthMiddleware.js');
+jest.mock('../../service/UploadService.js', () => ({
+    __esModule: true,
+    default: class {
+        constructor() {}
+        async substituirImagem() {
+            return {
+                url: 'http://test.com/prato.jpg',
+                fileName: 'prato.jpg',
+                metadata: { contentType: 'image/jpeg' },
+            };
+        }
+        async deleteImagemComRetry() {
+            return true;
+        }
+    },
+}));
+
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import { ObjectId } from 'mongodb';
+import express from 'express';
 import expressFileUpload from 'express-fileupload';
 import request from 'supertest';
 import mongoose from 'mongoose';
@@ -42,5 +63,29 @@ function asAutenticado() {
     AuthMiddleware.mockImplementation((req, res, next) => {
         req.user_id = ownerId;
         next();
+    });
+}
+
+function autenticarComo(userId) {
+    AuthMiddleware.mockImplementation((req, res, next) => {
+        req.user_id = userId;
+        next();
+    });
+}
+
+function autenticarComoUmaVez(userId) {
+    AuthMiddleware.mockImplementationOnce((req, res, next) => {
+        req.user_id = userId;
+        next();
+    });
+}
+
+function asNaoAutenticado() {
+    AuthMiddleware.mockImplementationOnce((req, res) => {
+        res.status(401).json({
+            message: 'Nao autorizado. Faca login para continuar.',
+            data: null,
+            errors: [],
+        });
     });
 }
