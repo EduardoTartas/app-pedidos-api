@@ -379,7 +379,6 @@ describe('POST /usuarios', () => {
         expect(res.status).toBe(400);
     });
 });
-
 describe('PATCH /usuarios/:id', () => {
     it('atualiza proprio usuario e marca perfil completo com cpf e telefone -> 200', async () => {
         const usuario = await criarUsuario('Atualizavel', { profileComplete: false });
@@ -483,7 +482,6 @@ describe('PATCH /usuarios/:id', () => {
         expect(res.status).toBe(404);
     });
 });
-
 describe('PATCH /usuarios/:id/status', () => {
     it('administrador altera status de outro usuario -> 200', async () => {
         const usuario = await criarUsuario('Status Usuario');
@@ -555,6 +553,204 @@ describe('PATCH /usuarios/:id/status', () => {
         const res = await request(app)
             .patch(`/api/usuarios/${NOT_FOUND_OBJECT_ID}/status`)
             .send({ status: 'inativo' });
+
+        expect(res.status).toBe(404);
+    });
+});
+describe('DELETE /usuarios/:id', () => {
+    it('deleta propria conta -> 200', async () => {
+        const usuario = await criarUsuario('Delete Proprio', { foto_perfil: 'http://test.com/antiga.jpg' });
+        autenticarComoUmaVez(usuario._id);
+
+        const res = await request(app).delete(`/api/usuarios/${usuario._id}`);
+
+        expect(res.status).toBe(200);
+
+        const removido = await Usuario.findById(usuario._id);
+        expect(removido).toBeNull();
+    });
+
+    it('administrador deleta outro usuario -> 200', async () => {
+        const usuario = await criarUsuario('Delete Admin');
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).delete(`/api/usuarios/${usuario._id}`);
+
+        expect(res.status).toBe(200);
+    });
+
+    it('id invalido -> 400', async () => {
+        const res = await request(app).delete(`/api/usuarios/${INVALID_OBJECT_ID}`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const usuario = await criarUsuario('Delete Sem Auth');
+        asNaoAutenticado();
+
+        const res = await request(app).delete(`/api/usuarios/${usuario._id}`);
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao para deletar outro -> 403', async () => {
+        const usuario = await criarUsuario('Delete Outro');
+
+        const res = await request(app).delete(`/api/usuarios/${usuario._id}`);
+
+        expect(res.status).toBe(403);
+    });
+
+    it('usuario inexistente -> 404', async () => {
+        const res = await request(app).delete(`/api/usuarios/${NOT_FOUND_OBJECT_ID}`);
+
+        expect(res.status).toBe(404);
+    });
+});
+
+describe('POST /usuarios/:id/foto', () => {
+    it('atualiza foto do proprio usuario -> 200', async () => {
+        const usuario = await criarUsuario('Foto Propria');
+        autenticarComoUmaVez(usuario._id);
+
+        const res = await request(app)
+            .post(`/api/usuarios/${usuario._id}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'usuario.jpg');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.dados.foto_perfil).toBe('http://test.com/usuario.jpg');
+
+        const atualizado = await Usuario.findById(usuario._id);
+        expect(atualizado.foto_perfil).toBe('http://test.com/usuario.jpg');
+    });
+
+    it('aceita arquivo no campo imagem -> 200', async () => {
+        const usuario = await criarUsuario('Foto Imagem');
+        autenticarComoUmaVez(usuario._id);
+
+        const res = await request(app)
+            .post(`/api/usuarios/${usuario._id}/foto`)
+            .attach('imagem', Buffer.from('fake-image'), 'usuario.jpg');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.dados.foto_perfil).toBe('http://test.com/usuario.jpg');
+    });
+
+    it('administrador atualiza foto de outro usuario -> 200', async () => {
+        const usuario = await criarUsuario('Foto Admin');
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .post(`/api/usuarios/${usuario._id}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'usuario.jpg');
+
+        expect(res.status).toBe(200);
+    });
+
+    it('sem arquivo -> 400', async () => {
+        const usuario = await criarUsuario('Foto Sem Arquivo');
+        autenticarComoUmaVez(usuario._id);
+
+        const res = await request(app).post(`/api/usuarios/${usuario._id}/foto`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('id invalido -> 400', async () => {
+        const res = await request(app)
+            .post(`/api/usuarios/${INVALID_OBJECT_ID}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'usuario.jpg');
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const usuario = await criarUsuario('Foto Sem Auth');
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .post(`/api/usuarios/${usuario._id}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'usuario.jpg');
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const usuario = await criarUsuario('Foto Outro');
+
+        const res = await request(app)
+            .post(`/api/usuarios/${usuario._id}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'usuario.jpg');
+
+        expect(res.status).toBe(403);
+    });
+
+    it('usuario inexistente -> 404', async () => {
+        const res = await request(app)
+            .post(`/api/usuarios/${NOT_FOUND_OBJECT_ID}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'usuario.jpg');
+
+        expect(res.status).toBe(404);
+    });
+});
+
+describe('DELETE /usuarios/:id/foto', () => {
+    it('remove foto do proprio usuario -> 200', async () => {
+        const usuario = await criarUsuario('Remove Foto', { foto_perfil: 'http://test.com/antiga.jpg' });
+        autenticarComoUmaVez(usuario._id);
+
+        const res = await request(app).delete(`/api/usuarios/${usuario._id}/foto`);
+
+        expect(res.status).toBe(200);
+
+        const atualizado = await Usuario.findById(usuario._id);
+        expect(atualizado.foto_perfil).toBe('');
+    });
+
+    it('administrador remove foto de outro usuario -> 200', async () => {
+        const usuario = await criarUsuario('Remove Foto Admin', { foto_perfil: 'http://test.com/antiga.jpg' });
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).delete(`/api/usuarios/${usuario._id}/foto`);
+
+        expect(res.status).toBe(200);
+    });
+
+    it('usuario sem foto -> 404', async () => {
+        const usuario = await criarUsuario('Sem Foto', { foto_perfil: '' });
+        autenticarComoUmaVez(usuario._id);
+
+        const res = await request(app).delete(`/api/usuarios/${usuario._id}/foto`);
+
+        expect(res.status).toBe(404);
+    });
+
+    it('id invalido -> 400', async () => {
+        const res = await request(app).delete(`/api/usuarios/${INVALID_OBJECT_ID}/foto`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const usuario = await criarUsuario('Remove Foto Sem Auth', { foto_perfil: 'http://test.com/antiga.jpg' });
+        asNaoAutenticado();
+
+        const res = await request(app).delete(`/api/usuarios/${usuario._id}/foto`);
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const usuario = await criarUsuario('Remove Foto Outro', { foto_perfil: 'http://test.com/antiga.jpg' });
+
+        const res = await request(app).delete(`/api/usuarios/${usuario._id}/foto`);
+
+        expect(res.status).toBe(403);
+    });
+
+    it('usuario inexistente -> 404', async () => {
+        const res = await request(app).delete(`/api/usuarios/${NOT_FOUND_OBJECT_ID}/foto`);
 
         expect(res.status).toBe(404);
     });
