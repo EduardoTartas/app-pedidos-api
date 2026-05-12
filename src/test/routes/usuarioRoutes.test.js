@@ -379,3 +379,183 @@ describe('POST /usuarios', () => {
         expect(res.status).toBe(400);
     });
 });
+
+describe('PATCH /usuarios/:id', () => {
+    it('atualiza proprio usuario e marca perfil completo com cpf e telefone -> 200', async () => {
+        const usuario = await criarUsuario('Atualizavel', { profileComplete: false });
+        autenticarComoUmaVez(usuario._id);
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuario._id}`)
+            .send({ nome: 'Atualizado', cpf: gerarCpf(), telefone: '11987654321' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.nome).toBe('Atualizado');
+        expect(res.body.data.profileComplete).toBe(true);
+        expect(res.body.data).not.toHaveProperty('senha');
+    });
+
+    it('administrador atualiza outro usuario e pode alterar isAdmin -> 200', async () => {
+        const usuario = await criarUsuario('Usuario Promovido');
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuario._id}`)
+            .send({ isAdmin: true, nome: 'Usuario Admin' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.isAdmin).toBe(true);
+        expect(res.body.data.nome).toBe('Usuario Admin');
+    });
+
+    it('usuario comum nao altera isAdmin nem senha pela rota de perfil -> 200', async () => {
+        const usuario = await criarUsuario('Usuario Comum');
+        autenticarComoUmaVez(usuario._id);
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuario._id}`)
+            .send({ isAdmin: true, senha: 'Outra@123', nome: 'Usuario Comum Editado' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.isAdmin).toBe(false);
+        expect(res.body.data.nome).toBe('Usuario Comum Editado');
+
+        const usuarioComSenha = await Usuario.findById(usuario._id).select('+senha');
+        expect(usuarioComSenha.senha).toBe('teste123');
+    });
+
+    it('corpo vazio -> 400', async () => {
+        const usuario = await criarUsuario('Corpo Vazio');
+        autenticarComoUmaVez(usuario._id);
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuario._id}`)
+            .send({});
+
+        expect(res.status).toBe(400);
+    });
+
+    it('id invalido -> 400', async () => {
+        const res = await request(app)
+            .patch(`/api/usuarios/${INVALID_OBJECT_ID}`)
+            .send({ nome: 'Novo Nome' });
+
+        expect(res.status).toBe(400);
+    });
+
+    it('payload invalido -> 400', async () => {
+        const usuario = await criarUsuario('Payload Invalido');
+        autenticarComoUmaVez(usuario._id);
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuario._id}`)
+            .send({ foto_perfil: 'arquivo.txt' });
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const usuario = await criarUsuario('Sem Auth');
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuario._id}`)
+            .send({ nome: 'Bloqueado' });
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao para atualizar outro -> 403', async () => {
+        const usuario = await criarUsuario('Outro Atualizavel');
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuario._id}`)
+            .send({ nome: 'Sem Permissao' });
+
+        expect(res.status).toBe(403);
+    });
+
+    it('usuario inexistente -> 404', async () => {
+        const res = await request(app)
+            .patch(`/api/usuarios/${NOT_FOUND_OBJECT_ID}`)
+            .send({ nome: 'Nao Existe' });
+
+        expect(res.status).toBe(404);
+    });
+});
+
+describe('PATCH /usuarios/:id/status', () => {
+    it('administrador altera status de outro usuario -> 200', async () => {
+        const usuario = await criarUsuario('Status Usuario');
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuario._id}/status`)
+            .send({ status: 'inativo' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.status).toBe('inativo');
+    });
+
+    it('usuario altera o proprio status -> 200', async () => {
+        const usuario = await criarUsuario('Status Proprio');
+        autenticarComoUmaVez(usuario._id);
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuario._id}/status`)
+            .send({ status: 'inativo' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.status).toBe('inativo');
+    });
+
+    it('status invalido -> 400', async () => {
+        const usuario = await criarUsuario('Status Invalido');
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuario._id}/status`)
+            .send({ status: 'bloqueado' });
+
+        expect(res.status).toBe(400);
+    });
+
+    it('id invalido -> 400', async () => {
+        const res = await request(app)
+            .patch(`/api/usuarios/${INVALID_OBJECT_ID}/status`)
+            .send({ status: 'inativo' });
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const usuario = await criarUsuario('Status Sem Auth');
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuario._id}/status`)
+            .send({ status: 'inativo' });
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao para alterar outro -> 403', async () => {
+        const usuario = await criarUsuario('Status Outro');
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${usuario._id}/status`)
+            .send({ status: 'inativo' });
+
+        expect(res.status).toBe(403);
+    });
+
+    it('usuario inexistente -> 404', async () => {
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .patch(`/api/usuarios/${NOT_FOUND_OBJECT_ID}/status`)
+            .send({ status: 'inativo' });
+
+        expect(res.status).toBe(404);
+    });
+});
