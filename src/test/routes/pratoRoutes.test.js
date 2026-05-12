@@ -89,3 +89,56 @@ function asNaoAutenticado() {
         });
     });
 }
+
+
+async function criarUsuario(nome, extra = {}) {
+    const slug = nome.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const usuario = await Usuario.create({
+        nome,
+        email: `${slug}-${nextId('mail')}@test.local`,
+        senha: 'teste123',
+        ...extra,
+    });
+    tempUsuarios.push(usuario._id);
+    return usuario._id;
+}
+
+async function criarRestaurante(nome, donoId, extra = {}) {
+    const restaurante = await Restaurante.create({
+        nome,
+        cnpj: nextId('cnpj'),
+        dono_id: donoId,
+        secoes_cardapio: ['Principais', 'Sobremesas', 'Bebidas'],
+        ...extra,
+    });
+    tempRestaurantes.push(restaurante._id);
+    return restaurante._id;
+}
+
+async function criarPrato(restId = restauranteId, extra = {}) {
+    const prato = await Prato.create({
+        restaurante_id: restId,
+        nome: nextId('Prato'),
+        foto_prato: '',
+        preco: 25.9,
+        descricao: 'Prato de teste',
+        secao: 'Principais',
+        status: 'ativo',
+        ...extra,
+    });
+    tempPratos.push(prato._id);
+    return prato;
+}
+
+function payloadPrato(restId = restauranteId, extra = {}) {
+    return {
+        restaurante_id: restId.toString(),
+        nome: nextId('PratoPayload'),
+        foto_prato: 'http://test.com/prato.png',
+        preco: 32.5,
+        descricao: 'Prato valido para teste',
+        secao: 'Principais',
+        status: 'ativo',
+        ...extra,
+    };
+}
