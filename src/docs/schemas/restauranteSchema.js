@@ -6,7 +6,7 @@ const restauranteSchemas = {
         properties: {
             nome: { type: "string", description: "Filtra por nome" },
             status: { type: "string", enum: ["aberto", "fechado", "inativo"], description: "Filtra por status" },
-            categoria: { type: "string", description: "Filtra pela tag de categoria (ex: Lanches) - ObjectId ou string separada por virgula" }
+            categoria: { type: "string", description: "Filtra por categoria - Deve ser o ID da categoria (ObjectId) ou uma lista de IDs separados por vírgula" }
         }
     },
 

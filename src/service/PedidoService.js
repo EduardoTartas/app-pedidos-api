@@ -87,12 +87,13 @@ class PedidoService {
 
             let totalAdicionaisItem = 0;
             const adicionaisCalculados = [];
+            const adicionaisInput = item.adicionais || [];
 
-            if (item.adicionais && item.adicionais.length > 0) {
-                // Validar regras de min/max dos grupos de adicionais
-                await this.validarAdicionais(prato, item.adicionais);
+            // Validar regras de min/max dos grupos de adicionais (incluindo obrigatoriedade)
+            await this.validarAdicionais(prato, adicionaisInput);
 
-                for (const adicional of item.adicionais) {
+            if (adicionaisInput.length > 0) {
+                for (const adicional of adicionaisInput) {
                     const opcao = await this.opcaoRepository.buscarPorID(adicional.opcao_id);
 
                     adicionaisCalculados.push({
@@ -137,13 +138,15 @@ class PedidoService {
         const pedido = await this.repository.criar(pedidoData);
 
         // Notificar o dono do restaurante
-        await this.notificacaoRepository.criar({
-            usuario_id: restaurante.dono_id._id || restaurante.dono_id,
-            pedido_id: pedido._id,
-            tipo: 'pedido_confirmado',
-            titulo: 'Novo pedido recebido',
-            mensagem: `Novo pedido #${pedido._id} recebido!`
-        });
+        if (restaurante.dono_id) {
+            await this.notificacaoRepository.criar({
+                usuario_id: restaurante.dono_id._id || restaurante.dono_id,
+                pedido_id: pedido._id,
+                tipo: 'pedido_confirmado',
+                titulo: 'Novo pedido recebido',
+                mensagem: `Novo pedido #${pedido._id} recebido!`
+            });
+        }
 
         return pedido;
     }
@@ -194,6 +197,7 @@ class PedidoService {
         // Verificar grupos obrigatórios
         if (prato.adicionais_grupo_ids && prato.adicionais_grupo_ids.length > 0) {
             for (const grupoRef of prato.adicionais_grupo_ids) {
+                if (!grupoRef) continue;
                 const grupoId = String(grupoRef._id || grupoRef);
                 const grupo = await this.grupoRepository.buscarPorID(grupoId);
 
