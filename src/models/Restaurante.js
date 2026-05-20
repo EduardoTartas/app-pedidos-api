@@ -12,6 +12,16 @@ class Restaurante {
                 required: [true, "O nome do restaurante é obrigatório!"],
                 trim: true
             },
+            descricao: {
+                type: String,
+                trim: true,
+                default: ""
+            },
+            telefone: {
+                type: String,
+                trim: true,
+                default: ""
+            },
             foto_restaurante: {
                 type: String,
                 default: ""

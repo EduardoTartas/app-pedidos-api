@@ -10,6 +10,12 @@ const RestauranteSchema = z.object({
         .string()
         .nonempty('Campo nome é obrigatório.')
         .min(2, 'Nome deve ter pelo menos 2 caracteres.'),
+    descricao: z
+        .string()
+        .optional(),
+    telefone: z
+        .string()
+        .optional(),
     foto_restaurante: z
         .string()
         .refine((val) => val === '' || /\.(jpg|jpeg|png|webp|svg|gif)$/i.test(val), {
@@ -23,7 +29,6 @@ const RestauranteSchema = z.object({
         .optional(),
     categoria_ids: z
         .array(objectIdSchema)
-        .min(1, 'Pelo menos uma categoria é obrigatória.')
         .optional(),
     secoes_cardapio: z
         .array(z.string().min(1, 'Nome da seção não pode ser vazio.'))
