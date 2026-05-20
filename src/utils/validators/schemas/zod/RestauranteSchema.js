@@ -48,6 +48,14 @@ const RestauranteSchema = z.object({
             message: 'CNPJ deve conter exatamente 14 dígitos numéricos.',
         })
         .optional(),
+    horario_funcionamento: z
+        .array(z.object({
+            dia: z.enum(["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"]),
+            abertura: z.string().optional(),
+            fechamento: z.string().optional(),
+            fechado: z.boolean().default(false)
+        }))
+        .optional(),
 });
 
 const RestauranteUpdateSchema = RestauranteSchema.partial();

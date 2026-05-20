@@ -54,7 +54,13 @@ class Restaurante {
                 type: String,
                 unique: true,
                 sparse: true
-            }
+            },
+            horario_funcionamento: [{
+                dia: { type: String, enum: ["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"] },
+                abertura: { type: String }, // Formato HH:mm
+                fechamento: { type: String }, // Formato HH:mm
+                fechado: { type: Boolean, default: false }
+            }]
         }, {
             timestamps: true,
             versionKey: false

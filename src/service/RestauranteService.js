@@ -104,7 +104,16 @@ class RestauranteService {
 
         // Verificar se o usuário é o dono ou admin
         const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
-        const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
+        const donoId = restaurante.dono_id?._id ? String(restaurante.dono_id._id) : String(restaurante.dono_id || "");
+        
+        if (!donoId) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR.code,
+                errorType: 'internalError',
+                field: 'dono_id',
+                customMessage: 'Proprietário do restaurante não encontrado.',
+            });
+        }
         ensurePermission({
             usuarioLogado,
             targetId: donoId,
@@ -139,7 +148,16 @@ class RestauranteService {
 
         // Verificar se o usuário é o dono ou admin
         const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
-        const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
+        const donoId = restaurante.dono_id?._id ? String(restaurante.dono_id._id) : String(restaurante.dono_id || "");
+        
+        if (!donoId) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR.code,
+                errorType: 'internalError',
+                field: 'dono_id',
+                customMessage: 'Proprietário do restaurante não encontrado.',
+            });
+        }
         ensurePermission({
             usuarioLogado,
             targetId: donoId,
