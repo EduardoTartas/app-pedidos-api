@@ -17,6 +17,26 @@ class AdicionalGrupoController {
         this.service = new AdicionalGrupoService();
     }
 
+    async listar(req, res) {
+        const { restaurante_id: restauranteId, prato_id: pratoId } = req.query;
+
+        let data;
+        if (pratoId) {
+            data = await this.service.listarPorPrato(pratoId);
+        } else if (restauranteId) {
+            data = await this.service.listarPorRestaurante(restauranteId);
+        } else {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                errorType: 'invalidQuery',
+                field: 'query',
+                customMessage: 'Informe restaurante_id ou prato_id para listar os grupos.'
+            });
+        }
+
+        return CommonResponse.success(res, data);
+    }
+
     async listarPorPrato(req, res) {
         const { pratoId } = req.params;
         IdSchema.parse(pratoId);
