@@ -126,4 +126,5 @@ class Logger {
 
 const loggerInstance = new Logger();
 
+export { Logger };
 export default loggerInstance.logger;

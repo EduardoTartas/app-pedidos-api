@@ -80,6 +80,14 @@ class EnderecoRepository {
         }
         return await this.modelEndereco.findOne(filtro);
     }
+
+    async deletarPorUsuario(usuarioId) {
+        return await this.modelEndereco.deleteMany({ usuario_id: usuarioId });
+    }
+
+    async deletarPorRestaurante(restauranteId) {
+        return await this.modelEndereco.deleteMany({ restaurante_id: restauranteId });
+    }
 }
 
 export default EnderecoRepository;

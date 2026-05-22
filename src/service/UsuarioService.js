@@ -8,12 +8,18 @@ import {
 } from '../utils/helpers/index.js';
 import AuthHelper from '../utils/AuthHelper.js';
 import UsuarioRepository from '../repository/UsuarioRepository.js';
+import EnderecoRepository from '../repository/EnderecoRepository.js';
+import NotificacaoRepository from '../repository/NotificacaoRepository.js';
+import PedidoRepository from '../repository/PedidoRepository.js';
 import UploadService from './UploadService.js';
 import { cpf } from 'cpf-cnpj-validator';
 
 class UsuarioService {
     constructor() {
         this.repository = new UsuarioRepository();
+        this.enderecoRepository = new EnderecoRepository();
+        this.notificacaoRepository = new NotificacaoRepository();
+        this.pedidoRepository = new PedidoRepository();
         this.uploadService = new UploadService();
     }
 
@@ -36,7 +42,20 @@ class UsuarioService {
             parsedData.senha = await AuthHelper.hashPassword(parsedData.senha);
         }
 
+        // Configuração de verificação de email
+        const tokenVerificacao = await AuthHelper.generateRandomToken();
+        parsedData.token_verificacao_email = tokenVerificacao;
+        parsedData.exp_token_verificacao_email = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+        parsedData.email_verificado = false;
+
         const data = await this.repository.criar(parsedData);
+
+        // Envia email de verificação em background (não bloqueia o fluxo)
+        const EmailService = (await import('./EmailService.js')).default;
+        EmailService.enviarEmailVerificacao(data.email, tokenVerificacao, data.nome)
+            .then(() => console.log(`Email de verificação enviado para: ${data.email}`))
+            .catch((error) => console.error('Erro ao enviar email de verificação:', error));
+
         return data;
     }
 
@@ -60,6 +79,13 @@ class UsuarioService {
         }
 
         const data = await this.repository.atualizar(id, parsedData);
+
+        // Auto-atualizar profileComplete se CPF e telefone estão presentes
+        if (data.cpf && data.telefone && !data.profileComplete) {
+            await this.repository.atualizar(id, { profileComplete: true });
+            data.profileComplete = true;
+        }
+
         return data;
     }
 
@@ -90,6 +116,21 @@ class UsuarioService {
         });
 
         const data = await this.repository.deletar(id);
+
+        // Limpeza em cascata (background)
+        if (data) {
+            // 1. Remover endereços
+            this.enderecoRepository.deletarPorUsuario(id).catch(err => console.error(`Erro Cascade Endereço: ${err.message}`));
+            // 2. Remover notificações
+            this.notificacaoRepository.deletarPorUsuario(id).catch(err => console.error(`Erro Cascade Notificacao: ${err.message}`));
+            // 3. Anonimizar pedidos
+            this.pedidoRepository.removerVinculosCliente(id).catch(err => console.error(`Erro Cascade Pedido: ${err.message}`));
+            // 4. Se tiver foto, deletar
+            if (data.foto_perfil) {
+                this.uploadService.deleteImagemComRetry(data.foto_perfil).catch(err => console.error(`Erro Cascade Foto: ${err.message}`));
+            }
+        }
+
         return data;
     }
 

@@ -10,7 +10,9 @@ import {
 } from '../utils/helpers/index.js';
 import { LoginSchema } from '../utils/validators/schemas/zod/LoginSchema.js';
 import { UsuarioSchema } from '../utils/validators/schemas/zod/UsuarioSchema.js';
+import { GoogleLoginSchema } from '../utils/validators/schemas/zod/GoogleLoginSchema.js';
 import { UsuarioIdSchema } from '../utils/validators/schemas/zod/querys/UsuarioQuerySchema.js';
+import { templateSucessoVerificacao, templateErroVerificacao } from '../utils/templates/paginaVerificacao.js';
 import AuthService from '../service/AuthService.js';
 
 class AuthController {
@@ -22,12 +24,19 @@ class AuthController {
         const body = req.body || {};
         const validatedBody = LoginSchema.parse(body);
         const data = await this.service.login(validatedBody);
+        //TODO: remover quando for fazer o deploy
         console.log(data)
         return CommonResponse.success(res, data);
     }
 
+    googleLogin = async (req, res) => {
+        const { idToken } = GoogleLoginSchema.parse(req.body || {});
+        const data = await this.service.loginWithGoogle(idToken);
+        return CommonResponse.success(res, data);
+    }
+
     logout = async (req, res) => {
-        const token = req.body.access_token || req.headers.authorization?.split(' ')[1];
+        const token = req.body?.access_token || req.headers.authorization?.split(' ')[1];
 
         if (!token || token === 'null' || token === 'undefined') {
             throw new CustomError({
@@ -52,13 +61,13 @@ class AuthController {
         }
 
         const decodedId = UsuarioIdSchema.parse(decoded.id);
-        await this.service.logout(decodedId, token);
+        await this.service.logout(decodedId);
 
         return CommonResponse.success(res, null, HttpStatusCodes.OK.code, messages.success.logout);
     }
 
     refresh = async (req, res) => {
-        const token = req.body.refresh_token;
+        const token = req.body?.refresh_token;
 
         if (!token || token === 'null' || token === 'undefined') {
             throw new CustomError({
@@ -77,7 +86,7 @@ class AuthController {
 
     recuperaSenha = async (req, res) => {
         const body = req.body || {};
-        const email = body.email || body.email.trim().toLowerCase();
+        const email = body.email?.trim()?.toLowerCase() || null;
 
         if (!email || typeof email !== 'string' || !email.includes('@')) {
             throw new CustomError({
@@ -95,7 +104,7 @@ class AuthController {
 
     atualizarSenhaToken = async (req, res) => {
         const tokenRecuperacao = req.query.token || req.params.token || null;
-        const senha = req.body.senha || null;
+        const senha = req.body?.senha || null;
 
         if (!tokenRecuperacao) {
             throw new CustomError({
@@ -122,7 +131,7 @@ class AuthController {
     }
 
     signup = async (req, res) => {
-        const parsedData = UsuarioSchema.parse(req.body);
+        const parsedData = UsuarioSchema.parse(req.body || {});
 
         // Ao cadastrar via signup, nunca é admin
         parsedData.isAdmin = false;
@@ -136,6 +145,27 @@ class AuthController {
 
         return CommonResponse.created(res, usuarioLimpo);
     }
+
+    /**
+     * Verificar email do usuário
+     */
+    verificarEmail = async (req, res) => {
+      const { token } = req.query;
+      const appSchemeUrl = 'dev.fslab.pedidos://home';
+
+      if (!token) {
+        return res.status(400).send(templateErroVerificacao('Token de verificação não fornecido.', appSchemeUrl));
+      }
+
+      try {
+        await this.service.verificarEmail(token);
+        return res.status(200).send(templateSucessoVerificacao(appSchemeUrl));
+      } catch (error) {
+        // Obter uma mensagem de erro mais amigável ou usar a do serviço
+        const detalhe = error.customMessage || error.message || 'Falha ao processar o token. Ele pode ser inválido ou expirado.';
+        return res.status(400).send(templateErroVerificacao(detalhe, appSchemeUrl));
+      }
+    };
 }
 
 export default AuthController;

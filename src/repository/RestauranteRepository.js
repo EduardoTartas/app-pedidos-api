@@ -75,16 +75,25 @@ class RestauranteRepository {
             return data;
         }
 
-        const { nome, categoria, status, page = 1 } = req.query;
+        const { nome, categoria, status, page = 1, ordenar, ordem, entrega_gratis, avaliacao_min } = req.query;
         const limite = Math.min(parseInt(req.query.limite, 10) || 10, 100);
 
         const filterBuilder = new RestauranteFilterBuild()
             .comNome(nome)
             .comCategorias(categoria)
-            .comStatus(status);
+            .comStatus(status)
+            .comEntregaGratis(entrega_gratis)
+            .comAvaliacaoMinima(avaliacao_min);
 
         const filtros = filterBuilder.build();
         if (dono_id) filtros.dono_id = dono_id;
+
+        // Ordenação dinâmica: campo + direção (padrão: nome asc)
+        const camposOrdenacao = ['nome', 'avaliacao_media', 'taxa_entrega', 'estimativa_entrega_min'];
+        let sort = { nome: 1 };
+        if (ordenar && camposOrdenacao.includes(ordenar)) {
+            sort = { [ordenar]: ordem === 'desc' ? -1 : 1 };
+        }
 
         const options = {
             page: parseInt(page, 10),
@@ -93,7 +102,7 @@ class RestauranteRepository {
                 { path: 'categoria_ids' },
                 { path: 'dono_id', select: 'nome email' }
             ],
-            sort: { nome: 1 },
+            sort,
         };
 
         const resultado = await this.modelRestaurante.paginate(filtros, options);
@@ -136,6 +145,13 @@ class RestauranteRepository {
             });
         }
         return restaurante;
+    }
+
+    async removerCategoriaDeTodos(categoriaId) {
+        return await this.modelRestaurante.updateMany(
+            { categoria_ids: categoriaId },
+            { $pull: { categoria_ids: categoriaId } }
+        );
     }
 }
 

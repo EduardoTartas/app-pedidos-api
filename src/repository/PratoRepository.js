@@ -122,6 +122,18 @@ class PratoRepository {
         }
         return prato;
     }
+
+    async removerGrupo(pratoId, grupoId) {
+        return await this.modelPrato.findByIdAndUpdate(
+            pratoId,
+            { $pull: { adicionais_grupo_ids: grupoId } },
+            { new: true }
+        );
+    }
+
+    async deletarPorRestaurante(restauranteId) {
+        return await this.modelPrato.deleteMany({ restaurante_id: restauranteId });
+    }
 }
 
 export default PratoRepository;

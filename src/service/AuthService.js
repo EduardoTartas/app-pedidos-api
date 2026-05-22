@@ -1,5 +1,8 @@
 // src/service/AuthService.js
 
+import EmailService from './EmailService.js';
+import { OAuth2Client } from 'google-auth-library';
+
 import jwt from 'jsonwebtoken';
 import {
     CustomError,
@@ -10,6 +13,8 @@ import tokenUtil from '../utils/TokenUtil.js';
 import bcrypt from 'bcryptjs';
 import AuthHelper from '../utils/AuthHelper.js';
 import UsuarioRepository from "../repository/UsuarioRepository.js";
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 class AuthService {
     constructor(params = {}) {
@@ -24,7 +29,7 @@ class AuthService {
     }
 
     async login(body) {
-        const email = body.email || body.email.trim().toLowerCase();
+        const email = body.email.trim().toLowerCase();
         const userEncontrado = await this.repository.buscarPorEmail(email);
         if (!userEncontrado) {
             throw new CustomError({
@@ -44,6 +49,28 @@ class AuthService {
                 field: 'Status',
                 details: [],
                 customMessage: 'Conta desativada. Entre em contato com o suporte.'
+            });
+        }
+
+        // Verificar se a conta é Google-only (sem senha)
+        if (!userEncontrado.senha && userEncontrado.authProvider === 'google') {
+            throw new CustomError({
+                statusCode: 401,
+                errorType: 'googleOnly',
+                field: 'Senha',
+                details: [],
+                customMessage: 'Esta conta utiliza login com Google. Use o botão "Entrar com Google".'
+            });
+        }
+
+        // Verificar se o email foi confirmado
+        if (!userEncontrado.email_verificado) {
+            throw new CustomError({
+                statusCode: 403,
+                errorType: 'forbidden',
+                field: 'Email',
+                details: [],
+                customMessage: 'Por favor, verifique seu email antes de fazer o login. Confira sua caixa de entrada.'
             });
         }
 
@@ -87,6 +114,12 @@ class AuthService {
 
         await this.repository.armazenarTokens(userEncontrado._id, accessToken, refreshtoken);
 
+        // Calcular e atualizar profileComplete se necessário
+        const profileComplete = !!(userEncontrado.cpf && userEncontrado.telefone);
+        if (userEncontrado.profileComplete !== profileComplete) {
+            await this.repository.atualizar(userEncontrado._id, { profileComplete });
+        }
+
         const userLogado = await this.repository.buscarPorID(userEncontrado._id, false);
         const userObject = userLogado.toObject();
 
@@ -94,6 +127,117 @@ class AuthService {
             user: {
                 accessToken,
                 refreshtoken,
+                profileComplete,
+                ...userObject
+            }
+        };
+    }
+
+    // ═══════════════════════════════════════════
+    // LOGIN COM GOOGLE
+    // ═══════════════════════════════════════════
+
+    async loginWithGoogle(idToken) {
+        // 1. Verificar o idToken com o Google
+        let payload;
+        try {
+            const ticket = await googleClient.verifyIdToken({
+                idToken,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
+            payload = ticket.getPayload();
+        } catch (error) {
+            throw new CustomError({
+                statusCode: 401,
+                errorType: 'invalidToken',
+                field: 'idToken',
+                details: [],
+                customMessage: 'Token do Google inválido ou expirado.'
+            });
+        }
+
+        const { sub: googleId, email, name, picture } = payload;
+
+        // 2. Buscar usuário pelo googleId ou email
+        let user = await this.repository.buscarPorGoogleId(googleId);
+        let isNewUser = false;
+
+        if (!user) {
+            // Tentar buscar por email (conta local existente)
+            const userPorEmail = await this.repository.buscarPorEmail(email);
+
+            if (userPorEmail) {
+                // Vincular conta Google a conta existente (mantém authProvider original se já tem senha)
+                const novoProvider = userPorEmail.senha ? userPorEmail.authProvider : 'google';
+                user = await this.repository.atualizar(userPorEmail._id, {
+                    googleId,
+                    authProvider: novoProvider,
+                    foto_perfil: userPorEmail.foto_perfil || picture || '',
+                    email_verificado: true // Conta validada pelo Google
+                });
+            } else {
+                // Criar novo usuário Google
+                isNewUser = true;
+                user = await this.repository.criar({
+                    nome: name,
+                    email,
+                    googleId,
+                    authProvider: 'google',
+                    foto_perfil: picture || '',
+                    profileComplete: false,
+                    email_verificado: true, // Contas Google já vêm validadas
+                    senha: null
+                });
+            }
+        }
+
+        // Verificar status
+        if (user.status === 'inativo') {
+            throw new CustomError({
+                statusCode: 403,
+                errorType: 'forbidden',
+                field: 'Status',
+                details: [],
+                customMessage: 'Conta desativada. Entre em contato com o suporte.'
+            });
+        }
+
+        // 3. Gerar tokens JWT
+        const accessToken = await this.TokenUtil.generateAccessToken(user._id);
+        let refreshtoken;
+
+        const userComToken = await this.repository.buscarPorID(user._id, true);
+        refreshtoken = userComToken.refreshtoken;
+
+        if (refreshtoken) {
+            try {
+                jwt.verify(refreshtoken, process.env.JWT_SECRET_REFRESH_TOKEN);
+            } catch (error) {
+                refreshtoken = await this.TokenUtil.generateRefreshToken(user._id);
+            }
+        } else {
+            refreshtoken = await this.TokenUtil.generateRefreshToken(user._id);
+        }
+
+        await this.repository.armazenarTokens(user._id, accessToken, refreshtoken);
+
+        // 4. Calcular profileComplete
+        const profileComplete = !!(user.cpf && user.telefone);
+
+        // Atualizar profileComplete no banco se necessário
+        if (user.profileComplete !== profileComplete) {
+            await this.repository.atualizar(user._id, { profileComplete });
+        }
+
+        // 5. Retornar resposta
+        const userLogado = await this.repository.buscarPorID(user._id, false);
+        const userObject = userLogado.toObject();
+
+        return {
+            user: {
+                accessToken,
+                refreshtoken,
+                profileComplete,
                 ...userObject
             }
         };
@@ -131,12 +275,18 @@ class AuthService {
 
         await this.repository.armazenarTokens(id, accesstoken, refreshtoken);
 
-        const userLogado = await this.repository.buscarPorID(id, true);
+        const profileComplete = !!(userEncontrado.cpf && userEncontrado.telefone);
+        if (userEncontrado.profileComplete !== profileComplete) {
+            await this.repository.atualizar(id, { profileComplete });
+        }
+
+        const userLogado = await this.repository.buscarPorID(id, false);
         const userObjeto = userLogado.toObject();
 
         const userComTokens = {
             accesstoken,
             refreshtoken,
+            profileComplete,
             ...userObjeto
         };
 
@@ -154,7 +304,7 @@ class AuthService {
             });
         }
 
-        const tokenUnico = await this.TokenUtil.generatePasswordRecoveryToken(userEncontrado._id);
+        const tokenUnico = this.TokenUtil.generateRecoveryCode();
         const expMs = Date.now() + 60 * 60 * 1000; // 1 hora
 
         await this.repository.atualizar(userEncontrado._id, {
@@ -162,19 +312,19 @@ class AuthService {
             exp_codigo_recupera_senha: new Date(expMs)
         });
 
-        // Em produção, aqui seria enviado o email com o token
+        // Enviar email com o token de recuperação
+        await EmailService.enviarEmailRecuperacao(
+            body.email,
+            tokenUnico,
+            userEncontrado.nome
+        );
+
         return {
-            message: 'Solicitação de recuperação de senha recebida.',
-            token: tokenUnico // Retorna o token para teste (remover em produção)
+            message: 'Um email com o token de recuperação foi enviado para o seu endereço de email.'
         };
     }
 
-    async atualizarSenhaToken(tokenRecuperacao, senhaBody) {
-        const usuarioId = await this.TokenUtil.decodePasswordRecoveryToken(
-            tokenRecuperacao,
-            process.env.JWT_SECRET_PASSWORD_RECOVERY
-        );
-
+    async atualizarSenhaToken(tokenRecuperacao, novaSenha) {
         const usuario = await this.repository.buscarPorTokenUnico(tokenRecuperacao);
         if (!usuario) {
             throw new CustomError({
@@ -194,8 +344,8 @@ class AuthService {
             });
         }
 
-        const senhaHasheada = await AuthHelper.hashPassword(senhaBody.senha);
-        const usuarioAtualizado = await this.repository.atualizarSenha(usuarioId, senhaHasheada);
+        const senhaHasheada = await AuthHelper.hashPassword(novaSenha);
+        const usuarioAtualizado = await this.repository.atualizarSenha(usuario._id, senhaHasheada);
 
         if (!usuarioAtualizado) {
             throw new CustomError({
@@ -207,6 +357,75 @@ class AuthService {
         }
 
         return { message: 'Senha atualizada com sucesso.' };
+    }
+
+    // Verificar email do usuário usando token
+    async verificarEmail(token) {
+        console.log('Verificação de email - Token recebido:', token);
+
+        // Buscar usuário pelo token de verificação
+        const usuario = await this.repository.buscarPorTokenVerificacao(token);
+
+        console.log('Usuário encontrado:', usuario ? {
+            id: usuario._id,
+            email: usuario.email,
+            token_verificacao_email: usuario.token_verificacao_email,
+            exp_token_verificacao_email: usuario.exp_token_verificacao_email,
+            email_verificado: usuario.email_verificado
+        } : 'null');
+
+        if (!usuario) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.NOT_FOUND.code,
+                errorType: 'notFound',
+                field: 'Token',
+                details: [],
+                customMessage: 'Token de verificação inválido ou já utilizado.'
+            });
+        }
+
+        // Verificar se o token expirou
+        const dataExpiracao = usuario.get('exp_token_verificacao_email', null, { getters: false });
+        const dataAtual = new Date();
+
+        console.log('   Verificação de expiração:');
+        console.log('  - Data de expiração (original):', dataExpiracao);
+        console.log('  - Data atual:', dataAtual);
+        console.log('  - Token expirado?', dataExpiracao < dataAtual);
+
+        if (dataExpiracao < dataAtual) {
+            console.log('Token expirado, gerando novo token e reenviando email...');
+
+            // Gerar novo token
+            const novoToken = await AuthHelper.generateRandomToken();
+            const novaExpiracao = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+
+            // Atualizar no banco
+            await this.repository.atualizarTokenVerificacao(usuario._id, novoToken, novaExpiracao);
+
+            // Enviar novo email
+            await EmailService.enviarEmailVerificacao(usuario.email, novoToken, usuario.nome);
+
+            console.log('Novo email de verificação enviado para:', usuario.email);
+
+            throw new CustomError({
+                statusCode: HttpStatusCodes.UNAUTHORIZED.code,
+                errorType: 'tokenExpired',
+                field: 'Token',
+                details: [],
+                customMessage: 'Token de verificação expirado. Enviamos um novo link para seu email. Verifique sua caixa de entrada.'
+            });
+        }
+
+        // Atualizar usuário: marcar email como verificado e limpar token
+        const usuarioAtualizado = await this.repository.atualizarVerificacaoEmail(usuario._id);
+
+        console.log('Email verificado com sucesso para:', usuarioAtualizado.email);
+
+        return {
+            message: 'Email verificado com sucesso!',
+            email: usuarioAtualizado.email
+        };
     }
 }
 

@@ -25,7 +25,7 @@ class UsuarioRepository {
         }
         document.accesstoken = accesstoken;
         document.refreshtoken = refreshtoken;
-        const data = document.save();
+        const data = await document.save();
         return data;
     }
 
@@ -71,6 +71,11 @@ class UsuarioRepository {
             filtro._id = { $ne: idIgnorado };
         }
         const documento = await this.modelUsuario.findOne(filtro).select('+senha');
+        return documento;
+    }
+
+    async buscarPorGoogleId(googleId) {
+        const documento = await this.modelUsuario.findOne({ googleId });
         return documento;
     }
 
@@ -177,6 +182,62 @@ class UsuarioRepository {
                 customMessage: messages.error.resourceNotFound('Usuário')
             });
         }
+        return usuario;
+    }
+
+    async buscarPorTokenVerificacao(token) {
+        const filtro = {
+            token_verificacao_email: token
+        };
+        const documento = await this.modelUsuario.findOne(filtro)
+            .select('+token_verificacao_email +exp_token_verificacao_email');
+        return documento;
+    }
+
+    async atualizarVerificacaoEmail(id) {
+        const usuario = await this.modelUsuario.findByIdAndUpdate(
+            id,
+            {
+                email_verificado: true,
+                token_verificacao_email: null,
+                exp_token_verificacao_email: null
+            },
+            { returnDocument: 'after' }
+        );
+
+        if (!usuario) {
+            throw new CustomError({
+                statusCode: 404,
+                errorType: 'resourceNotFound',
+                field: 'Usuário',
+                details: [],
+                customMessage: messages.error.resourceNotFound('Usuário')
+            });
+        }
+
+        return usuario;
+    }
+
+    async atualizarTokenVerificacao(id, novoToken, novaExpiracao) {
+        const usuario = await this.modelUsuario.findByIdAndUpdate(
+            id,
+            {
+                token_verificacao_email: novoToken,
+                exp_token_verificacao_email: novaExpiracao
+            },
+            { returnDocument: 'after' }
+        );
+
+        if (!usuario) {
+            throw new CustomError({
+                statusCode: 404,
+                errorType: 'resourceNotFound',
+                field: 'Usuário',
+                details: [],
+                customMessage: messages.error.resourceNotFound('Usuário')
+            });
+        }
+
         return usuario;
     }
 }

@@ -56,6 +56,24 @@ class RestauranteFilterBuild {
         return this;
     }
 
+    // ═══════════════════════════════════════════
+    // NOVOS FILTROS
+    // ═══════════════════════════════════════════
+
+    comEntregaGratis(entregaGratis) {
+        if (entregaGratis === true) {
+            this.filtros.taxa_entrega = 0;
+        }
+        return this;
+    }
+
+    comAvaliacaoMinima(avaliacaoMin) {
+        if (avaliacaoMin !== undefined && avaliacaoMin !== null) {
+            this.filtros.avaliacao_media = { $gte: avaliacaoMin };
+        }
+        return this;
+    }
+
     build() {
         return this.filtros;
     }

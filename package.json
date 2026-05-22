@@ -17,7 +17,6 @@
   },
   "dependencies": {
     "@faker-js/faker": "^10.3.0",
-    "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
@@ -27,13 +26,16 @@
     "express": "^5.2.1",
     "express-fileupload": "^1.5.2",
     "express-rate-limit": "^8.2.1",
+    "google-auth-library": "^10.6.2",
     "helmet": "^8.1.0",
     "jsdom": "^29.0.0",
     "jsonwebtoken": "^9.0.3",
     "minio": "^8.0.7",
+    "mongodb": "^7.2.0",
     "mongoose": "^9.2.2",
     "mongoose-paginate-v2": "^1.9.1",
     "multer": "^2.1.1",
+    "nodemailer": "^8.0.5",
     "sharp": "^0.34.5",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
@@ -65,39 +67,6 @@
     ],
     "plugins": [
       "babel-plugin-transform-import-meta"
-    ]
-  },
-  "jest": {
-    "transform": {
-      "^.+\\.js$": "babel-jest"
-    },
-    "testEnvironment": "node",
-    "verbose": true,
-    "transformIgnorePatterns": [
-      "/node_modules/(?!uuid)"
-    ],
-    "roots": [
-      "<rootDir>"
-    ],
-    "setupFilesAfterEnv": [
-      "<rootDir>/jest.setup.js"
-    ],
-    "coveragePathIgnorePatterns": [
-      "/node_modules/",
-      "/src/config/dbConnect.js",
-      "/src/controllers/AuthController.js",
-      "/src/service/AuthService.js",
-      "/utils/logger.js",
-      "/utils/errors",
-      "/middlewares/",
-      "/utils/AuthHelper.js",
-      "/utils/TokenUtil.js",
-      "/utils/helpers/errorHandler.js",
-      "/utils/helpers/StatusService.js",
-      "/utils/helpers/messages.js",
-      "/utils/helpers/CommonResponse.js",
-      "/middlewares/asyncWrapper.js",
-      "utils/helpers/HttpStatusCodes.js"
     ]
   }
 }

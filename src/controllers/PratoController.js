@@ -29,7 +29,9 @@ class PratoController {
             await PratoQuerySchema.parseAsync(query);
         }
 
-        const data = await this.service.listar(req);
+        const data = req.query?.restaurante_id 
+            ? await this.service.listarPorRestaurante(req.query.restaurante_id, req)
+            : await this.service.listar(req);
 
         // Mensagem contextualizada para listagem
         if (id) {

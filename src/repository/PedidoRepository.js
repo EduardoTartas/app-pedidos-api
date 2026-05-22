@@ -70,7 +70,7 @@ class PedidoRepository {
             page: parseInt(page, 10),
             limit: parseInt(limite, 10),
             populate: [
-                { path: 'cliente_id', select: 'nome email telefone' }
+                { path: 'cliente_id', select: 'nome email telefone cpf' }
             ],
             sort: { createdAt: -1 },
         };
@@ -101,6 +101,17 @@ class PedidoRepository {
             });
         }
         return pedido;
+    }
+
+    async removerVinculosCliente(clienteId) {
+        return await this.modelPedido.updateMany(
+            { cliente_id: clienteId },
+            { $set: { cliente_id: null } }
+        );
+    }
+
+    async deletarPorRestaurante(restauranteId) {
+        return await this.modelPedido.deleteMany({ restaurante_id: restauranteId });
     }
 }
 

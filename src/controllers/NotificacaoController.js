@@ -13,21 +13,9 @@ class NotificacaoController {
     }
 
     async criar(req, res) {
-        try {
-            const dadosValidados = NotificacaoSchema.parse(req.body);
-            const data = await this.service.criar(dadosValidados);
-            return CommonResponse.success(res, data, HttpStatusCodes.CREATED.code, 'Notificação criada com sucesso.');
-        } catch (erro) {
-            if (erro.name === 'ZodError') {
-                throw new CustomError({
-                    statusCode: HttpStatusCodes.BAD_REQUEST.code,
-                    errorType: 'validationError',
-                    field: 'Notificação',
-                    details: erro.errors,
-                });
-            }
-            throw erro;
-        }
+        const dadosValidados = NotificacaoSchema.parse(req.body);
+        const data = await this.service.criar(dadosValidados);
+        return CommonResponse.success(res, data, HttpStatusCodes.CREATED.code, 'Notificação criada com sucesso.');
     }
 
     async buscarPorId(req, res) {

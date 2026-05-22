@@ -66,6 +66,10 @@ class AdicionalGrupoService {
         return data;
     }
 
+    async listarPorRestaurante(restauranteId) {
+        return await this.grupoRepository.listarPorRestaurante(restauranteId);
+    }
+
     async atualizar(id, parsedData, req) {
         const grupo = await this.grupoRepository.buscarPorID(id);
         const restaurante = await this.restauranteRepository.buscarPorID(grupo.restaurante_id);
@@ -98,6 +102,19 @@ class AdicionalGrupoService {
 
         await this.opcaoRepository.deletarPorGrupo(id);
         const data = await this.grupoRepository.deletar(id);
+
+        // Remover o vínculo do prato se existir
+        if (req.query.prato_id) {
+            await this.pratoRepository.removerGrupo(req.query.prato_id, id);
+        } else {
+            // Fallback: se não vier prato_id na query, buscar prato que contenha este grupo
+            const Prato = (await import('../models/Prato.js')).default;
+            await Prato.updateMany(
+                { adicionais_grupo_ids: id },
+                { $pull: { adicionais_grupo_ids: id } }
+            );
+        }
+
         return data;
     }
 }

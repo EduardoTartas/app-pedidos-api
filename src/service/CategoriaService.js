@@ -23,13 +23,15 @@ class CategoriaService {
         return data;
     }
 
-    async criar(parsedData) {
+    async criar(parsedData, req) {
+        await this.validarAdmin(req.user_id);
         await this.validarNome(parsedData.nome);
         const data = await this.repository.criar(parsedData);
         return data;
     }
 
-    async atualizar(id, parsedData) {
+    async atualizar(id, parsedData, req) {
+        await this.validarAdmin(req.user_id);
         await this.ensureCategoriaExists(id);
         if (parsedData.nome) {
             await this.validarNome(parsedData.nome, id);
@@ -38,10 +40,32 @@ class CategoriaService {
         return data;
     }
 
-    async deletar(id) {
+    async deletar(id, req) {
+        await this.validarAdmin(req.user_id);
         await this.ensureCategoriaExists(id);
         const data = await this.repository.deletar(id);
+
+        // Limpeza de vínculos órfãos nos restaurantes (background)
+        const RestauranteRepository = (await import('../repository/RestauranteRepository.js')).default;
+        const restauranteRepo = new RestauranteRepository();
+        restauranteRepo.removerCategoriaDeTodos(id).catch(err => {
+            console.error(`Erro ao limpar categoria órfã ${id}: ${err.message}`);
+        });
+
         return data;
+    }
+
+    async validarAdmin(userId) {
+        const usuarioLogado = await this.usuarioRepository.buscarPorID(userId);
+        if (!usuarioLogado || !usuarioLogado.isAdmin) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.FORBIDDEN.code,
+                errorType: 'forbidden',
+                field: 'Categoria',
+                details: [],
+                customMessage: 'Apenas administradores podem gerenciar categorias.',
+            });
+        }
     }
 
     async ensureCategoriaExists(id) {

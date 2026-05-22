@@ -45,6 +45,10 @@ class TokenUtil {
         });
     }
 
+    generateRecoveryCode() {
+        return Math.floor(100000 + Math.random() * 900000).toString();
+    }
+
     decodePasswordRecoveryToken(token, secret) {
         return new Promise((resolve, reject) => {
             jwt.verify(token, secret, (err, decoded) => {

@@ -46,8 +46,8 @@ class RestauranteController {
     // Resultado paginado - verificar se há resultados
     const totalDocs = data?.totalDocs ?? data?.docs?.length ?? 0;
     if (totalDocs === 0) {
-      const { nome, categoria, status } = query;
-      const temFiltros = nome || categoria || status;
+      const { nome, categoria, status, entrega_gratis, avaliacao_min, ordenar } = query;
+      const temFiltros = nome || categoria || status || entrega_gratis || avaliacao_min || ordenar;
       const mensagem = temFiltros
         ? 'Nenhum restaurante encontrado com os filtros informados.'
         : 'Nenhum restaurante cadastrado.';

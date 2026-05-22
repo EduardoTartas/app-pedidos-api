@@ -109,6 +109,10 @@ class NotificacaoRepository {
         }
         return notificacao;
     }
+
+    async deletarPorUsuario(usuarioId) {
+        return await this.modelNotificacao.deleteMany({ usuario_id: usuarioId });
+    }
 }
 
 export default NotificacaoRepository;
