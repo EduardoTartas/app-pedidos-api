@@ -68,10 +68,10 @@ class AvaliacaoService {
         // Vincular avaliação ao pedido
         await this.pedidoRepository.atualizar(pedidoId, { avaliacao_id: avaliacao._id });
 
-        // Recalcular média do restaurante
+        // Recalcular média do restaurante (o repository já arredonda para 1 decimal)
         const novaMedia = await this.repository.calcularMediaRestaurante(restauranteId);
         await this.restauranteRepository.atualizar(restauranteId, {
-            avaliacao_media: Math.round(novaMedia * 10) / 10
+            avaliacao_media: novaMedia
         });
 
         // Notificar o dono do restaurante
@@ -132,10 +132,10 @@ class AvaliacaoService {
         // Deletar avaliação
         await this.repository.deletar(id);
 
-        // Recalcular média do restaurante
+        // Recalcular média do restaurante (o repository já arredonda para 1 decimal)
         const novaMedia = await this.repository.calcularMediaRestaurante(restauranteId);
         await this.restauranteRepository.atualizar(restauranteId, {
-            avaliacao_media: Math.round(novaMedia * 10) / 10,
+            avaliacao_media: novaMedia,
         });
 
         return true;

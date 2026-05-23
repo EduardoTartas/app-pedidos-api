@@ -178,8 +178,10 @@ class RestauranteService {
             this.pratoRepository.deletarPorRestaurante(id).catch(err => console.error(`Erro Cascade Pratos: ${err.message}`));
             // 2. Deletar endereço
             this.enderecoRepository.deletarPorRestaurante(id).catch(err => console.error(`Erro Cascade Endereço: ${err.message}`));
-            // 3. Deletar pedidos (ou anonimizar, mas para restaurantes deletaremos por enquanto conforme discutido)
-            this.pedidoRepository.deletarPorRestaurante(id).catch(err => console.error(`Erro Cascade Pedidos: ${err.message}`));
+            // 3. BUG-06: Anonimizar pedidos em vez de deletá-los fisicamente.
+            //    O histórico do cliente deve ser preservado mesmo após exclusão do restaurante.
+            //    O restaurante_id é zerado, mas o nome do restaurante já está snapshot nos itens do pedido.
+            this.pedidoRepository.anonimizarPorRestaurante(id).catch(err => console.error(`Erro Cascade Pedidos: ${err.message}`));
             // 4. Deletar foto
             if (data.foto_restaurante) {
                 this.uploadService.deleteImagemComRetry(data.foto_restaurante).catch(err => console.error(`Erro Cascade Foto: ${err.message}`));

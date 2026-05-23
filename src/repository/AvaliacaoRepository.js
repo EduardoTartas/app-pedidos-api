@@ -1,4 +1,5 @@
 import Avaliacao from '../models/Avaliacao.js';
+import mongoose from 'mongoose';
 import {
     CustomError,
     messages
@@ -52,16 +53,19 @@ class AvaliacaoRepository {
         return resultado;
     }
 
+    /**
+     * MELHORIA-06: Import de mongoose movido para o topo do arquivo (estático).
+     * MELHORIA-07: Arredondamento feito aqui UMA vez; o service não precisa arredondar novamente.
+     */
     async calcularMediaRestaurante(restauranteId) {
         let objectIdFilter = restauranteId;
         if (typeof restauranteId === 'string') {
-            const mongoose = (await import('mongoose')).default;
             objectIdFilter = new mongoose.Types.ObjectId(restauranteId);
         }
 
         const resultado = await this.modelAvaliacao.aggregate([
             { $match: { restaurante_id: objectIdFilter } },
-            { $group: { _id: null, media: { $avg: "$nota" } } }
+            { $group: { _id: null, media: { $avg: '$nota' } } }
         ]);
         return resultado.length > 0 ? Math.round(resultado[0].media * 10) / 10 : 0;
     }
