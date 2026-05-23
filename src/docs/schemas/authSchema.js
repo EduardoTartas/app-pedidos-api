@@ -20,7 +20,7 @@ const authSchemas = {
         description: "Schema para login de usuário",
         example: {
             email: "admin@delivery.com",
-            senha: "Senha123"
+            senha: "Senha@123"
         }
     },
 

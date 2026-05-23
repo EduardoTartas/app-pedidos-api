@@ -20,6 +20,10 @@ const adicionalGrupoSchemas = {
             min: { type: "number", example: 0 },
             max: { type: "number", example: 3 },
             ativo: { type: "boolean", example: true },
+            opcoes: {
+                type: "array",
+                items: { $ref: "#/components/schemas/OpcaoDetalhes" }
+            },
             createdAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" },
             updatedAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" }
         },
@@ -37,6 +41,10 @@ const adicionalGrupoSchemas = {
             min: { type: "number", example: 0 },
             max: { type: "number", example: 3 },
             ativo: { type: "boolean", example: true },
+            opcoes: {
+                type: "array",
+                items: { $ref: "#/components/schemas/OpcaoDetalhes" }
+            },
             createdAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" },
             updatedAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" }
         },

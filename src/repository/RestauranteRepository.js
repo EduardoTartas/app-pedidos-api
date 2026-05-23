@@ -75,15 +75,22 @@ class RestauranteRepository {
             return data;
         }
 
-        const { nome, categoria, status, page = 1, ordenar, ordem, entrega_gratis, avaliacao_min } = req.query;
+        const { nome, categoria, status, page = 1, ordenar, ordem, entrega_gratis, avaliacao_min, ativo, gestao } = req.query;
         const limite = Math.min(parseInt(req.query.limite, 10) || 10, 100);
 
         const filterBuilder = new RestauranteFilterBuild()
             .comNome(nome)
             .comCategorias(categoria)
             .comStatus(status)
+            .comAtivo(ativo)
             .comEntregaGratis(entrega_gratis)
             .comAvaliacaoMinima(avaliacao_min);
+
+        // Se for listagem pública (sem dono_id, sem id específico e sem flag de gestão) 
+        // e não foi pedido status específico de ativação
+        if (!dono_id && !id && !gestao && ativo === undefined) {
+            filterBuilder.comAtivo(true);
+        }
 
         const filtros = filterBuilder.build();
         if (dono_id) filtros.dono_id = dono_id;
@@ -134,7 +141,11 @@ class RestauranteRepository {
     }
 
     async deletar(id) {
-        const restaurante = await this.modelRestaurante.findByIdAndDelete(id);
+        const restaurante = await this.modelRestaurante.findByIdAndUpdate(
+            id, 
+            { deletado: true, ativo: false }, 
+            { new: true }
+        );
         if (!restaurante) {
             throw new CustomError({
                 statusCode: 404,

@@ -141,6 +141,3 @@ minio-data/
 
 # Configmap
 *secret*
-
-# scripts
-scripts
