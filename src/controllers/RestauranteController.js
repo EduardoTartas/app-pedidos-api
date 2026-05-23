@@ -216,6 +216,16 @@ class RestauranteController {
       'Foto do restaurante excluída com sucesso.',
     )
   }
+
+  async verificarInatividade(req, res) {
+    const data = await this.service.verificarInatividade();
+    return CommonResponse.success(
+      res,
+      data,
+      HttpStatusCodes.OK.code,
+      'Verificação de inatividade concluída com sucesso.',
+    );
+  }
 }
 
 export default RestauranteController;

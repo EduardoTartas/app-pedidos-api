@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 class RestauranteFilterBuild {
     constructor() {
-        this.filtros = {};
+        this.filtros = { deletado: false };
     }
 
     comNome(nome) {
@@ -30,10 +30,15 @@ class RestauranteFilterBuild {
 
     comStatus(status) {
         if (status) {
-            this.filtros.status = {
-                $regex: status,
-                $options: "i"
-            };
+            this.filtros.status = status;
+        }
+        return this;
+    }
+
+    comAtivo(ativo) {
+        if (ativo !== undefined && ativo !== null) {
+            const valor = ativo === true || ativo === "true" || ativo === 1 || ativo === "1";
+            this.filtros.ativo = valor;
         }
         return this;
     }

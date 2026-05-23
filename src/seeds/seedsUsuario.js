@@ -22,7 +22,8 @@ async function seedUsuarios() {
             telefone: '11999999999',
             email_verificado: true,
             status: 'ativo',
-            isAdmin: true
+            isAdmin: true,
+            profileComplete: true
         },
         {
             nome: 'Dono Restaurante 1',
@@ -32,7 +33,8 @@ async function seedUsuarios() {
             telefone: '11988888888',
             email_verificado: true,
             status: 'ativo',
-            isAdmin: false
+            isAdmin: false,
+            profileComplete: true
         },
         {
             nome: 'Dono Restaurante 2',
@@ -42,7 +44,8 @@ async function seedUsuarios() {
             telefone: '11977777777',
             email_verificado: true,
             status: 'ativo',
-            isAdmin: false
+            isAdmin: false,
+            profileComplete: true
         },
         {
             nome: 'Cliente Teste',
@@ -52,7 +55,8 @@ async function seedUsuarios() {
             telefone: '11966666666',
             email_verificado: true,
             status: 'ativo',
-            isAdmin: false
+            isAdmin: false,
+            profileComplete: true
         },
         {
             nome: 'Cliente Inativo',
@@ -62,7 +66,8 @@ async function seedUsuarios() {
             telefone: '11955555555',
             email_verificado: true,
             status: 'inativo',
-            isAdmin: false
+            isAdmin: false,
+            profileComplete: true
         }
     ];
 

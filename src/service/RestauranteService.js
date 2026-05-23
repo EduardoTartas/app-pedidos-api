@@ -50,7 +50,7 @@ class RestauranteService {
         // Aí o `dono_id` não ficava aplicado como esperado e a consulta acabava indo sem filtro (voltando todos os restaurantes),
         // em vez de retornar só os do usuário logado.
         // Tentei resolver de outras formas, mas normalizar os dados foi o que funcionou sem gambiarra.
-        const query = { ...(req?.query || {}) };
+        const query = { ...(req?.query || {}), gestao: true };
         if (!usuarioLogado?.isAdmin) {
             query.dono_id = req.user_id;
         }
@@ -166,20 +166,6 @@ class RestauranteService {
         });
 
         const data = await this.repository.deletar(id);
-
-        // Limpeza em cascata
-        if (data) {
-            // 1. Deletar pratos (isso também deixaria adicionais órfãos se não tivéssemos Mongoose hooks, mas faremos manual por segurança)
-            this.pratoRepository.deletarPorRestaurante(id).catch(err => console.error(`Erro Cascade Pratos: ${err.message}`));
-            // 2. Deletar endereço
-            this.enderecoRepository.deletarPorRestaurante(id).catch(err => console.error(`Erro Cascade Endereço: ${err.message}`));
-            // 3. Deletar pedidos (ou anonimizar, mas para restaurantes deletaremos por enquanto conforme discutido)
-            this.pedidoRepository.deletarPorRestaurante(id).catch(err => console.error(`Erro Cascade Pedidos: ${err.message}`));
-            // 4. Deletar foto
-            if (data.foto_restaurante) {
-                this.uploadService.deleteImagemComRetry(data.foto_restaurante).catch(err => console.error(`Erro Cascade Foto: ${err.message}`));
-            }
-        }
 
         return data;
     }
@@ -345,6 +331,53 @@ class RestauranteService {
     isValidCnpj(cnpjValue) {
         const cleaned = cnpjValue.replace(/\D/g, '');
         return cleaned.length === 14 && cnpj.isValid(cleaned);
+    }
+
+    /**
+     * Inativa automaticamente restaurantes sem pedidos nos últimos 30 dias.
+     * Pode ser chamado por um Cron Job ou gatilho administrativo.
+     */
+    async verificarInatividade() {
+        console.log("[RestauranteService] Iniciando verificação de inatividade (30 dias)...");
+        
+        const trintaDiasAtras = new Date();
+        trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+
+        // 1. Buscar todos os restaurantes ativos
+        const restaurantesAtivos = await this.repository.modelRestaurante.find({ ativo: true });
+        let inativadosCount = 0;
+
+        for (const restaurante of restaurantesAtivos) {
+            // 2. Buscar o pedido mais recente deste restaurante
+            const ultimoPedido = await this.pedidoRepository.modelPedido.findOne({ 
+                restaurante_id: restaurante._id 
+            }).sort({ createdAt: -1 });
+
+            let deveInativar = false;
+
+            if (ultimoPedido) {
+                // Se tem pedido, verifica se o último foi há mais de 30 dias
+                if (ultimoPedido.createdAt < trintaDiasAtras) {
+                    deveInativar = true;
+                }
+            } else {
+                // Se nunca teve pedido, verifica se a loja foi criada há mais de 30 dias
+                if (restaurante.createdAt < trintaDiasAtras) {
+                    deveInativar = true;
+                }
+            }
+
+            if (deveInativar) {
+                await this.repository.atualizar(restaurante._id, { ativo: false });
+                console.log(`[Inatividade] Restaurante "${restaurante.nome}" (${restaurante._id}) inativado por falta de pedidos.`);
+                inativadosCount++;
+            }
+        }
+
+        return {
+            processados: restaurantesAtivos.length,
+            inativados: inativadosCount
+        };
     }
 }
 
