@@ -103,6 +103,11 @@ class UsuarioService {
             delete parsedData.isAdmin;
         }
 
+        // MELHORIA-10: Validar CPF ao atualizar (não apenas no cadastro)
+        if (parsedData.cpf) {
+            await this.validateCpf(parsedData.cpf, id);
+        }
+
         const data = await this.repository.atualizar(id, parsedData);
 
         // Auto-atualizar profileComplete se CPF e telefone estão presentes

@@ -112,7 +112,8 @@ class AuthService {
             refreshtoken = await this.TokenUtil.generateRefreshToken(userEncontrado._id);
         }
 
-        await this.repository.armazenarTokens(userEncontrado._id, accessToken, refreshtoken);
+        // SEC-04: Armazenar apenas o refreshtoken; o accessToken é stateless e não precisa ser persistido.
+        await this.repository.armazenarTokens(userEncontrado._id, null, refreshtoken);
 
         // Calcular e atualizar profileComplete se necessário
         const profileComplete = !!(userEncontrado.cpf && userEncontrado.telefone);
@@ -213,13 +214,25 @@ class AuthService {
             try {
                 jwt.verify(refreshtoken, process.env.JWT_SECRET_REFRESH_TOKEN);
             } catch (error) {
-                refreshtoken = await this.TokenUtil.generateRefreshToken(user._id);
+                // BUG-08: Diferenciar token expirado/inválido de erros reais do JWT
+                if (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError') {
+                    refreshtoken = await this.TokenUtil.generateRefreshToken(user._id);
+                } else {
+                    throw new CustomError({
+                        statusCode: 500,
+                        errorType: 'ServerError',
+                        field: 'Token',
+                        details: [],
+                        customMessage: 'Falha na verificação do token de sessão.'
+                    });
+                }
             }
         } else {
             refreshtoken = await this.TokenUtil.generateRefreshToken(user._id);
         }
 
-        await this.repository.armazenarTokens(user._id, accessToken, refreshtoken);
+        // SEC-04: Armazenar apenas o refreshtoken; accessToken não precisa persistir no banco.
+        await this.repository.armazenarTokens(user._id, null, refreshtoken);
 
         // 4. Calcular profileComplete
         const profileComplete = !!(user.cpf && user.telefone);
@@ -286,7 +299,8 @@ class AuthService {
         const accesstoken = await this.TokenUtil.generateAccessToken(id);
         let refreshtoken = userEncontrado.refreshtoken;
 
-        await this.repository.armazenarTokens(id, accesstoken, refreshtoken);
+        // SEC-04: Armazenar apenas o refreshtoken; o accessToken é stateless.
+        await this.repository.armazenarTokens(id, null, refreshtoken);
 
         const profileComplete = !!(userEncontrado.cpf && userEncontrado.telefone);
         if (userEncontrado.profileComplete !== profileComplete) {

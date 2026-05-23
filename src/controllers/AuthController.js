@@ -33,6 +33,11 @@ class AuthController {
         return CommonResponse.success(res, data);
     }
 
+    /**
+     * BUG-01: O logout deve funcionar mesmo com token expirado.
+     * Se o token estiver expirado, decodificamos sem verificar assinatura apenas para extrair o ID,
+     * pois o objetivo do logout é invalidar a sessão no banco de dados.
+     */
     logout = async (req, res) => {
         const token = req.body?.access_token || req.headers.authorization?.split(' ')[1];
 
@@ -46,7 +51,23 @@ class AuthController {
             });
         }
 
-        const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET_ACCESS_TOKEN);
+        let decoded;
+        try {
+            decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET_ACCESS_TOKEN);
+        } catch (err) {
+            if (err.name === 'TokenExpiredError') {
+                // Token expirado: decodificar sem verificar assinatura para pegar o ID
+                decoded = jwt.decode(token);
+            } else {
+                throw new CustomError({
+                    statusCode: HttpStatusCodes.INVALID_TOKEN.code,
+                    errorType: 'notAuthorized',
+                    field: 'Token',
+                    details: [],
+                    customMessage: 'Token inválido.'
+                });
+            }
+        }
 
         if (!decoded || !decoded.id) {
             throw new CustomError({
@@ -64,6 +85,11 @@ class AuthController {
         return CommonResponse.success(res, null, HttpStatusCodes.OK.code, messages.success.logout);
     }
 
+    /**
+     * BUG-02: Refresh token expirado era logado como 'error:' em vez de 'warn:'.
+     * Agora converte o TokenExpiredError do jwt em CustomError com errorType 'tokenExpired',
+     * que o errorHandler trata com nível 'warn' e retorna 401 com mensagem amigável.
+     */
     refresh = async (req, res) => {
         const token = req.body?.refresh_token;
 
@@ -77,7 +103,28 @@ class AuthController {
             });
         }
 
-        const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET_REFRESH_TOKEN);
+        let decoded;
+        try {
+            decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET_REFRESH_TOKEN);
+        } catch (err) {
+            if (err.name === 'TokenExpiredError') {
+                throw new CustomError({
+                    statusCode: HttpStatusCodes.UNAUTHORIZED.code,
+                    errorType: 'tokenExpired',
+                    field: 'Token',
+                    details: [],
+                    customMessage: 'Refresh token expirado. Faça login novamente.'
+                });
+            }
+            throw new CustomError({
+                statusCode: HttpStatusCodes.UNAUTHORIZED.code,
+                errorType: 'invalidToken',
+                field: 'Token',
+                details: [],
+                customMessage: 'Refresh token inválido.'
+            });
+        }
+
         const data = await this.service.refresh(decoded.id, token);
         return CommonResponse.success(res, data);
     }
