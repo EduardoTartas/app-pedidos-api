@@ -10,6 +10,7 @@ const router = express.Router();
 const adicionalGrupoController = new AdicionalGrupoController();
 
 router
+    .get('/adicionais/grupos', asyncWrapper(adicionalGrupoController.listar.bind(adicionalGrupoController)))
     .get('/adicionais/grupos/prato/:pratoId', asyncWrapper(adicionalGrupoController.listarPorPrato.bind(adicionalGrupoController)))
     .get('/adicionais/grupos/:id', asyncWrapper(adicionalGrupoController.buscarPorID.bind(adicionalGrupoController)))
     .post('/adicionais/grupos', AuthMiddleware, asyncWrapper(adicionalGrupoController.criar.bind(adicionalGrupoController)))

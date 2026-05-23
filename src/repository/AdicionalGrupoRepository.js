@@ -27,16 +27,14 @@ class AdicionalGrupoRepository {
 
     async listarPorRestaurante(restauranteId) {
         const grupos = await this.modelAdicionalGrupo.find({
-            restaurante_id: restauranteId,
-            ativo: true
+            restaurante_id: restauranteId
         }).sort({ nome: 1 });
         return grupos;
     }
 
     async listarPorIds(ids) {
         const grupos = await this.modelAdicionalGrupo.find({
-            _id: { $in: ids },
-            ativo: true
+            _id: { $in: ids }
         }).sort({ nome: 1 });
         return grupos;
     }

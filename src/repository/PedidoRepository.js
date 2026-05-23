@@ -70,7 +70,7 @@ class PedidoRepository {
             page: parseInt(page, 10),
             limit: parseInt(limite, 10),
             populate: [
-                { path: 'cliente_id', select: 'nome email telefone' }
+                { path: 'cliente_id', select: 'nome email telefone cpf' }
             ],
             sort: { createdAt: -1 },
         };
