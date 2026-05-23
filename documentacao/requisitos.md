@@ -30,6 +30,12 @@ Este documento consolida os **Requisitos Funcionais (RF)** e **Requisitos Não F
 - **[RF07] Notificações e Mensageria**
   O sistema deve disparar alertas automáticos sobre mudanças de status logístico e fornecer rotas para o gerenciamento de leitura de notificações.
 
+- **[RF08] Controle Administrativo de Visibilidade**
+  O sistema deve permitir a ativação e desativação global de lojas (campo 'ativo'), garantindo que estabelecimentos inativos ou em manutenção não sejam exibidos aos clientes finais.
+
+- **[RF09] Inativação Automática por Ociosidade**
+  O sistema deve possuir rotinas para suspender automaticamente a visibilidade de lojas que não apresentem atividade de vendas ou pedidos por períodos superiores a 30 dias.
+
 ---
 
 ## Requisitos Não Funcionais
@@ -42,3 +48,6 @@ Este documento consolida os **Requisitos Funcionais (RF)** e **Requisitos Não F
 
 - **[RNF02] Integridade e Precisão de Dados**
   O sistema deve garantir a precisão de cálculos financeiros no servidor e aplicar restrições de unicidade diretamente na camada de banco de dados para evitar duplicidade de registros.
+
+- **[RNF03] Conformidade com LGPD e Histórico (Soft Delete)**
+  O sistema deve priorizar a exclusão lógica ('deletado: true') em vez da remoção física de dados, garantindo que o histórico fiscal e transacional de pedidos seja preservado mesmo após o encerramento de parcerias.

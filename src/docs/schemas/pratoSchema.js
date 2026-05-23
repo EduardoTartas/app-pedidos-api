@@ -26,8 +26,8 @@ const pratoSchemas = {
             status: { type: "string", enum: ["ativo", "inativo"], example: "ativo" },
             adicionais_grupo_ids: {
                 type: "array",
-                items: { type: "string" },
-                example: ["674fa21d79969d2172e78713"]
+                items: { $ref: "#/components/schemas/GrupoDetalhes" },
+                description: "Grupos de adicionais populados"
             },
             createdAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" },
             updatedAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" }
@@ -48,8 +48,7 @@ const pratoSchemas = {
             status: { type: "string", enum: ["ativo", "inativo"], example: "ativo" },
             adicionais_grupo_ids: {
                 type: "array",
-                items: { type: "string" },
-                example: ["674fa21d79969d2172e78713"]
+                items: { $ref: "#/components/schemas/GrupoDetalhes" }
             },
             createdAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" },
             updatedAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" }
