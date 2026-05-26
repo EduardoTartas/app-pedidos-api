@@ -454,16 +454,22 @@ class PedidoService {
                 });
             }
 
-            // Para outros status (em_preparo, etc), apenas dono ou admin
+            // Para outros status (em_preparo, etc), apenas dono ou admin, com exceção de cliente marcando como entregue
             const restaurante = await this.restauranteRepository.buscarPorID(pedido.restaurante_id._id || pedido.restaurante_id);
             const usuarioLogado = await this.usuarioRepository.buscarPorID(req.user_id);
             const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
-            ensurePermission({
-                usuarioLogado,
-                targetId: donoId,
-                field: 'Pedido',
-                customMessage: 'Você não tem permissões para atualizar o status deste pedido.',
-            });
+            const clienteId = String(pedido.cliente_id._id || pedido.cliente_id);
+
+            const isClienteAtualizandoEntrega = (novoStatus === 'entregue' && pedido.status === 'a_caminho' && String(usuarioLogado._id) === clienteId);
+
+            if (!isClienteAtualizandoEntrega) {
+                ensurePermission({
+                    usuarioLogado,
+                    targetId: donoId,
+                    field: 'Pedido',
+                    customMessage: 'Você não tem permissões para atualizar o status deste pedido.',
+                });
+            }
         }
 
         // Atualizar status e histórico
