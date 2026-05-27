@@ -112,7 +112,8 @@ class AuthService {
             refreshtoken = await this.TokenUtil.generateRefreshToken(userEncontrado._id);
         }
 
-        await this.repository.armazenarTokens(userEncontrado._id, accessToken, refreshtoken);
+        // SEC-04: Armazenar apenas o refreshtoken; o accessToken é stateless e não precisa ser persistido.
+        await this.repository.armazenarTokens(userEncontrado._id, null, refreshtoken);
 
         // Calcular e atualizar profileComplete se necessário
         const profileComplete = !!(userEncontrado.cpf && userEncontrado.telefone);
@@ -213,13 +214,25 @@ class AuthService {
             try {
                 jwt.verify(refreshtoken, process.env.JWT_SECRET_REFRESH_TOKEN);
             } catch (error) {
-                refreshtoken = await this.TokenUtil.generateRefreshToken(user._id);
+                // BUG-08: Diferenciar token expirado/inválido de erros reais do JWT
+                if (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError') {
+                    refreshtoken = await this.TokenUtil.generateRefreshToken(user._id);
+                } else {
+                    throw new CustomError({
+                        statusCode: 500,
+                        errorType: 'ServerError',
+                        field: 'Token',
+                        details: [],
+                        customMessage: 'Falha na verificação do token de sessão.'
+                    });
+                }
             }
         } else {
             refreshtoken = await this.TokenUtil.generateRefreshToken(user._id);
         }
 
-        await this.repository.armazenarTokens(user._id, accessToken, refreshtoken);
+        // SEC-04: Armazenar apenas o refreshtoken; accessToken não precisa persistir no banco.
+        await this.repository.armazenarTokens(user._id, null, refreshtoken);
 
         // 4. Calcular profileComplete
         const profileComplete = !!(user.cpf && user.telefone);
@@ -260,6 +273,19 @@ class AuthService {
             });
         }
 
+        // Validar a assinatura do refresh token (não apenas comparação de string)
+        try {
+            jwt.verify(token, process.env.JWT_SECRET_REFRESH_TOKEN);
+        } catch (error) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.UNAUTHORIZED.code,
+                errorType: 'invalidToken',
+                field: 'Token',
+                details: [],
+                customMessage: 'Refresh token inválido ou expirado. Faça login novamente.'
+            });
+        }
+
         if (userEncontrado.refreshtoken !== token) {
             throw new CustomError({
                 statusCode: HttpStatusCodes.UNAUTHORIZED.code,
@@ -273,7 +299,8 @@ class AuthService {
         const accesstoken = await this.TokenUtil.generateAccessToken(id);
         let refreshtoken = userEncontrado.refreshtoken;
 
-        await this.repository.armazenarTokens(id, accesstoken, refreshtoken);
+        // SEC-04: Armazenar apenas o refreshtoken; o accessToken é stateless.
+        await this.repository.armazenarTokens(id, null, refreshtoken);
 
         const profileComplete = !!(userEncontrado.cpf && userEncontrado.telefone);
         if (userEncontrado.profileComplete !== profileComplete) {
@@ -295,13 +322,13 @@ class AuthService {
 
     async recuperaSenha(body) {
         const userEncontrado = await this.repository.buscarPorEmail(body.email);
+
+        // Retornar mensagem genérica independentemente de o email existir ou não
+        // (anti-user-enumeration — OWASP A07)
         if (!userEncontrado) {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.NOT_FOUND.code,
-                field: 'Email',
-                details: [],
-                customMessage: HttpStatusCodes.NOT_FOUND.message
-            });
+            return {
+                message: 'Se o email informado estiver cadastrado, você receberá um link de recuperação.'
+            };
         }
 
         const tokenUnico = this.TokenUtil.generateRecoveryCode();
@@ -320,7 +347,7 @@ class AuthService {
         );
 
         return {
-            message: 'Um email com o token de recuperação foi enviado para o seu endereço de email.'
+            message: 'Se o email informado estiver cadastrado, você receberá um link de recuperação.'
         };
     }
 
@@ -361,18 +388,8 @@ class AuthService {
 
     // Verificar email do usuário usando token
     async verificarEmail(token) {
-        console.log('Verificação de email - Token recebido:', token);
-
         // Buscar usuário pelo token de verificação
         const usuario = await this.repository.buscarPorTokenVerificacao(token);
-
-        console.log('Usuário encontrado:', usuario ? {
-            id: usuario._id,
-            email: usuario.email,
-            token_verificacao_email: usuario.token_verificacao_email,
-            exp_token_verificacao_email: usuario.exp_token_verificacao_email,
-            email_verificado: usuario.email_verificado
-        } : 'null');
 
         if (!usuario) {
             throw new CustomError({
@@ -388,14 +405,7 @@ class AuthService {
         const dataExpiracao = usuario.get('exp_token_verificacao_email', null, { getters: false });
         const dataAtual = new Date();
 
-        console.log('   Verificação de expiração:');
-        console.log('  - Data de expiração (original):', dataExpiracao);
-        console.log('  - Data atual:', dataAtual);
-        console.log('  - Token expirado?', dataExpiracao < dataAtual);
-
         if (dataExpiracao < dataAtual) {
-            console.log('Token expirado, gerando novo token e reenviando email...');
-
             // Gerar novo token
             const novoToken = await AuthHelper.generateRandomToken();
             const novaExpiracao = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
@@ -405,8 +415,6 @@ class AuthService {
 
             // Enviar novo email
             await EmailService.enviarEmailVerificacao(usuario.email, novoToken, usuario.nome);
-
-            console.log('Novo email de verificação enviado para:', usuario.email);
 
             throw new CustomError({
                 statusCode: HttpStatusCodes.UNAUTHORIZED.code,
@@ -419,8 +427,6 @@ class AuthService {
 
         // Atualizar usuário: marcar email como verificado e limpar token
         const usuarioAtualizado = await this.repository.atualizarVerificacaoEmail(usuario._id);
-
-        console.log('Email verificado com sucesso para:', usuarioAtualizado.email);
 
         return {
             message: 'Email verificado com sucesso!',

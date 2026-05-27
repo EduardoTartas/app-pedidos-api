@@ -9,6 +9,8 @@ const avaliacaoController = new AvaliacaoController();
 
 router
     .get('/avaliacoes/restaurante/:restauranteId', asyncWrapper(avaliacaoController.listarPorRestaurante.bind(avaliacaoController)))
-    .post('/avaliacoes', AuthMiddleware, asyncWrapper(avaliacaoController.criar.bind(avaliacaoController)));
+    .get('/avaliacoes/:id', asyncWrapper(avaliacaoController.buscarPorId.bind(avaliacaoController)))
+    .post('/avaliacoes', AuthMiddleware, asyncWrapper(avaliacaoController.criar.bind(avaliacaoController)))
+    .delete('/avaliacoes/:id', AuthMiddleware, asyncWrapper(avaliacaoController.deletar.bind(avaliacaoController)));
 
 export default router;

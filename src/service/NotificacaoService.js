@@ -14,17 +14,11 @@ class NotificacaoService {
         return await this.repository.criar(dadosNotificacao);
     }
 
+    /**
+     * BUG-07: Checagens de !req.user_id removidas — as rotas de notificação já passam pelo
+     * AuthMiddleware que garante req.user_id. Verificação dupla é ruído de código.
+     */
     async buscarPorId(id, req) {
-        if (!req.user_id) {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.UNAUTHORIZED.code,
-                errorType: 'unauthorized',
-                field: 'Autenticação',
-                details: [],
-                customMessage: 'Usuário não autenticado.'
-            });
-        }
-
         const notificacao = await this.repository.buscarPorID(id);
 
         if (String(notificacao.usuario_id) !== String(req.user_id)) {
@@ -41,30 +35,10 @@ class NotificacaoService {
     }
 
     async listarMinhasNotificacoes(req) {
-        if (!req.user_id) {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.UNAUTHORIZED.code,
-                errorType: 'unauthorized',
-                field: 'Autenticação',
-                details: [],
-                customMessage: 'Usuário não autenticado. Faça login para acessar as notificações.'
-            });
-        }
-
         return await this.repository.listar(req);
     }
 
     async marcarComoLida(id, req) {
-        if (!req.user_id) {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.UNAUTHORIZED.code,
-                errorType: 'unauthorized',
-                field: 'Autenticação',
-                details: [],
-                customMessage: 'Usuário não autenticado. Faça login para gerenciar notificações.'
-            });
-        }
-
         const notificacao = await this.repository.buscarPorID(id);
 
         // Apenas o destinatário pode marcar a notificação como lida
@@ -83,16 +57,6 @@ class NotificacaoService {
     }
 
     async deletar(id, req) {
-        if (!req.user_id) {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.UNAUTHORIZED.code,
-                errorType: 'unauthorized',
-                field: 'Autenticação',
-                details: [],
-                customMessage: 'Usuário não autenticado. Faça login para deletar notificações.'
-            });
-        }
-
         const notificacao = await this.repository.buscarPorID(id);
 
         // Apenas o destinatário pode deletar sua notificação

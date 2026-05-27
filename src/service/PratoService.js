@@ -60,20 +60,8 @@ class PratoService {
 
         // Verificar se o usuário é o dono ou admin
         const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
-        
-        // Tenta pegar o ID de várias formas (objeto populado, ID puro ou campo do banco)
-        const donoId = restaurante.dono_id?._id 
-            ? String(restaurante.dono_id._id) 
-            : String(restaurante.dono_id || restaurante.$__.id || "");
+        const donoId = this.extractDonoId(restaurante);
 
-        if (!donoId || donoId === "null" || donoId === "undefined") {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.FORBIDDEN.code,
-                errorType: 'forbidden',
-                field: 'dono_id',
-                customMessage: 'Este restaurante está órfão (sem dono vinculado). Entre em contato com o suporte.',
-            });
-        }
         ensurePermission({
             usuarioLogado,
             targetId: donoId,
@@ -96,20 +84,8 @@ class PratoService {
 
         // Verificar se o usuário é o dono ou admin
         const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
-        
-        // Tenta pegar o ID de várias formas (objeto populado, ID puro ou campo do banco)
-        const donoId = restaurante.dono_id?._id 
-            ? String(restaurante.dono_id._id) 
-            : String(restaurante.dono_id || restaurante.$__.id || "");
+        const donoId = this.extractDonoId(restaurante);
 
-        if (!donoId || donoId === "null" || donoId === "undefined") {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.FORBIDDEN.code,
-                errorType: 'forbidden',
-                field: 'dono_id',
-                customMessage: 'Este restaurante está órfão (sem dono vinculado). Entre em contato com o suporte.',
-            });
-        }
         ensurePermission({
             usuarioLogado,
             targetId: donoId,
@@ -130,20 +106,8 @@ class PratoService {
 
         // Verificar se o usuário é o dono ou admin
         const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
-        
-        // Tenta pegar o ID de várias formas (objeto populado, ID puro ou campo do banco)
-        const donoId = restaurante.dono_id?._id 
-            ? String(restaurante.dono_id._id) 
-            : String(restaurante.dono_id || restaurante.$__.id || "");
+        const donoId = this.extractDonoId(restaurante);
 
-        if (!donoId || donoId === "null" || donoId === "undefined") {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.FORBIDDEN.code,
-                errorType: 'forbidden',
-                field: 'dono_id',
-                customMessage: 'Este restaurante está órfão (sem dono vinculado). Entre em contato com o suporte.',
-            });
-        }
         ensurePermission({
             usuarioLogado,
             targetId: donoId,
@@ -172,23 +136,9 @@ class PratoService {
         }
 
         const restaurante = await this.ensureRestauranteExists(prato.restaurante_id);
-
-        // Verificar se o usuário é o dono ou admin
         const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
-        
-        // Tenta pegar o ID de várias formas (objeto populado, ID puro ou campo do banco)
-        const donoId = restaurante.dono_id?._id 
-            ? String(restaurante.dono_id._id) 
-            : String(restaurante.dono_id || restaurante.$__.id || "");
+        const donoId = this.extractDonoId(restaurante);
 
-        if (!donoId || donoId === "null" || donoId === "undefined") {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.FORBIDDEN.code,
-                errorType: 'forbidden',
-                field: 'dono_id',
-                customMessage: 'Este restaurante está órfão (sem dono vinculado). Entre em contato com o suporte.',
-            });
-        }
         ensurePermission({
             usuarioLogado,
             targetId: donoId,
@@ -223,23 +173,9 @@ class PratoService {
         }
 
         const restaurante = await this.ensureRestauranteExists(prato.restaurante_id);
-
-        // Verificar se o usuário é o dono ou admin
         const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
-        
-        // Tenta pegar o ID de várias formas (objeto populado, ID puro ou campo do banco)
-        const donoId = restaurante.dono_id?._id 
-            ? String(restaurante.dono_id._id) 
-            : String(restaurante.dono_id || restaurante.$__.id || "");
+        const donoId = this.extractDonoId(restaurante);
 
-        if (!donoId || donoId === "null" || donoId === "undefined") {
-            throw new CustomError({
-                statusCode: HttpStatusCodes.FORBIDDEN.code,
-                errorType: 'forbidden',
-                field: 'dono_id',
-                customMessage: 'Este restaurante está órfão (sem dono vinculado). Entre em contato com o suporte.',
-            });
-        }
         ensurePermission({
             usuarioLogado,
             targetId: donoId,
@@ -259,10 +195,10 @@ class PratoService {
 
         const urlAntiga = prato.foto_prato;
 
-        // 1. Remove a URL do banco de dados imediatamente (resposta rápida, evita carregamento desnecessário da imagem)
-        await this.repository.atualizar(id, { foto_prato: "" });
+        // 1. Remove a URL do banco de dados imediatamente
+        await this.repository.atualizar(id, { foto_prato: '' });
 
-        // 2. Deleta do Garage em background com retry (se falhar, apenas loga e não impacta o usuário)
+        // 2. Deleta do Garage em background com retry
         this.uploadService.deleteImagemComRetry(urlAntiga).catch(err => {
             console.error(`Erro isolado na exclusão da foto em background: ${err.message}`);
         });
@@ -335,6 +271,27 @@ class PratoService {
                 customMessage: `A seção '${secao}' não faz parte do cardápio deste restaurante. Adicione-a na configuração do restaurante primeiro.`,
             });
         }
+    }
+
+    /**
+     * MELHORIA-02: Extrai o donoId de forma segura, centralizando a lógica que
+     * antes estava duplicada 5 vezes neste arquivo (objeto populado vs ID puro).
+     */
+    extractDonoId(restaurante) {
+        const donoId = restaurante.dono_id?._id
+            ? String(restaurante.dono_id._id)
+            : String(restaurante.dono_id || '');
+
+        if (!donoId || donoId === 'null' || donoId === 'undefined') {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.FORBIDDEN.code,
+                errorType: 'forbidden',
+                field: 'dono_id',
+                customMessage: 'Este restaurante está órfão (sem dono vinculado). Entre em contato com o suporte.',
+            });
+        }
+
+        return donoId;
     }
 }
 

@@ -13,6 +13,7 @@ import AdicionalGrupoRepository from '../repository/AdicionalGrupoRepository.js'
 import AdicionalOpcaoRepository from '../repository/AdicionalOpcaoRepository.js';
 import NotificacaoRepository from '../repository/NotificacaoRepository.js';
 import UsuarioRepository from '../repository/UsuarioRepository.js';
+import EnderecoRepository from '../repository/EnderecoRepository.js';
 
 // Fluxo de status permitido
 const FLUXO_STATUS = {
@@ -37,10 +38,12 @@ class PedidoService {
         this.opcaoRepository = new AdicionalOpcaoRepository();
         this.notificacaoRepository = new NotificacaoRepository();
         this.usuarioRepository = new UsuarioRepository();
+        this.enderecoRepository = new EnderecoRepository();
     }
 
     /**
      * Cria um pedido recalculando os preços no backend.
+     * MELHORIA-05: Inclui endereço de entrega como snapshot e forma de pagamento.
      */
     async criar(parsedData, req) {
         const clienteId = req.user_id;
@@ -56,6 +59,43 @@ class PedidoService {
                 details: [],
                 customMessage: 'O restaurante não está aberto para pedidos no momento.'
             });
+        }
+
+        // MELHORIA-03: Verificar horário de funcionamento se configurado
+        if (restaurante.horario_funcionamento && restaurante.horario_funcionamento.length > 0) {
+            const dentroDHorario = this.isRestauranteAbertoPorHorario(restaurante.horario_funcionamento);
+            if (!dentroDHorario) {
+                throw new CustomError({
+                    statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                    errorType: 'validationError',
+                    field: 'Restaurante',
+                    details: [],
+                    customMessage: 'O restaurante está fora do horário de funcionamento.'
+                });
+            }
+        }
+
+        // Validar que há itens e que as quantidades são válidas
+        if (!parsedData.itens || parsedData.itens.length === 0) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                errorType: 'validationError',
+                field: 'Itens',
+                details: [],
+                customMessage: 'O pedido deve ter pelo menos um item.'
+            });
+        }
+
+        for (const item of parsedData.itens) {
+            if (!item.quantidade || item.quantidade < 1) {
+                throw new CustomError({
+                    statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                    errorType: 'validationError',
+                    field: 'Itens',
+                    details: [],
+                    customMessage: `A quantidade de cada item deve ser pelo menos 1.`
+                });
+            }
         }
 
         // Recalcular preços no backend para evitar manipulação
@@ -89,22 +129,17 @@ class PedidoService {
             const adicionaisCalculados = [];
             const adicionaisInput = item.adicionais || [];
 
-            // Validar regras de min/max dos grupos de adicionais (incluindo obrigatoriedade)
-            await this.validarAdicionais(prato, adicionaisInput);
+            // BUG-03: Validação de adicionais com batch queries (sem N+1)
+            const adicionaisComPrecos = await this.validarAdicionais(prato, adicionaisInput);
 
-            if (adicionaisInput.length > 0) {
-                for (const adicional of adicionaisInput) {
-                    const opcao = await this.opcaoRepository.buscarPorID(adicional.opcao_id);
-
-                    adicionaisCalculados.push({
-                        opcao_id: opcao._id,
-                        opcao_nome: opcao.nome,
-                        preco_unitario: opcao.preco,
-                        quantidade: adicional.quantidade || 1
-                    });
-
-                    totalAdicionaisItem += opcao.preco * (adicional.quantidade || 1);
-                }
+            for (const { opcao, quantidade } of adicionaisComPrecos) {
+                adicionaisCalculados.push({
+                    opcao_id: opcao._id,
+                    opcao_nome: opcao.nome,
+                    preco_unitario: opcao.preco,
+                    quantidade
+                });
+                totalAdicionaisItem += opcao.preco * quantidade;
             }
 
             const totalItem = (prato.preco + totalAdicionaisItem) * item.quantidade;
@@ -132,6 +167,9 @@ class PedidoService {
                 taxa_entrega: Math.round(taxaEntrega * 100) / 100,
                 total: Math.round(total * 100) / 100
             },
+            // MELHORIA-05: Snapshot do endereço — preservado mesmo se o usuário alterar depois
+            endereco_entrega: parsedData.endereco_entrega,
+            forma_pagamento: parsedData.forma_pagamento || 'pix',
             historico_status: [{ status: 'criado', data: new Date() }]
         };
 
@@ -153,25 +191,78 @@ class PedidoService {
 
     /**
      * Valida adicionais respeitando regras min/max dos grupos.
+     * BUG-03: Usa batch queries para buscar todas as opções e grupos de uma vez,
+     * eliminando o problema de N+1 queries que causava alta latência.
+     *
+     * @returns {Array} Lista de { opcao, quantidade } para cálculo de preços
      */
     async validarAdicionais(prato, adicionais) {
-        // Agrupar adicionais por grupo
-        const adicionaisPorGrupo = {};
-
-        for (const adicional of adicionais) {
-            const opcao = await this.opcaoRepository.buscarPorID(adicional.opcao_id);
-
-            const grupoId = String(opcao.grupo_id);
-            if (!adicionaisPorGrupo[grupoId]) {
-                adicionaisPorGrupo[grupoId] = [];
-            }
-            adicionaisPorGrupo[grupoId].push(adicional);
+        if (!adicionais || adicionais.length === 0) {
+            // Verificar grupos obrigatórios mesmo sem adicionais selecionados
+            await this.validarGruposObrigatorios(prato, {});
+            return [];
         }
 
-        // Validar cada grupo
-        for (const [grupoId, adicionaisDoGrupo] of Object.entries(adicionaisPorGrupo)) {
-            const grupo = await this.grupoRepository.buscarPorID(grupoId);
-            const totalQuantidade = adicionaisDoGrupo.reduce((acc, a) => acc + (a.quantidade || 1), 0);
+        // ── BATCH 1: Buscar todas as opções de uma vez ──
+        const opcaoIds = adicionais.map(a => a.opcao_id);
+        const opcoes = await this.opcaoRepository.buscarPorIDs(opcaoIds);
+        const opcoesMap = new Map(opcoes.map(o => [String(o._id), o]));
+
+        // IDs dos grupos vinculados ao prato
+        const gruposVinculadosIds = (prato.adicionais_grupo_ids || []).map(g => String(g._id || g));
+
+        // Agrupar adicionais por grupo e validar pertencimento
+        const adicionaisPorGrupo = {};
+        const resultados = [];
+
+        for (const adicional of adicionais) {
+            const opcao = opcoesMap.get(String(adicional.opcao_id));
+            if (!opcao) {
+                throw new CustomError({
+                    statusCode: HttpStatusCodes.NOT_FOUND.code,
+                    errorType: 'resourceNotFound',
+                    field: 'Adicionais',
+                    details: [],
+                    customMessage: `Opção de adicional com ID "${adicional.opcao_id}" não encontrada.`
+                });
+            }
+
+            const grupoId = String(opcao.grupo_id);
+
+            // Verificar se o grupo do adicional pertence ao prato
+            if (!gruposVinculadosIds.includes(grupoId)) {
+                throw new CustomError({
+                    statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                    errorType: 'validationError',
+                    field: 'Adicionais',
+                    details: [],
+                    customMessage: `O adicional "${opcao.nome}" não pertence a este prato.`
+                });
+            }
+
+            const quantidade = adicional.quantidade || 1;
+            if (!adicionaisPorGrupo[grupoId]) {
+                adicionaisPorGrupo[grupoId] = 0;
+            }
+            adicionaisPorGrupo[grupoId] += quantidade;
+
+            resultados.push({ opcao, quantidade });
+        }
+
+        // ── BATCH 2: Buscar todos os grupos necessários de uma vez ──
+        const grupoIdsNecessarios = [
+            ...new Set([
+                ...Object.keys(adicionaisPorGrupo),
+                ...gruposVinculadosIds
+            ])
+        ];
+        const grupos = await this.grupoRepository.listarPorIds(grupoIdsNecessarios);
+        const gruposMap = new Map(grupos.map(g => [String(g._id), g]));
+
+        // Validar regras min/max por grupo
+        for (const [grupoId, totalQuantidade] of Object.entries(adicionaisPorGrupo)) {
+            const grupo = gruposMap.get(grupoId);
+            if (!grupo) continue;
 
             if (totalQuantidade < grupo.min) {
                 throw new CustomError({
@@ -194,24 +285,82 @@ class PedidoService {
             }
         }
 
-        // Verificar grupos obrigatórios
-        if (prato.adicionais_grupo_ids && prato.adicionais_grupo_ids.length > 0) {
-            for (const grupoRef of prato.adicionais_grupo_ids) {
-                if (!grupoRef) continue;
-                const grupoId = String(grupoRef._id || grupoRef);
-                const grupo = await this.grupoRepository.buscarPorID(grupoId);
+        // Verificar grupos obrigatórios (usando o mapa já carregado)
+        await this.validarGruposObrigatorios(prato, adicionaisPorGrupo, gruposMap);
 
-                if (grupo.obrigatorio && !adicionaisPorGrupo[grupoId]) {
-                    throw new CustomError({
-                        statusCode: HttpStatusCodes.BAD_REQUEST.code,
-                        errorType: 'validationError',
-                        field: 'Adicionais',
-                        details: [],
-                        customMessage: `O grupo "${grupo.nome}" é obrigatório. Selecione pelo menos ${grupo.min} opção(ões).`
-                    });
-                }
+        return resultados;
+    }
+
+    /**
+     * Verifica se todos os grupos obrigatórios foram atendidos.
+     * Reutiliza o gruposMap já carregado para evitar queries extras.
+     */
+    async validarGruposObrigatorios(prato, adicionaisPorGrupo, gruposMap = null) {
+        if (!prato.adicionais_grupo_ids || prato.adicionais_grupo_ids.length === 0) return;
+
+        // Se não temos o mapa, carregamos apenas os grupos do prato
+        if (!gruposMap) {
+            const grupoIds = prato.adicionais_grupo_ids.map(g => String(g._id || g));
+            const grupos = await this.grupoRepository.listarPorIds(grupoIds);
+            gruposMap = new Map(grupos.map(g => [String(g._id), g]));
+        }
+
+        for (const grupoRef of prato.adicionais_grupo_ids) {
+            if (!grupoRef) continue;
+            const grupoId = String(grupoRef._id || grupoRef);
+            const grupo = gruposMap.get(grupoId);
+            if (!grupo) continue;
+
+            if (grupo.obrigatorio && !adicionaisPorGrupo[grupoId]) {
+                throw new CustomError({
+                    statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                    errorType: 'validationError',
+                    field: 'Adicionais',
+                    details: [],
+                    customMessage: `O grupo "${grupo.nome}" é obrigatório. Selecione pelo menos ${grupo.min} opção(ões).`
+                });
             }
         }
+    }
+
+    /**
+     * MELHORIA-03: Verifica se o restaurante está dentro do horário de funcionamento.
+     * Usa timezone de Brasília (America/Sao_Paulo).
+     *
+     * @param {Array} horarios - Array de { dia, abertura, fechamento, fechado }
+     * @returns {boolean} true se está dentro do horário
+     */
+    isRestauranteAbertoPorHorario(horarios) {
+        const agora = new Date();
+        const opcoes = { timeZone: 'America/Sao_Paulo', weekday: 'long', hour: '2-digit', minute: '2-digit', hour12: false };
+
+        const diaSemanaMap = {
+            'domingo': 'domingo',
+            'monday': 'segunda', 'segunda-feira': 'segunda',
+            'tuesday': 'terca', 'terça-feira': 'terca',
+            'wednesday': 'quarta', 'quarta-feira': 'quarta',
+            'thursday': 'quinta', 'quinta-feira': 'quinta',
+            'friday': 'sexta', 'sexta-feira': 'sexta',
+            'saturday': 'sabado', 'sábado': 'sabado',
+        };
+
+        const partes = new Intl.DateTimeFormat('pt-BR', opcoes).formatToParts(agora);
+        const diaFull = partes.find(p => p.type === 'weekday')?.value?.toLowerCase() || '';
+        const diaAtual = diaSemanaMap[diaFull] || diaFull;
+        const horaAtual = partes.find(p => p.type === 'hour')?.value || '00';
+        const minAtual = partes.find(p => p.type === 'minute')?.value || '00';
+        const horaMinAtual = `${horaAtual}:${minAtual}`;
+
+        const horarioDoDia = horarios.find(h => h.dia === diaAtual);
+
+        // Se não há configuração para hoje ou está marcado como fechado
+        if (!horarioDoDia || horarioDoDia.fechado) return false;
+
+        const abertura = horarioDoDia.abertura || '00:00';
+        const fechamento = horarioDoDia.fechamento || '23:59';
+
+        // Comparação simples de strings HH:mm (funciona para horários no mesmo dia)
+        return horaMinAtual >= abertura && horaMinAtual <= fechamento;
     }
 
     /**
@@ -251,7 +400,7 @@ class PedidoService {
 
         const novoStatus = parsedData.status;
 
-        // Verificar cancelamento (qualquer momento antes de entregue)
+        // Verificar cancelamento com janela de tempo
         if (novoStatus === 'cancelado') {
             if (pedido.status === 'entregue') {
                 throw new CustomError({
@@ -281,6 +430,28 @@ class PedidoService {
                     customMessage: 'Você não tem permissão para cancelar este pedido.'
                 });
             }
+
+            // Cliente só pode cancelar em 'criado'
+            if (isCliente && !isDonoOuAdmin && pedido.status !== 'criado') {
+                throw new CustomError({
+                    statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                    errorType: 'validationError',
+                    field: 'Status',
+                    details: [],
+                    customMessage: 'Você só pode cancelar o pedido enquanto ele estiver no status "criado". Entre em contato com o restaurante para solicitar o cancelamento.'
+                });
+            }
+
+            // Dono/admin pode cancelar em 'criado' ou 'em_preparo'
+            if (isDonoOuAdmin && !['criado', 'em_preparo'].includes(pedido.status)) {
+                throw new CustomError({
+                    statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                    errorType: 'validationError',
+                    field: 'Status',
+                    details: [],
+                    customMessage: `Não é possível cancelar um pedido no status "${pedido.status}".`
+                });
+            }
         } else {
             // Verificar se a transição de status é válida
             const statusEsperado = FLUXO_STATUS[pedido.status];
@@ -290,20 +461,26 @@ class PedidoService {
                     errorType: 'validationError',
                     field: 'Status',
                     details: [],
-                    customMessage: `Transição inválida: "${pedido.status}" → "${novoStatus}". O próximo status esperado é "${statusEsperado || 'nenhum (pedido finalizado)'}".`
+                    customMessage: `Transição inválida: "${pedido.status}" → "${novoStatus}". O próximo status esperado é "${statusEsperado || 'nenhum (pedido finalizado)'}'.`
                 });
             }
 
-            // Para outros status (em_preparo, etc), apenas dono ou admin
+            // Para outros status (em_preparo, etc), apenas dono ou admin, com exceção de cliente marcando como entregue
             const restaurante = await this.restauranteRepository.buscarPorID(pedido.restaurante_id?._id || pedido.restaurante_id);
             const usuarioLogado = await this.usuarioRepository.buscarPorID(req.user_id);
             const donoId = String(restaurante.dono_id?._id || restaurante.dono_id);
-            ensurePermission({
-                usuarioLogado,
-                targetId: donoId,
-                field: 'Pedido',
-                customMessage: 'Você não tem permissões para atualizar o status deste pedido.',
-            });
+            const clienteId = String(pedido.cliente_id?._id || pedido.cliente_id);
+
+            const isClienteAtualizandoEntrega = (novoStatus === 'entregue' && pedido.status === 'a_caminho' && String(usuarioLogado._id) === clienteId);
+
+            if (!isClienteAtualizandoEntrega) {
+                ensurePermission({
+                    usuarioLogado,
+                    targetId: donoId,
+                    field: 'Pedido',
+                    customMessage: 'Você não tem permissões para atualizar o status deste pedido.',
+                });
+            }
         }
 
         // Atualizar status e histórico

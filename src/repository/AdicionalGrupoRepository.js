@@ -39,6 +39,15 @@ class AdicionalGrupoRepository {
         return grupos;
     }
 
+    /**
+     * BUG-03: Busca múltiplos grupos por array de IDs em uma única query (batch).
+     * Retorna um array vazio se ids for vazio.
+     */
+    async buscarPorIDs(ids) {
+        if (!ids || ids.length === 0) return [];
+        return await this.modelAdicionalGrupo.find({ _id: { $in: ids } });
+    }
+
     async buscarPorNomeEntreIds(nome, ids) {
         return await this.modelAdicionalGrupo.findOne({
             nome,

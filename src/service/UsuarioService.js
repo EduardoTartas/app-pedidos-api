@@ -24,7 +24,32 @@ class UsuarioService {
     }
 
     async listar(req) {
+        // L-07: Apenas administradores podem listar todos os usuários
+        const usuarioLogado = await this.repository.buscarPorID(req.user_id);
+        if (!usuarioLogado || !usuarioLogado.isAdmin) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.FORBIDDEN.code,
+                errorType: 'forbidden',
+                field: 'Usuário',
+                details: [],
+                customMessage: 'Apenas administradores podem listar todos os usuários.',
+            });
+        }
+
         const data = await this.repository.listar(req);
+        return data;
+    }
+
+    async buscarPorId(id, req) {
+        const usuarioLogado = await this.repository.buscarPorID(req.user_id);
+        const { isAdmin } = ensurePermission({
+            usuarioLogado,
+            targetId: id,
+            field: 'Usuário',
+            customMessage: 'Você não tem permissão para visualizar este usuário.',
+        });
+
+        const data = await this.ensureUserExists(id);
         return data;
     }
 
@@ -76,6 +101,11 @@ class UsuarioService {
         // Não permitir alterar isAdmin se não for admin
         if (!isAdmin) {
             delete parsedData.isAdmin;
+        }
+
+        // MELHORIA-10: Validar CPF ao atualizar (não apenas no cadastro)
+        if (parsedData.cpf) {
+            await this.validateCpf(parsedData.cpf, id);
         }
 
         const data = await this.repository.atualizar(id, parsedData);
