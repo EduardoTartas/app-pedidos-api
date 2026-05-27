@@ -23,9 +23,12 @@ const RestauranteSchema = z.object({
         })
         .optional(),
     status: z
-        .enum(['aberto', 'fechado', 'inativo'], {
-            errorMap: () => ({ message: "Status deve ser 'aberto', 'fechado' ou 'inativo'." }),
+        .enum(['aberto', 'fechado'], {
+            errorMap: () => ({ message: "Status deve ser 'aberto' ou 'fechado'." }),
         })
+        .optional(),
+    ativo: z
+        .boolean()
         .optional(),
     categoria_ids: z
         .array(objectIdSchema)

@@ -118,7 +118,7 @@ class EnderecoService {
 
     // Verificar permissão (dono ou admin)
     const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
-    const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
+    const donoId = String(restaurante.dono_id?._id || restaurante.dono_id);
     ensurePermission({
       usuarioLogado,
       targetId: donoId,
@@ -157,7 +157,7 @@ class EnderecoService {
     const restaurante = await this.ensureRestauranteExists(restauranteId);
 
     const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
-    const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
+    const donoId = String(restaurante.dono_id?._id || restaurante.dono_id);
     ensurePermission({
       usuarioLogado,
       targetId: donoId,
@@ -181,7 +181,7 @@ class EnderecoService {
     const restaurante = await this.ensureRestauranteExists(restauranteId);
 
     const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
-    const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
+    const donoId = String(restaurante.dono_id?._id || restaurante.dono_id);
     ensurePermission({
       usuarioLogado,
       targetId: donoId,

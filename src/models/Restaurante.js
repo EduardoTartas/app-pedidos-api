@@ -33,8 +33,16 @@ class Restaurante {
             },
             status: {
                 type: String,
-                enum: ["aberto", "fechado", "inativo"],
+                enum: ["aberto", "fechado"],
                 default: "fechado"
+            },
+            ativo: {
+                type: Boolean,
+                default: true
+            },
+            deletado: {
+                type: Boolean,
+                default: false
             },
             categoria_ids: [{
                 type: mongoose.Schema.Types.ObjectId,

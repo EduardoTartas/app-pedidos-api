@@ -178,7 +178,7 @@ class PedidoService {
         // Notificar o dono do restaurante
         if (restaurante.dono_id) {
             await this.notificacaoRepository.criar({
-                usuario_id: restaurante.dono_id._id || restaurante.dono_id,
+                usuario_id: restaurante.dono_id?._id || restaurante.dono_id,
                 pedido_id: pedido._id,
                 tipo: 'pedido_confirmado',
                 titulo: 'Novo pedido recebido',
@@ -380,7 +380,7 @@ class PedidoService {
 
         // Verificar se o usuário é o dono do restaurante ou admin
         const usuarioLogado = await this.usuarioRepository.buscarPorID(req.user_id);
-        const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
+        const donoId = String(restaurante.dono_id?._id || restaurante.dono_id);
         ensurePermission({
             usuarioLogado,
             targetId: donoId,
@@ -402,10 +402,21 @@ class PedidoService {
 
         // Verificar cancelamento com janela de tempo
         if (novoStatus === 'cancelado') {
-            const restaurante = await this.restauranteRepository.buscarPorID(pedido.restaurante_id._id || pedido.restaurante_id);
+            if (pedido.status === 'entregue') {
+                throw new CustomError({
+                    statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                    errorType: 'validationError',
+                    field: 'Status',
+                    details: [],
+                    customMessage: 'Não é possível cancelar um pedido já entregue.'
+                });
+            }
+
+            // Verificar se o usuário é o cliente, o dono do restaurante ou admin
+            const restaurante = await this.restauranteRepository.buscarPorID(pedido.restaurante_id?._id || pedido.restaurante_id);
             const usuarioLogado = await this.usuarioRepository.buscarPorID(req.user_id);
-            const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
-            const clienteId = String(pedido.cliente_id._id || pedido.cliente_id);
+            const donoId = String(restaurante.dono_id?._id || restaurante.dono_id);
+            const clienteId = String(pedido.cliente_id?._id || pedido.cliente_id);
 
             const isDonoOuAdmin = usuarioLogado.isAdmin || String(usuarioLogado._id) === donoId;
             const isCliente = String(usuarioLogado._id) === clienteId;
@@ -455,10 +466,10 @@ class PedidoService {
             }
 
             // Para outros status (em_preparo, etc), apenas dono ou admin, com exceção de cliente marcando como entregue
-            const restaurante = await this.restauranteRepository.buscarPorID(pedido.restaurante_id._id || pedido.restaurante_id);
+            const restaurante = await this.restauranteRepository.buscarPorID(pedido.restaurante_id?._id || pedido.restaurante_id);
             const usuarioLogado = await this.usuarioRepository.buscarPorID(req.user_id);
-            const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
-            const clienteId = String(pedido.cliente_id._id || pedido.cliente_id);
+            const donoId = String(restaurante.dono_id?._id || restaurante.dono_id);
+            const clienteId = String(pedido.cliente_id?._id || pedido.cliente_id);
 
             const isClienteAtualizandoEntrega = (novoStatus === 'entregue' && pedido.status === 'a_caminho' && String(usuarioLogado._id) === clienteId);
 
@@ -485,7 +496,7 @@ class PedidoService {
         const notifData = MENSAGENS_NOTIFICACAO[novoStatus];
         if (notifData) {
             await this.notificacaoRepository.criar({
-                usuario_id: pedido.cliente_id._id || pedido.cliente_id,
+                usuario_id: pedido.cliente_id?._id || pedido.cliente_id,
                 pedido_id: pedido._id,
                 tipo: notifData.tipo,
                 titulo: notifData.titulo,
