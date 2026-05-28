@@ -43,7 +43,8 @@ class PedidoRepository {
             page: parseInt(page, 10),
             limit: parseInt(limite, 10),
             populate: [
-                { path: 'restaurante_id', select: 'nome foto_restaurante' }
+                { path: 'restaurante_id', select: 'nome foto_restaurante' },
+                { path: 'cliente_id', select: 'nome email telefone' }
             ],
             sort: { createdAt: -1 },
         };

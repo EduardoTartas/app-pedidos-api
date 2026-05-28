@@ -393,6 +393,35 @@ class PedidoService {
     }
 
     /**
+     * Busca detalhes de um pedido específico.
+     */
+    async buscarPorID(id, req) {
+        const pedido = await this.repository.buscarPorID(id);
+
+        // Verificar permissão (apenas cliente, dono ou admin)
+        const usuarioLogado = await this.usuarioRepository.buscarPorID(req.user_id);
+        const restaurante = await this.restauranteRepository.buscarPorID(pedido.restaurante_id?._id || pedido.restaurante_id);
+        
+        const donoId = String(restaurante.dono_id?._id || restaurante.dono_id);
+        const clienteId = String(pedido.cliente_id?._id || pedido.cliente_id);
+
+        const isDonoOuAdmin = usuarioLogado.isAdmin || String(usuarioLogado._id) === donoId;
+        const isCliente = String(usuarioLogado._id) === clienteId;
+
+        if (!isDonoOuAdmin && !isCliente) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.FORBIDDEN.code,
+                errorType: 'forbidden',
+                field: 'Pedido',
+                details: [],
+                customMessage: 'Você não tem permissão para visualizar este pedido.'
+            });
+        }
+
+        return pedido;
+    }
+
+    /**
      * Avança o fluxo do pedido e dispara notificação.
      */
     async atualizarStatus(pedidoId, parsedData, req) {
