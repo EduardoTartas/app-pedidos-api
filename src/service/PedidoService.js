@@ -150,6 +150,7 @@ class PedidoService {
                 prato_nome: prato.nome,
                 preco_unitario: prato.preco,
                 quantidade: item.quantidade,
+                observacao: item.observacao || "",
                 adicionais: adicionaisCalculados
             });
         }

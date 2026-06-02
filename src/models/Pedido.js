@@ -48,11 +48,16 @@ const itemPedidoSchema = new mongoose.Schema({
         min: 1,
         default: 1
     },
+    observacao: {
+        type: String,
+        trim: true,
+        default: ""
+    },
     adicionais: [adicionalItemSchema]
 }, { _id: false });
 
 /**
- * MELHORIA-05: Snapshot do endereço de entrega no momento do pedido.
+ * Snapshot do endereço de entrega no momento do pedido.
  * Armazenado como objeto embutido (não referência) para preservar dados históricos
  * mesmo que o usuário altere ou remova o endereço posteriormente.
  */
@@ -115,7 +120,7 @@ class Pedido {
                     default: 0
                 }
             },
-            // MELHORIA-05: Endereço de entrega obrigatório no pedido
+            // Endereço de entrega obrigatório no pedido
             endereco_entrega: {
                 type: enderecoEntregaSchema,
                 required: [true, "O endereço de entrega é obrigatório!"]

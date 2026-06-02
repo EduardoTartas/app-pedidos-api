@@ -11,6 +11,7 @@ const ItemAdicionalSchema = z.object({
 const ItemPedidoSchema = z.object({
     prato_id: objectIdSchema,
     quantidade: z.number().int().positive('Quantidade deve ser positiva.'),
+    observacao: z.string().optional().default(""),
     adicionais: z.array(ItemAdicionalSchema).optional().default([]),
 });
 
