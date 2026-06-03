@@ -187,7 +187,8 @@ class PedidoService {
             });
         }
 
-        return pedido;
+        // Retorna o pedido populado para o checkout do mobile/front
+        return await this.repository.buscarPorID(pedido._id);
     }
 
     /**
@@ -402,7 +403,7 @@ class PedidoService {
         // Verificar permissão (apenas cliente, dono ou admin)
         const usuarioLogado = await this.usuarioRepository.buscarPorID(req.user_id);
         const restaurante = await this.restauranteRepository.buscarPorID(pedido.restaurante_id?._id || pedido.restaurante_id);
-        
+
         const donoId = String(restaurante.dono_id?._id || restaurante.dono_id);
         const clienteId = String(pedido.cliente_id?._id || pedido.cliente_id);
 
