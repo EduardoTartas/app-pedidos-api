@@ -12,6 +12,7 @@ const pedidoController = new PedidoController();
 router
     .get('/pedidos/meus', AuthMiddleware, asyncWrapper(pedidoController.listarMeusPedidos.bind(pedidoController)))
     .get('/pedidos/restaurante/:restauranteId', AuthMiddleware, asyncWrapper(pedidoController.listarPedidosRestaurante.bind(pedidoController)))
+    .get('/pedidos/:id', AuthMiddleware, asyncWrapper(pedidoController.buscarPorId.bind(pedidoController)))
     .post('/pedidos', AuthMiddleware, asyncWrapper(pedidoController.criar.bind(pedidoController)))
     .patch('/pedidos/:id/status', AuthMiddleware, asyncWrapper(pedidoController.atualizarStatus.bind(pedidoController)));
 

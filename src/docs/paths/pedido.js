@@ -9,7 +9,7 @@ const pedidoRoutes = {
             summary: "Lista os pedidos do cliente autenticado",
             description: `
         + Caso de uso: Permitir que o cliente consulte o histórico dos seus pedidos.
-        
+
         + Função de Negócio:
             - Permitir ao front-end obter a lista de pedidos do usuário logado.
             + Recebe como query parameters (opcionais):
@@ -27,6 +27,8 @@ const pedidoRoutes = {
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "status", in: "query", schema: { type: "string", enum: ["criado", "em_preparo", "a_caminho", "entregue", "cancelado"] }, required: false, description: "Filtra por status" },
+                { name: "data_inicio", in: "query", schema: { type: "string", format: "date", example: "2024-01-01" }, required: false, description: "Filtro: Período Inicial (YYYY-MM-DD)" },
+                { name: "data_fim", in: "query", schema: { type: "string", format: "date", example: "2024-12-31" }, required: false, description: "Filtro: Período Final (YYYY-MM-DD)" },
                 { name: "limite", in: "query", schema: { type: "number" }, required: false, description: "Registros por página" },
                 { name: "page", in: "query", schema: { type: "number" }, required: false, description: "Número da página" }
             ],
@@ -46,7 +48,7 @@ const pedidoRoutes = {
             summary: "Lista pedidos recebidos por um restaurante",
             description: `
         + Caso de uso: Permitir que o dono do restaurante consulte os pedidos recebidos.
-        
+
         + Função de Negócio:
             - Permitir ao front-end obter a lista de pedidos de um restaurante específico.
             + Recebe como path parameter:
@@ -85,7 +87,7 @@ const pedidoRoutes = {
             summary: "Cria um novo pedido",
             description: `
             + Caso de uso: Permitir que o cliente crie um pedido em um restaurante.
-            
+
             + Função de Negócio:
                 - Permitir ao front-end criar um pedido de delivery.
                 + Recebe no corpo da requisição:
@@ -131,7 +133,7 @@ const pedidoRoutes = {
             summary: "Atualiza status de um pedido",
             description: `
             + Caso de uso: Permitir que o dono do restaurante ou cliente atualize o status do pedido.
-            
+
             + Função de Negócio:
                 - Permitir ao front-end avançar o status do pedido na esteira de entrega.
                 + Recebe como path parameter:

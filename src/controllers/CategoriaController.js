@@ -6,6 +6,7 @@ import {
     CategoriaUpdateSchema
 } from '../utils/validators/schemas/zod/CategoriaSchema.js';
 import { IdSchema } from '../utils/validators/schemas/zod/querys/CommonQuerySchema.js';
+import { CategoriaQuerySchema } from '../utils/validators/schemas/zod/querys/CategoriaQuerySchema.js';
 import {
     CommonResponse,
     CustomError,
@@ -18,13 +19,26 @@ class CategoriaController {
     }
 
     async listar(req, res) {
-        const id = req?.params?.id;
-        if (id) {
-            IdSchema.parse(id);
+        const query = req?.query;
+        if (query && Object.keys(query).length !== 0) {
+            await CategoriaQuerySchema.parseAsync(query);
         }
 
         const data = await this.service.listar(req);
         return CommonResponse.success(res, data);
+    }
+
+    async buscarPorId(req, res) {
+        const { id } = req.params;
+        IdSchema.parse(id);
+
+        const data = await this.service.buscarPorId(id);
+        return CommonResponse.success(
+            res,
+            data,
+            HttpStatusCodes.OK.code,
+            'Categoria encontrada com sucesso.',
+        );
     }
 
     async criar(req, res) {
@@ -39,7 +53,7 @@ class CategoriaController {
 
         const parsedData = CategoriaUpdateSchema.parse(req.body);
         const data = await this.service.atualizar(id, parsedData, req);
-        return CommonResponse.success(res, data, 200, 'Categoria atualizada com sucesso.');
+        return CommonResponse.success(res, data, HttpStatusCodes.OK.code, 'Categoria atualizada com sucesso.');
     }
 
     async deletar(req, res) {
@@ -47,7 +61,45 @@ class CategoriaController {
         IdSchema.parse(id);
 
         const data = await this.service.deletar(id, req);
-        return CommonResponse.success(res, data, 200, 'Categoria excluída com sucesso.');
+        return CommonResponse.success(res, data, HttpStatusCodes.OK.code, 'Categoria excluída com sucesso.');
+    }
+
+    async fotoUpload(req, res) {
+      const { id } = req.params;
+      IdSchema.parse(id);
+
+      const file = req?.files?.file || req?.files?.imagem;
+      if (!file) {
+          throw new CustomError({
+              statusCode: HttpStatusCodes.BAD_REQUEST.code,
+              errorType: 'validationError',
+              field: 'file',
+              details: [],
+              customMessage: 'Nenhum arquivo de imagem enviado para upload.',
+          });
+      }
+
+      const { url, filename, metadata } = await this.service.fotoUpload(id, file, req);
+
+      return CommonResponse.success( res, {
+          message: 'Ícone da categoria atualizado com sucesso.',
+          dados: { icone_categoria: url },
+          metadados: metadata,
+      });
+    }
+
+    async fotoDelete(req, res) {
+      const { id } = req.params;
+      IdSchema.parse(id);
+
+      await this.service.fotoDelete(id, req);
+
+      return CommonResponse.success(
+        res,
+        null,
+        HttpStatusCodes.OK.code,
+        'Ícone da categoria removido com sucesso.',
+      );
     }
 }
 

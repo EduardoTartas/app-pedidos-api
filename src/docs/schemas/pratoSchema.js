@@ -6,7 +6,10 @@ const pratoSchemas = {
         properties: {
             nome: { type: "string", description: "Filtra por nome" },
             secao: { type: "string", description: "Filtra por seção do cardápio" },
-            status: { type: "string", enum: ["ativo", "inativo"], description: "Filtra por status" }
+            status: { type: "string", enum: ["ativo", "inativo"], description: "Filtra por status" },
+            preco_min: { type: "number", description: "Preço mínimo do prato" },
+            preco_max: { type: "number", description: "Preço máximo do prato" },
+            restaurante_id: { type: "string", description: "ID do Restaurante (ObjectId)" }
         }
     },
 
@@ -16,18 +19,18 @@ const pratoSchemas = {
             _id: { type: "string", example: "674fa21d79969d2172e78710" },
             restaurante_id: { type: "string", example: "674fa21d79969d2172e78711" },
             nome: { type: "string", example: "X-Burguer Especial" },
-            foto_prato: { type: "string", example: "https://example.com/xburguer.jpg" },
+            foto_prato: { type: "string", example: "https://rango.web.fslab.dev/eb167c13-3fc8-4c17-91ed-f331005a.jpeg" },
             preco: { type: "number", example: 29.90 },
             descricao: { type: "string", example: "Hambúrguer artesanal com queijo cheddar e bacon" },
             secao: { type: "string", example: "Hambúrgueres" },
             status: { type: "string", enum: ["ativo", "inativo"], example: "ativo" },
             adicionais_grupo_ids: {
                 type: "array",
-                items: { type: "string" },
-                example: ["674fa21d79969d2172e78713"]
+                items: { $ref: "#/components/schemas/GrupoDetalhes" },
+                description: "Grupos de adicionais populados"
             },
-            createdAt: { type: "string", format: "date-time", example: "16/01/2025 12:00:00" },
-            updatedAt: { type: "string", format: "date-time", example: "16/01/2025 12:00:00" }
+            createdAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" },
+            updatedAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" }
         },
         description: "Schema para listagem de pratos"
     },
@@ -38,18 +41,17 @@ const pratoSchemas = {
             _id: { type: "string", example: "674fa21d79969d2172e78710" },
             restaurante_id: { type: "string", example: "674fa21d79969d2172e78711" },
             nome: { type: "string", example: "X-Burguer Especial" },
-            foto_prato: { type: "string", example: "https://example.com/xburguer.jpg" },
+            foto_prato: { type: "string", example: "https://rango.web.fslab.dev/eb167c13-3fc8-4c17-91ed-f331005a.jpeg" },
             preco: { type: "number", example: 29.90 },
             descricao: { type: "string", example: "Hambúrguer artesanal com queijo cheddar e bacon" },
             secao: { type: "string", example: "Hambúrgueres" },
             status: { type: "string", enum: ["ativo", "inativo"], example: "ativo" },
             adicionais_grupo_ids: {
                 type: "array",
-                items: { type: "string" },
-                example: ["674fa21d79969d2172e78713"]
+                items: { $ref: "#/components/schemas/GrupoDetalhes" }
             },
-            createdAt: { type: "string", format: "date-time", example: "16/01/2025 12:00:00" },
-            updatedAt: { type: "string", format: "date-time", example: "16/01/2025 12:00:00" }
+            createdAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" },
+            updatedAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" }
         },
         description: "Schema para detalhes de um prato"
     },
@@ -59,7 +61,7 @@ const pratoSchemas = {
         properties: {
             restaurante_id: { type: "string", description: "ID do restaurante", example: "674fa21d79969d2172e78711" },
             nome: { type: "string", description: "Nome do prato", example: "X-Burguer Especial" },
-            foto_prato: { type: "string", description: "URL da foto", example: "https://example.com/xburguer.jpg" },
+            foto_prato: { type: "string", description: "URL da foto", example: "https://rango.web.fslab.dev/eb167c13-3fc8-4c17-91ed-f331005a.jpeg" },
             preco: { type: "number", description: "Preço em reais", example: 29.90 },
             descricao: { type: "string", description: "Descrição do prato", example: "Hambúrguer artesanal com queijo cheddar e bacon" },
             secao: { type: "string", description: "Seção do cardápio", example: "Hambúrgueres" },
@@ -70,12 +72,12 @@ const pratoSchemas = {
                 example: ["674fa21d79969d2172e78713"]
             }
         },
-        required: ["restaurante_id", "nome", "preco"],
+        required: ["restaurante_id", "nome", "preco", "secao"],
         description: "Schema para criação de um prato",
         example: {
             restaurante_id: "674fa21d79969d2172e78711",
             nome: "X-Burguer Especial",
-            foto_prato: "https://example.com/xburguer.jpg",
+            foto_prato: "https://rango.web.fslab.dev/eb167c13-3fc8-4c17-91ed-f331005a.jpeg",
             preco: 29.90,
             descricao: "Hambúrguer artesanal com queijo cheddar e bacon",
             secao: "Hambúrgueres",
@@ -87,7 +89,7 @@ const pratoSchemas = {
         type: "object",
         properties: {
             nome: { type: "string", example: "X-Burguer Premium" },
-            foto_prato: { type: "string", example: "https://example.com/xburguer2.jpg" },
+            foto_prato: { type: "string", example: "https://rango.web.fslab.dev/eb167c13-3fc8-4c17-91ed-f331005a.jpeg" },
             preco: { type: "number", example: 34.90 },
             descricao: { type: "string", example: "Hambúrguer artesanal premium com cheddar duplo" },
             secao: { type: "string", example: "Especiais" },

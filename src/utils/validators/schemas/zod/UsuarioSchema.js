@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 
-const senhaRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/;
+const senhaRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 const cpfRegex = /^\d{11}$/;
 const telefoneRegex = /^\d{10,11}$/;
 
@@ -22,20 +22,23 @@ const UsuarioSchema = z.object({
             if (!senha) return true;
             return senhaRegex.test(senha);
         }, {
-            message: 'A senha deve conter pelo menos 1 letra maiúscula, 1 letra minúscula e 1 número.',
-        }),
+            message: 'A senha deve conter pelo menos 1 letra maiúscula, 1 letra minúscula, 1 número e 1 caractere especial.',
+        })
+        .optional(),
     cpf: z
         .string()
         .nonempty('Campo CPF é obrigatório.')
         .refine((val) => cpfRegex.test(val), {
             message: 'CPF deve conter exatamente 11 dígitos numéricos.',
-        }),
+        })
+        .optional(),
     telefone: z
         .string()
         .nonempty('Campo telefone é obrigatório.')
         .refine((val) => telefoneRegex.test(val), {
             message: 'Telefone deve conter 10 ou 11 dígitos numéricos.',
-        }),
+        })
+        .optional(),
     foto_perfil: z
         .string()
         .refine((val) => val === '' || /\.(jpg|jpeg|png|webp|svg|gif)$/i.test(val), {
@@ -47,4 +50,10 @@ const UsuarioSchema = z.object({
 
 const UsuarioUpdateSchema = UsuarioSchema.partial();
 
-export { UsuarioSchema, UsuarioUpdateSchema };
+const UsuarioStatusUpdateSchema = z.object({
+    status: z.enum(['ativo', 'inativo'], {
+        errorMap: () => ({ message: "O status deve ser 'ativo' ou 'inativo'." })
+    })
+});
+
+export { UsuarioSchema, UsuarioUpdateSchema, UsuarioStatusUpdateSchema };

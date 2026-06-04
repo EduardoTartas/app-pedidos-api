@@ -7,7 +7,7 @@ import DbConnect from '../config/dbConnect.js';
 
 await DbConnect.conectar();
 
-const senhaPura = 'Senha123';
+const senhaPura = 'Senha@123';
 const senhaHash = bcrypt.hashSync(senhaPura, 8);
 
 async function seedUsuarios() {
@@ -20,8 +20,10 @@ async function seedUsuarios() {
             senha: senhaHash,
             cpf: '00000000000',
             telefone: '11999999999',
+            email_verificado: true,
             status: 'ativo',
-            isAdmin: true
+            isAdmin: true,
+            profileComplete: true
         },
         {
             nome: 'Dono Restaurante 1',
@@ -29,8 +31,10 @@ async function seedUsuarios() {
             senha: senhaHash,
             cpf: '11111111111',
             telefone: '11988888888',
+            email_verificado: true,
             status: 'ativo',
-            isAdmin: false
+            isAdmin: false,
+            profileComplete: true
         },
         {
             nome: 'Dono Restaurante 2',
@@ -38,8 +42,10 @@ async function seedUsuarios() {
             senha: senhaHash,
             cpf: '22222222222',
             telefone: '11977777777',
+            email_verificado: true,
             status: 'ativo',
-            isAdmin: false
+            isAdmin: false,
+            profileComplete: true
         },
         {
             nome: 'Cliente Teste',
@@ -47,8 +53,10 @@ async function seedUsuarios() {
             senha: senhaHash,
             cpf: '33333333333',
             telefone: '11966666666',
+            email_verificado: true,
             status: 'ativo',
-            isAdmin: false
+            isAdmin: false,
+            profileComplete: true
         },
         {
             nome: 'Cliente Inativo',
@@ -56,8 +64,10 @@ async function seedUsuarios() {
             senha: senhaHash,
             cpf: '44444444444',
             telefone: '11955555555',
+            email_verificado: true,
             status: 'inativo',
-            isAdmin: false
+            isAdmin: false,
+            profileComplete: true
         }
     ];
 

@@ -10,6 +10,12 @@ const RestauranteSchema = z.object({
         .string()
         .nonempty('Campo nome é obrigatório.')
         .min(2, 'Nome deve ter pelo menos 2 caracteres.'),
+    descricao: z
+        .string()
+        .optional(),
+    telefone: z
+        .string()
+        .optional(),
     foto_restaurante: z
         .string()
         .refine((val) => val === '' || /\.(jpg|jpeg|png|webp|svg|gif)$/i.test(val), {
@@ -17,13 +23,15 @@ const RestauranteSchema = z.object({
         })
         .optional(),
     status: z
-        .enum(['aberto', 'fechado', 'inativo'], {
-            errorMap: () => ({ message: "Status deve ser 'aberto', 'fechado' ou 'inativo'." }),
+        .enum(['aberto', 'fechado'], {
+            errorMap: () => ({ message: "Status deve ser 'aberto' ou 'fechado'." }),
         })
+        .optional(),
+    ativo: z
+        .boolean()
         .optional(),
     categoria_ids: z
         .array(objectIdSchema)
-        .min(1, 'Pelo menos uma categoria é obrigatória.')
         .optional(),
     secoes_cardapio: z
         .array(z.string().min(1, 'Nome da seção não pode ser vazio.'))
@@ -47,6 +55,14 @@ const RestauranteSchema = z.object({
         .refine((val) => cnpjRegex.test(val), {
             message: 'CNPJ deve conter exatamente 14 dígitos numéricos.',
         })
+        .optional(),
+    horario_funcionamento: z
+        .array(z.object({
+            dia: z.enum(["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"]),
+            abertura: z.string().optional(),
+            fechamento: z.string().optional(),
+            fechado: z.boolean().default(false)
+        }))
         .optional(),
 });
 

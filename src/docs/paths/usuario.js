@@ -269,7 +269,7 @@ const usuarioRoutes = {
                     - \`file\` ou \`imagem\`: O arquivo da foto.
 
             + Regras de Negócio:
-                - Máximo 50MB (definido no serviço) e tipos restritos (jpg, png).
+                - Máximo 50MB (definido no serviço) e tipos restritos (jpg, png, jpeg, svg).
                 - A imagem antiga é apagada automaticamente.
                 - O próprio usuário (ou admin) pode realizar esta ação.
 

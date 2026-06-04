@@ -21,11 +21,6 @@ class RestauranteController {
   }
 
   async listar(req, res) {
-    const { id } = req.params;
-    if (id) {
-      RestauranteIdSchema.parse(id);
-    }
-
     let query = req?.query || {};
     if (Object.keys(query).length !== 0) {
       query = await RestauranteQuerySchema.parseAsync(query);
@@ -33,21 +28,11 @@ class RestauranteController {
 
     const data = await this.service.listar({ params: req.params, query });
 
-    // Mensagem contextualizada para listagem
-    if (id) {
-      return CommonResponse.success(
-        res,
-        data,
-        HttpStatusCodes.OK.code,
-        'Restaurante encontrado com sucesso.',
-      );
-    }
-
     // Resultado paginado - verificar se há resultados
     const totalDocs = data?.totalDocs ?? data?.docs?.length ?? 0;
     if (totalDocs === 0) {
-      const { nome, categoria, status } = query;
-      const temFiltros = nome || categoria || status;
+      const { nome, categoria, status, entrega_gratis, avaliacao_min, ordenar } = query;
+      const temFiltros = nome || categoria || status || entrega_gratis || avaliacao_min || ordenar;
       const mensagem = temFiltros
         ? 'Nenhum restaurante encontrado com os filtros informados.'
         : 'Nenhum restaurante cadastrado.';
@@ -64,6 +49,19 @@ class RestauranteController {
       data,
       HttpStatusCodes.OK.code,
       `${totalDocs} restaurante(s) encontrado(s).`,
+    );
+  }
+
+  async buscarPorId(req, res) {
+    const { id } = req.params;
+    RestauranteIdSchema.parse(id);
+
+    const data = await this.service.buscarPorId(id);
+    return CommonResponse.success(
+      res,
+      data,
+      HttpStatusCodes.OK.code,
+      'Restaurante encontrado com sucesso.',
     );
   }
 
@@ -215,6 +213,16 @@ class RestauranteController {
       HttpStatusCodes.OK.code,
       'Foto do restaurante excluída com sucesso.',
     )
+  }
+
+  async verificarInatividade(req, res) {
+    const data = await this.service.verificarInatividade();
+    return CommonResponse.success(
+      res,
+      data,
+      HttpStatusCodes.OK.code,
+      'Verificação de inatividade concluída com sucesso.',
+    );
   }
 }
 

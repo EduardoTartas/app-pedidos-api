@@ -1,6 +1,7 @@
 // src/repository/RestauranteRepository.js
 
 import Restaurante from '../models/Restaurante.js';
+import RestauranteFilterBuild from './filters/RestauranteFilterBuild.js';
 import {
     CustomError,
     messages
@@ -74,14 +75,32 @@ class RestauranteRepository {
             return data;
         }
 
-        const { nome, categoria, status, page = 1 } = req.query;
+        const { nome, categoria, status, page = 1, ordenar, ordem, entrega_gratis, avaliacao_min, ativo, gestao } = req.query;
         const limite = Math.min(parseInt(req.query.limite, 10) || 10, 100);
 
-        const filtros = {};
-        if (nome) filtros.nome = { $regex: nome, $options: 'i' };
-        if (categoria) filtros.categoria_ids = { $in: [categoria] };
-        if (status) filtros.status = status;
+        const filterBuilder = new RestauranteFilterBuild()
+            .comNome(nome)
+            .comCategorias(categoria)
+            .comStatus(status)
+            .comAtivo(ativo)
+            .comEntregaGratis(entrega_gratis)
+            .comAvaliacaoMinima(avaliacao_min);
+
+        // Se for listagem pública (sem dono_id, sem id específico e sem flag de gestão) 
+        // e não foi pedido status específico de ativação
+        if (!dono_id && !id && !gestao && ativo === undefined) {
+            filterBuilder.comAtivo(true);
+        }
+
+        const filtros = filterBuilder.build();
         if (dono_id) filtros.dono_id = dono_id;
+
+        // Ordenação dinâmica: campo + direção (padrão: nome asc)
+        const camposOrdenacao = ['nome', 'avaliacao_media', 'taxa_entrega', 'estimativa_entrega_min'];
+        let sort = { nome: 1 };
+        if (ordenar && camposOrdenacao.includes(ordenar)) {
+            sort = { [ordenar]: ordem === 'desc' ? -1 : 1 };
+        }
 
         const options = {
             page: parseInt(page, 10),
@@ -90,7 +109,7 @@ class RestauranteRepository {
                 { path: 'categoria_ids' },
                 { path: 'dono_id', select: 'nome email' }
             ],
-            sort: { nome: 1 },
+            sort,
         };
 
         const resultado = await this.modelRestaurante.paginate(filtros, options);
@@ -106,7 +125,7 @@ class RestauranteRepository {
     }
 
     async atualizar(id, parsedData) {
-        const restaurante = await this.modelRestaurante.findByIdAndUpdate(id, parsedData, { new: true })
+        const restaurante = await this.modelRestaurante.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' })
             .populate('categoria_ids')
             .populate('dono_id', 'nome email');
         if (!restaurante) {
@@ -122,7 +141,11 @@ class RestauranteRepository {
     }
 
     async deletar(id) {
-        const restaurante = await this.modelRestaurante.findByIdAndDelete(id);
+        const restaurante = await this.modelRestaurante.findByIdAndUpdate(
+            id, 
+            { deletado: true, ativo: false }, 
+            { new: true }
+        );
         if (!restaurante) {
             throw new CustomError({
                 statusCode: 404,
@@ -133,6 +156,13 @@ class RestauranteRepository {
             });
         }
         return restaurante;
+    }
+
+    async removerCategoriaDeTodos(categoriaId) {
+        return await this.modelRestaurante.updateMany(
+            { categoria_ids: categoriaId },
+            { $pull: { categoria_ids: categoriaId } }
+        );
     }
 }
 

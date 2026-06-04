@@ -35,10 +35,10 @@ const getSwaggerOptions = async () => {
         import.meta.url).href + t)).default;
     const pedidoPaths = (await import(new URL("../paths/pedido.js",
         import.meta.url).href + t)).default;
-    // const avaliacaoPaths = (await import(new URL("../paths/avaliacao.js",
-    //     import.meta.url).href + t)).default;
-    // const notificacaoPaths = (await import(new URL("../paths/notificacao.js",
-    //     import.meta.url).href + t)).default;
+    const avaliacaoPaths = (await import(new URL("../paths/avaliacao.js",
+        import.meta.url).href + t)).default;
+    const notificacaoPaths = (await import(new URL("../paths/notificacao.js",
+        import.meta.url).href + t)).default;
 
     // Schemas
     const authSchemas = (await import(new URL("../schemas/authSchema.js",
@@ -59,21 +59,41 @@ const getSwaggerOptions = async () => {
         import.meta.url).href + t)).default;
     const pedidoSchemas = (await import(new URL("../schemas/pedidoSchema.js",
         import.meta.url).href + t)).default;
-    // const avaliacaoSchemas = (await import(new URL("../schemas/avaliacaoSchema.js",
-    //     import.meta.url).href + t)).default;
-    // const notificacaoSchemas = (await import(new URL("../schemas/notificacaoSchema.js",
-    //     import.meta.url).href + t)).default;
+    const avaliacaoSchemas = (await import(new URL("../schemas/avaliacaoSchema.js",
+        import.meta.url).href + t)).default;
+    const notificacaoSchemas = (await import(new URL("../schemas/notificacaoSchema.js",
+        import.meta.url).href + t)).default;
 
     return {
         swaggerDefinition: {
             openapi: "3.0.0",
             info: {
-                title: "API de Pedidos - Delivery",
-                version: "1.0.0",
-                description: "Documentação da API para gerenciamento de pedidos de delivery",
+                title: "Rango API",
+                version: "1.1.0",
+                description: `
+### 📋 Visão Geral
+Documentação oficial da Rango API - O sistema central de gerenciamento e visualização de rotas do APP de delivery.
+Esta API é responsável por orquestrar perfeitamente nossa infraestrutura web(futura) e aplicativo móvel, desde a moderação de restaurantes e cardápios avançados até o envio de notificações de status do pedido para os usuários.
+
+---
+
+### 🚀 Principais Features
+*   **Autenticação JWT Segura:** Sistema robusto com tokens de recuperação e \`refresh_tokens\`.
+*   **Gestão de Restaurantes e Cardápios:** Gerencie restaurantes, pratos agrupados, grupos de adicionais e variações.
+*   **Integração Coud-Native (S3):** Gerenciamento inteligente de fotos (upload multipart/form-data) persistidas no Garage/MinIO.
+*   **Processamento de Pedidos:** Acompanhamento de carrinho com subcálculos, taxas de entrega com pipeline de status (criado → em preparo → saiu para entrega → entregue).
+*   **Push & Notificações:** Sistema assíncrono interno de notificações do usuário.
+
+---
+
+### 🔐 Segurança
+Todo fluxo seguro exige injeção do JWT no cabeçalho através do botão **Authorize** ao topo.
+
+*Utilize as credenciais de admin ou dono de restaurante para acessar algumas das rotas fechadas.*
+                `,
                 contact: {
-                    name: "App Pedidos",
-                    email: "appPedidos@ifro.edu.br",
+                    name: "Suporte Rango App",
+                    email: "suporte@rango.web.fslab.dev",
                 },
             },
             servers: getServersInCorrectOrder(),
@@ -114,14 +134,14 @@ const getSwaggerOptions = async () => {
                     name: "Pedidos",
                     description: "Rotas para o gerenciamento de pedidos de delivery"
                 },
-                // {
-                //     name: "Avaliações",
-                //     description: "Rotas para avaliações de restaurantes"
-                // },
-                // {
-                //     name: "Notificações",
-                //     description: "Rotas para notificações do sistema"
-                // }
+                {
+                    name: "Avaliações",
+                    description: "Rotas para avaliações de restaurantes"
+                },
+                {
+                    name: "Notificações",
+                    description: "Rotas para notificações do sistema"
+                }
             ],
             paths: {
                 ...authPaths,
@@ -133,8 +153,8 @@ const getSwaggerOptions = async () => {
                 ...adicionalGrupoPaths,
                 ...adicionalOpcaoPaths,
                 ...pedidoPaths,
-                // ...avaliacaoPaths,
-                // ...notificacaoPaths,
+                ...avaliacaoPaths,
+                ...notificacaoPaths,
             },
             components: {
                 securitySchemes: {
@@ -154,8 +174,8 @@ const getSwaggerOptions = async () => {
                     ...adicionalGrupoSchemas,
                     ...adicionalOpcaoSchemas,
                     ...pedidoSchemas,
-                    // ...avaliacaoSchemas,
-                    // ...notificacaoSchemas
+                    ...avaliacaoSchemas,
+                    ...notificacaoSchemas
                 }
             },
             security: [{

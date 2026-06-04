@@ -8,6 +8,7 @@ import seedRestaurantes from './seedsRestaurante.js';
 import seedEnderecos from './seedsEndereco.js';
 import seedPratos from './seedsPrato.js';
 import seedAdicionais from './seedsAdicional.js';
+import seedNotificacoes from './seedsNotificacao.js';
 import seedPedidos from './seedsPedido.js';
 
 async function main() {
@@ -18,6 +19,7 @@ async function main() {
         await seedEnderecos();
         await seedPratos();
         await seedAdicionais();
+        await seedNotificacoes();
         await seedPedidos();
 
         console.log('>>> SEED FINALIZADO COM SUCESSO! <<<');

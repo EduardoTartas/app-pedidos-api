@@ -49,7 +49,7 @@ class AdicionalOpcaoRepository {
     }
 
     async atualizar(id, parsedData) {
-        const opcao = await this.modelAdicionalOpcao.findByIdAndUpdate(id, parsedData, { new: true });
+        const opcao = await this.modelAdicionalOpcao.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' });
         if (!opcao) {
             throw new CustomError({
                 statusCode: 404,

@@ -18,8 +18,8 @@ import pratoRoutes from './pratoRoutes.js';
 import adicionalGrupoRoutes from './adicionalGrupoRoutes.js';
 import adicionalOpcaoRoutes from './adicionalOpcaoRoutes.js';
 import pedidoRoutes from './pedidoRoutes.js';
-//import avaliacaoRoutes from './avaliacaoRoutes.js';
-//import notificacaoRoutes from './notificacaoRoutes.js';
+import avaliacaoRoutes from './avaliacaoRoutes.js';
+import notificacaoRoutes from './notificacaoRoutes.js';
 
 dotenv.config();
 
@@ -64,8 +64,8 @@ const routes = (app) => {
         adicionalGrupoRoutes,
         adicionalOpcaoRoutes,
         pedidoRoutes,
-        //avaliacaoRoutes,
-        //notificacaoRoutes
+        avaliacaoRoutes,
+        notificacaoRoutes
     );
 };
 

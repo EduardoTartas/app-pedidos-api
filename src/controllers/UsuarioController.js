@@ -4,6 +4,7 @@ import UsuarioService from '../service/UsuarioService.js';
 import {
   UsuarioSchema,
   UsuarioUpdateSchema,
+  UsuarioStatusUpdateSchema,
 } from '../utils/validators/schemas/zod/UsuarioSchema.js';
 import {
   UsuarioQuerySchema,
@@ -22,27 +23,12 @@ class UsuarioController {
   }
 
   async listar(req, res) {
-    const { id } = req.params;
-    if (id) {
-      UsuarioIdSchema.parse(id);
-    }
-
     const query = req?.query;
     if (Object.keys(query).length !== 0) {
       await UsuarioQuerySchema.parseAsync(query);
     }
 
     const data = await this.service.listar(req);
-
-    // Mensagem contextualizada para listagem
-    if (id) {
-      return CommonResponse.success(
-        res,
-        data,
-        HttpStatusCodes.OK.code,
-        'Usuário encontrado com sucesso.',
-      );
-    }
 
     // Resultado paginado - verificar se há resultados
     const totalDocs = data?.totalDocs ?? data?.docs?.length ?? 0;
@@ -65,6 +51,19 @@ class UsuarioController {
       data,
       HttpStatusCodes.OK.code,
       `${totalDocs} usuário(s) encontrado(s).`,
+    );
+  }
+
+  async buscarPorId(req, res) {
+    const { id } = req.params;
+    UsuarioIdSchema.parse(id);
+
+    const data = await this.service.buscarPorId(id, req);
+    return CommonResponse.success(
+      res,
+      data,
+      HttpStatusCodes.OK.code,
+      'Usuário encontrado com sucesso.',
     );
   }
 
@@ -124,7 +123,7 @@ class UsuarioController {
     return CommonResponse.success(
       res,
       usuarioLimpo,
-      200,
+      HttpStatusCodes.OK.code,
       'Usuário atualizado com sucesso.',
     );
   }
@@ -133,13 +132,13 @@ class UsuarioController {
     const { id } = req.params;
     UsuarioIdSchema.parse(id);
 
-    const parsedData = req.body || {};
+    const parsedData = UsuarioStatusUpdateSchema.parse(req.body || {});
     const data = await this.service.atualizarStatus(id, parsedData, req);
 
     return CommonResponse.success(
       res,
       data,
-      200,
+      HttpStatusCodes.OK.code,
       'Status do usuário atualizado com sucesso.',
     );
   }
@@ -167,7 +166,7 @@ class UsuarioController {
     return CommonResponse.success(
       res,
       data,
-      200,
+      HttpStatusCodes.OK.code,
       'Usuário excluído com sucesso.',
     );
   }
@@ -205,7 +204,7 @@ class UsuarioController {
     return CommonResponse.success(
       res,
       null,
-      200,
+      HttpStatusCodes.OK.code,
       'Foto excluída com sucesso.',
     );
   }

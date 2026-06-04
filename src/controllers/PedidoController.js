@@ -68,6 +68,14 @@ class PedidoController {
         );
     }
 
+    async buscarPorId(req, res) {
+        const { id } = req.params;
+        IdSchema.parse(id);
+
+        const data = await this.service.buscarPorID(id, req);
+        return CommonResponse.success(res, data, HttpStatusCodes.OK.code, 'Pedido encontrado com sucesso.');
+    }
+
     async criar(req, res) {
         // Validar se o body não está vazio
         if (!req.body || Object.keys(req.body).length === 0) {

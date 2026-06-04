@@ -1,6 +1,7 @@
 // src/repository/UsuarioRepository.js
 
 import Usuario from '../models/Usuario.js';
+import UsuarioFilterBuild from './filters/UsuarioFilterBuild.js';
 import {
     CustomError,
     messages
@@ -11,7 +12,12 @@ class UsuarioRepository {
         this.modelUsuario = usuarioModel;
     }
 
-    async armazenarTokens(id, accesstoken, refreshtoken) {
+    /**
+     * Armazena o refreshtoken do usuário no banco.
+     * SEC-04: O accesstoken NÃO é persistido — ele é stateless (verificado via assinatura JWT).
+     * Manter accesstoken no banco não agrega segurança e aumenta a superfície de ataque.
+     */
+    async armazenarTokens(id, _accesstoken, refreshtoken) {
         const document = await this.modelUsuario.findById(id);
         if (!document) {
             throw new CustomError({
@@ -22,9 +28,8 @@ class UsuarioRepository {
                 customMessage: messages.error.resourceNotFound("Usuário")
             });
         }
-        document.accesstoken = accesstoken;
         document.refreshtoken = refreshtoken;
-        const data = document.save();
+        const data = await document.save();
         return data;
     }
 
@@ -33,7 +38,7 @@ class UsuarioRepository {
             refreshtoken: null,
             accesstoken: null
         };
-        const usuario = await this.modelUsuario.findByIdAndUpdate(id, parsedData, { new: true }).exec();
+        const usuario = await this.modelUsuario.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' }).exec();
         if (!usuario) {
             throw new CustomError({
                 statusCode: 404,
@@ -73,12 +78,19 @@ class UsuarioRepository {
         return documento;
     }
 
+    async buscarPorGoogleId(googleId) {
+        const documento = await this.modelUsuario.findOne({ googleId });
+        return documento;
+    }
+
+    // BUG-05: Removido .select('+senha') — a busca por CPF serve apenas para verificar
+    // unicidade, não há motivo para carregar o hash da senha em memória.
     async buscarPorCpf(cpfValue, idIgnorado = null) {
         const filtro = { cpf: cpfValue };
         if (idIgnorado) {
             filtro._id = { $ne: idIgnorado };
         }
-        const documento = await this.modelUsuario.findOne(filtro).select('+senha');
+        const documento = await this.modelUsuario.findOne(filtro);
         return documento;
     }
 
@@ -98,13 +110,18 @@ class UsuarioRepository {
             return data;
         }
 
-        const { nome, email, status, page = 1 } = req.query;
+        const { nome, email, status, cpf, telefone, isAdmin, page = 1 } = req.query;
         const limite = Math.min(parseInt(req.query.limite, 10) || 10, 100);
 
-        const filtros = {};
-        if (nome) filtros.nome = { $regex: nome, $options: 'i' };
-        if (email) filtros.email = { $regex: email, $options: 'i' };
-        if (status) filtros.status = status;
+        const filterBuilder = new UsuarioFilterBuild()
+            .comNome(nome)
+            .comEmail(email)
+            .comStatus(status)
+            .comCpf(cpf)
+            .comTelefone(telefone)
+            .comIsAdmin(isAdmin);
+
+        const filtros = filterBuilder.build();
 
         const options = {
             page: parseInt(page, 10),
@@ -126,7 +143,7 @@ class UsuarioRepository {
     }
 
     async atualizar(id, parsedData) {
-        const usuario = await this.modelUsuario.findByIdAndUpdate(id, parsedData, { new: true });
+        const usuario = await this.modelUsuario.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' });
         if (!usuario) {
             throw new CustomError({
                 statusCode: 404,
@@ -160,7 +177,7 @@ class UsuarioRepository {
                 codigo_recupera_senha: null,
                 exp_codigo_recupera_senha: null
             },
-            { new: true }
+            { returnDocument: 'after' }
         );
         if (!usuario) {
             throw new CustomError({
@@ -171,6 +188,62 @@ class UsuarioRepository {
                 customMessage: messages.error.resourceNotFound('Usuário')
             });
         }
+        return usuario;
+    }
+
+    async buscarPorTokenVerificacao(token) {
+        const filtro = {
+            token_verificacao_email: token
+        };
+        const documento = await this.modelUsuario.findOne(filtro)
+            .select('+token_verificacao_email +exp_token_verificacao_email');
+        return documento;
+    }
+
+    async atualizarVerificacaoEmail(id) {
+        const usuario = await this.modelUsuario.findByIdAndUpdate(
+            id,
+            {
+                email_verificado: true,
+                token_verificacao_email: null,
+                exp_token_verificacao_email: null
+            },
+            { returnDocument: 'after' }
+        );
+
+        if (!usuario) {
+            throw new CustomError({
+                statusCode: 404,
+                errorType: 'resourceNotFound',
+                field: 'Usuário',
+                details: [],
+                customMessage: messages.error.resourceNotFound('Usuário')
+            });
+        }
+
+        return usuario;
+    }
+
+    async atualizarTokenVerificacao(id, novoToken, novaExpiracao) {
+        const usuario = await this.modelUsuario.findByIdAndUpdate(
+            id,
+            {
+                token_verificacao_email: novoToken,
+                exp_token_verificacao_email: novaExpiracao
+            },
+            { returnDocument: 'after' }
+        );
+
+        if (!usuario) {
+            throw new CustomError({
+                statusCode: 404,
+                errorType: 'resourceNotFound',
+                field: 'Usuário',
+                details: [],
+                customMessage: messages.error.resourceNotFound('Usuário')
+            });
+        }
+
         return usuario;
     }
 }

@@ -27,18 +27,25 @@ class AdicionalGrupoRepository {
 
     async listarPorRestaurante(restauranteId) {
         const grupos = await this.modelAdicionalGrupo.find({
-            restaurante_id: restauranteId,
-            ativo: true
+            restaurante_id: restauranteId
         }).sort({ nome: 1 });
         return grupos;
     }
 
     async listarPorIds(ids) {
         const grupos = await this.modelAdicionalGrupo.find({
-            _id: { $in: ids },
-            ativo: true
+            _id: { $in: ids }
         }).sort({ nome: 1 });
         return grupos;
+    }
+
+    /**
+     * BUG-03: Busca múltiplos grupos por array de IDs em uma única query (batch).
+     * Retorna um array vazio se ids for vazio.
+     */
+    async buscarPorIDs(ids) {
+        if (!ids || ids.length === 0) return [];
+        return await this.modelAdicionalGrupo.find({ _id: { $in: ids } });
     }
 
     async buscarPorNomeEntreIds(nome, ids) {
@@ -54,7 +61,7 @@ class AdicionalGrupoRepository {
     }
 
     async atualizar(id, parsedData) {
-        const grupo = await this.modelAdicionalGrupo.findByIdAndUpdate(id, parsedData, { new: true });
+        const grupo = await this.modelAdicionalGrupo.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' });
         if (!grupo) {
             throw new CustomError({
                 statusCode: 404,

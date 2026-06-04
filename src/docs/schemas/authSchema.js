@@ -20,7 +20,7 @@ const authSchemas = {
         description: "Schema para login de usuário",
         example: {
             email: "admin@delivery.com",
-            senha: "Senha123"
+            senha: "Senha@123"
         }
     },
 
@@ -40,13 +40,13 @@ const authSchemas = {
             },
             senha: {
                 type: "string",
-                description: "Senha (mín. 8 chars, 1 maiúscula, 1 minúscula, 1 número, 1 especial)",
-                example: "Senha123"
+                description: "Senha (mín. 8 chars, 1 maiúscula, 1 minúscula e 1 número)",
+                example: "Senha@123"
             },
             cpf: {
                 type: "string",
                 description: "CPF do usuário",
-                example: "12345678900"
+                example: "08573215099"
             },
             telefone: {
                 type: "string",
@@ -59,8 +59,8 @@ const authSchemas = {
         example: {
             nome: "João da Silva",
             email: "admin@delivery.com",
-            senha: "Senha123",
-            cpf: "12345678900",
+            senha: "Senha@123",
+            cpf: "08573215099",
             telefone: "69999998888",
         }
     },
@@ -71,13 +71,13 @@ const authSchemas = {
             _id: { type: "string", example: "674fa21d79969d2172e78710" },
             nome: { type: "string", example: "João da Silva" },
             email: { type: "string", example: "admin@delivery.com" },
-            cpf: { type: "string", example: "12345678900" },
+            cpf: { type: "string", example: "08573215099" },
             telefone: { type: "string", example: "69999998888" },
-            status: { type: "string", example: "ativo" },
+            status: { type: "string", enum: ["ativo", "inativo"], example: "ativo" },
             isAdmin: { type: "boolean", example: false },
             foto_perfil: { type: "string", example: "" },
-            createdAt: { type: "string", format: "date-time", example: "16/01/2025 12:00:00" },
-            updatedAt: { type: "string", format: "date-time", example: "16/01/2025 12:00:00" }
+            createdAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" },
+            updatedAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" }
         },
         description: "Schema para detalhes do cadastro de usuário"
     },
@@ -140,29 +140,16 @@ const authSchemas = {
     RequisicaoRedefinirSenha: {
         type: "object",
         properties: {
-            email: {
-                type: "string",
-                format: "email",
-                description: "Email do usuário",
-                example: "admin@delivery.com"
-            },
-            codigo: {
-                type: "string",
-                description: "Código de recuperação recebido por email",
-                example: "abc123def456"
-            },
-            novaSenha: {
+            senha: {
                 type: "string",
                 description: "Nova senha (mín. 8 chars, 1 maiúscula, 1 minúscula, 1 número, 1 especial)",
                 example: "NovaSenha@456"
             }
         },
-        required: ["email", "codigo", "novaSenha"],
+        required: ["senha"],
         description: "Schema para redefinição de senha com código",
         example: {
-            email: "joao.silva@email.com",
-            codigo: "abc123def456",
-            novaSenha: "NovaSenha@456"
+            senha: "NovaSenha@456"
         }
     },
 
@@ -203,6 +190,16 @@ const authSchemas = {
             }
         },
         description: "Schema para resposta de introspecção de token"
+    },
+    RespostaGenerica: {
+        type: "object",
+        properties: {
+            message: {
+                type: "string",
+                example: "Ação realizada com sucesso"
+            }
+        },
+        description: "Schema para resposta genérica de sucesso do sistema"
     }
 };
 

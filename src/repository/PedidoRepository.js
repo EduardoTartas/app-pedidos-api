@@ -1,6 +1,7 @@
 // src/repository/PedidoRepository.js
 
 import Pedido from '../models/Pedido.js';
+import PedidoFilterBuild from './filters/PedidoFilterBuild.js';
 import {
     CustomError,
     messages
@@ -28,17 +29,22 @@ class PedidoRepository {
     }
 
     async listarPorCliente(clienteId, req) {
-        const { status, page = 1 } = req.query;
+        const { status, data_inicio, data_fim, page = 1 } = req.query;
         const limite = Math.min(parseInt(req.query.limite, 10) || 10, 100);
 
-        const filtros = { cliente_id: clienteId };
-        if (status) filtros.status = status;
+        const filterBuilder = new PedidoFilterBuild()
+            .comCliente(clienteId)
+            .comStatus(status || '')
+            .comData(data_inicio, data_fim);
+
+        const filtros = filterBuilder.build();
 
         const options = {
             page: parseInt(page, 10),
             limit: parseInt(limite, 10),
             populate: [
-                { path: 'restaurante_id', select: 'nome foto_restaurante' }
+                { path: 'restaurante_id', select: 'nome foto_restaurante' },
+                { path: 'cliente_id', select: 'nome email telefone' }
             ],
             sort: { createdAt: -1 },
         };
@@ -51,17 +57,21 @@ class PedidoRepository {
     }
 
     async listarPorRestaurante(restauranteId, req) {
-        const { status, page = 1 } = req.query;
+        const { status, data_inicio, data_fim, page = 1 } = req.query;
         const limite = Math.min(parseInt(req.query.limite, 10) || 10, 100);
 
-        const filtros = { restaurante_id: restauranteId };
-        if (status) filtros.status = status;
+        const filterBuilder = new PedidoFilterBuild()
+            .comRestaurante(restauranteId)
+            .comStatus(status || '')
+            .comData(data_inicio, data_fim);
+
+        const filtros = filterBuilder.build();
 
         const options = {
             page: parseInt(page, 10),
             limit: parseInt(limite, 10),
             populate: [
-                { path: 'cliente_id', select: 'nome email telefone' }
+                { path: 'cliente_id', select: 'nome email telefone cpf' }
             ],
             sort: { createdAt: -1 },
         };
@@ -79,7 +89,7 @@ class PedidoRepository {
     }
 
     async atualizar(id, parsedData) {
-        const pedido = await this.modelPedido.findByIdAndUpdate(id, parsedData, { new: true })
+        const pedido = await this.modelPedido.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' })
             .populate('cliente_id', 'nome email telefone')
             .populate('restaurante_id', 'nome foto_restaurante');
         if (!pedido) {
@@ -92,6 +102,29 @@ class PedidoRepository {
             });
         }
         return pedido;
+    }
+
+    async removerVinculosCliente(clienteId) {
+        return await this.modelPedido.updateMany(
+            { cliente_id: clienteId },
+            { $set: { cliente_id: null } }
+        );
+    }
+
+    /**
+     * BUG-06: Anonimiza pedidos quando um restaurante é excluído.
+     * Zera o restaurante_id mas preserva o histórico (itens, totais, status) no pedido.
+     * O nome do restaurante já é snapshot em cada item, então o histórico do cliente permanece legível.
+     */
+    async anonimizarPorRestaurante(restauranteId) {
+        return await this.modelPedido.updateMany(
+            { restaurante_id: restauranteId },
+            { $set: { restaurante_id: null } }
+        );
+    }
+
+    async deletarPorRestaurante(restauranteId) {
+        return await this.modelPedido.deleteMany({ restaurante_id: restauranteId });
     }
 }
 

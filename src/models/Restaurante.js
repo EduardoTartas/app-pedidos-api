@@ -12,6 +12,16 @@ class Restaurante {
                 required: [true, "O nome do restaurante é obrigatório!"],
                 trim: true
             },
+            descricao: {
+                type: String,
+                trim: true,
+                default: ""
+            },
+            telefone: {
+                type: String,
+                trim: true,
+                default: ""
+            },
             foto_restaurante: {
                 type: String,
                 default: ""
@@ -23,8 +33,16 @@ class Restaurante {
             },
             status: {
                 type: String,
-                enum: ["aberto", "fechado", "inativo"],
+                enum: ["aberto", "fechado"],
                 default: "fechado"
+            },
+            ativo: {
+                type: Boolean,
+                default: true
+            },
+            deletado: {
+                type: Boolean,
+                default: false
             },
             categoria_ids: [{
                 type: mongoose.Schema.Types.ObjectId,
@@ -54,7 +72,13 @@ class Restaurante {
                 type: String,
                 unique: true,
                 sparse: true
-            }
+            },
+            horario_funcionamento: [{
+                dia: { type: String, enum: ["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"] },
+                abertura: { type: String }, // Formato HH:mm
+                fechamento: { type: String }, // Formato HH:mm
+                fechado: { type: Boolean, default: false }
+            }]
         }, {
             timestamps: true,
             versionKey: false

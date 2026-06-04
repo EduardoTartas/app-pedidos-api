@@ -3,8 +3,10 @@
 import { z } from 'zod';
 import objectIdSchema from './ObjectIdSchema.js';
 
-const AdicionalGrupoSchema = z.object({
-    prato_id: objectIdSchema,
+// 1. Define o objeto base (sem refinamentos)
+const AdicionalGrupoBase = z.object({
+    prato_id: objectIdSchema.optional(),
+    restaurante_id: objectIdSchema.optional(),
     nome: z
         .string()
         .nonempty('Campo nome é obrigatório.')
@@ -27,7 +29,14 @@ const AdicionalGrupoSchema = z.object({
     ativo: z.boolean().optional(),
 });
 
-const AdicionalGrupoUpdateSchema = AdicionalGrupoSchema.partial();
+// 2. Esquema para CRIAÇÃO: Adiciona o refinamento de "um ou outro"
+const AdicionalGrupoSchema = AdicionalGrupoBase.refine(data => data.prato_id || data.restaurante_id, {
+    message: "Informe prato_id ou restaurante_id.",
+    path: ["prato_id"]
+});
+
+// 3. Esquema para ATUALIZAÇÃO: Usa o base com .partial()
+const AdicionalGrupoUpdateSchema = AdicionalGrupoBase.partial();
 
 const AdicionalOpcaoSchema = z.object({
     grupo_id: objectIdSchema,

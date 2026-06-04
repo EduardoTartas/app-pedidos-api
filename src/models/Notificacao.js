@@ -1,5 +1,3 @@
-// src/models/Notificacao.js
-
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
 import brazilianDatePlugin from "../utils/helpers/mongooseBrazilianDatePlugin.js";
@@ -30,15 +28,16 @@ class Notificacao {
                 type: String,
                 required: [true, "A mensagem é obrigatória!"]
             },
-            lida: {
-                type: Boolean,
-                default: false
+            lida_em: {
+                type: Date,
+                default: null
             }
         }, {
             timestamps: true,
             versionKey: false
         });
 
+        notificacaoSchema.index({ usuario_id: 1, tipo: 1 }, { sparse: true });
         notificacaoSchema.plugin(mongoosePaginate);
         notificacaoSchema.plugin(brazilianDatePlugin);
 

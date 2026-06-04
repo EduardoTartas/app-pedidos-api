@@ -1,20 +1,37 @@
 // src/controllers/AdicionalGrupoController.js
 
-import AdicionalGrupoService from '../service/AdicionalGrupoService.js';
 import {
     AdicionalGrupoSchema,
     AdicionalGrupoUpdateSchema
 } from '../utils/validators/schemas/zod/AdicionalSchema.js';
-import { IdSchema } from '../utils/validators/schemas/zod/querys/CommonQuerySchema.js';
-import {
-    CommonResponse,
-    CustomError,
-    HttpStatusCodes
-} from '../utils/helpers/index.js';
+import IdSchema from '../utils/validators/schemas/zod/ObjectIdSchema.js';
+import AdicionalGrupoService from '../service/AdicionalGrupoService.js';
+import CommonResponse from '../utils/helpers/CommonResponse.js';
+import { HttpStatusCodes, CustomError } from '../utils/helpers/index.js';
 
 class AdicionalGrupoController {
     constructor() {
         this.service = new AdicionalGrupoService();
+    }
+
+    async listar(req, res) {
+        const { restaurante_id: restauranteId, prato_id: pratoId } = req.query;
+
+        let data;
+        if (pratoId) {
+            data = await this.service.listarPorPrato(pratoId);
+        } else if (restauranteId) {
+            data = await this.service.listarPorRestaurante(restauranteId);
+        } else {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                errorType: 'invalidQuery',
+                field: 'query',
+                customMessage: 'Informe restaurante_id ou prato_id para listar os grupos.'
+            });
+        }
+
+        return CommonResponse.success(res, data);
     }
 
     async listarPorPrato(req, res) {
@@ -35,8 +52,10 @@ class AdicionalGrupoController {
 
     async criar(req, res) {
         const parsedData = AdicionalGrupoSchema.parse(req.body);
-        const { prato_id: pratoId, ...grupoData } = parsedData;
-        const data = await this.service.criar(grupoData, pratoId, req);
+        const { prato_id: pratoId, restaurante_id: restauranteId, ...grupoData } = parsedData;
+
+        // Passa restauranteId se pratoId não for fornecido
+        const data = await this.service.criar(grupoData, pratoId || restauranteId, req, !!pratoId);
         return CommonResponse.created(res, data);
     }
 
@@ -46,7 +65,7 @@ class AdicionalGrupoController {
 
         const parsedData = AdicionalGrupoUpdateSchema.parse(req.body);
         const data = await this.service.atualizar(id, parsedData, req);
-        return CommonResponse.success(res, data, 200, 'Grupo de adicional atualizado com sucesso.');
+        return CommonResponse.success(res, data, HttpStatusCodes.OK.code, 'Grupo de adicional atualizado com sucesso.');
     }
 
     async deletar(req, res) {
@@ -54,7 +73,7 @@ class AdicionalGrupoController {
         IdSchema.parse(id);
 
         const data = await this.service.deletar(id, req);
-        return CommonResponse.success(res, data, 200, 'Grupo de adicional excluído com sucesso.');
+        return CommonResponse.success(res, data, HttpStatusCodes.OK.code, 'Grupo de adicional excluído com sucesso.');
     }
 }
 

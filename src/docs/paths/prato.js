@@ -245,6 +245,93 @@ const pratoRoutes = {
                 500: commonResponses[500]()
             }
         }
+    },
+    "/pratos/{id}/foto": {
+        post: {
+            tags: ["Pratos"],
+            summary: "Faz upload/atualiza a foto de um prato",
+            description: `
+            + Caso de uso: Adicionar ou alterar a foto de um prato.
+
+            + Função de Negócio:
+                - Processa um arquivo de imagem, envia para o bucket e associa ao prato.
+                + Recebe via **multipart/form-data**:
+                    - \`file\` ou \`imagem\`: O arquivo da foto.
+
+            + Regras de Negócio:
+                - Máximo 50MB (definido no serviço) e tipos restritos (jpg, png, jpeg, svg).
+                - O tamanho da imagem vai ser otimizado com redimensionamento para 800x800px e compressão.
+                - A imagem antiga é apagada automaticamente.
+                - O próprio dono do restaurante pode realizar esta ação.
+
+            + Resultado Esperado:
+                - HTTP 200 OK com link da imagem carregada.
+            `,
+            security: [{ bearerAuth: [] }],
+            parameters: [{
+                name: "id",
+                in: "path",
+                required: true,
+                schema: { type: "string" },
+                description: "ID do prato"
+            }],
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        schema: {
+                            type: "object",
+                            properties: {
+                                file: {
+                                    type: "string",
+                                    format: "binary",
+                                    description: "Arquivo de imagem (JPEG, PNG, etc)"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            responses: {
+                200: commonResponses[200](),
+                400: commonResponses[400](),
+                401: commonResponses[401](),
+                403: commonResponses[403](),
+                404: commonResponses[404](),
+                500: commonResponses[500]()
+            }
+        },
+        delete: {
+            tags: ["Pratos"],
+            summary: "Deleta a foto de um prato",
+            description: `
+            + Caso de uso: O prato deseja remover sua foto.
+
+            + Função de Negócio:
+                - Apaga a foto do bucket e define como vazio/null na base de dados.
+
+            + Regras de Negócio:
+                - O próprio dono do prato pode remover a imagem.
+                - A remoção real do arquivo pode ocorrer de forma silenciosa ou síncrona.
+
+            + Resultado Esperado:
+                - HTTP 200 OK informando o sucesso da remoção.
+            `,
+            security: [{ bearerAuth: [] }],
+            parameters: [{
+                name: "id",
+                in: "path",
+                required: true,
+                schema: { type: "string" },
+                description: "ID do prato"
+            }],
+            responses: {
+                200: commonResponses[200](),
+                401: commonResponses[401](),
+                403: commonResponses[403](),
+                404: commonResponses[404](),
+                500: commonResponses[500]()
+            }
+        }
     }
 };
 

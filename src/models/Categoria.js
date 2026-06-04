@@ -13,7 +13,7 @@ class Categoria {
                 unique: true,
                 trim: true
             },
-            img: {
+            icone_categoria: {
                 type: String,
                 default: ""
             },

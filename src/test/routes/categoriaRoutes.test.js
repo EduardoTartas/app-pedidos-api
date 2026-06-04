@@ -1,0 +1,602 @@
+jest.mock('../../middlewares/AuthMiddleware.js');
+jest.mock('../../service/UploadService.js', () => ({
+    __esModule: true,
+    default: class {
+        constructor() {}
+        async substituirImagem() {
+            return {
+                url: 'http://test.com/categoria.jpg',
+                fileName: 'categoria.jpg',
+                metadata: { contentType: 'image/jpeg' },
+            };
+        }
+        async deleteImagemComRetry() {
+            return true;
+        }
+    },
+}));
+
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import { ObjectId } from 'mongodb';
+import express from 'express';
+import expressFileUpload from 'express-fileupload';
+import request from 'supertest';
+import mongoose from 'mongoose';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import categoriaRoutes from '../../routes/categoriaRoutes.js';
+import CategoriaService from '../../service/CategoriaService.js';
+import CategoriaRepository from '../../repository/CategoriaRepository.js';
+import Categoria from '../../models/Categoria.js';
+import Usuario from '../../models/Usuario.js';
+import { CategoriaQuerySchema } from '../../utils/validators/schemas/zod/querys/CategoriaQuerySchema.js';
+import AuthMiddleware from '../../middlewares/AuthMiddleware.js';
+import errorHandler from '../../utils/helpers/errorHandler.js';
+
+const RUN_ID = Date.now().toString(36);
+
+let app;
+let mongoServer;
+let adminId;
+let usuarioAuthId;
+
+let warnSpy;
+let errorSpy;
+let logSpy;
+
+let sequence = 0;
+
+const INVALID_OBJECT_ID = 'nao-e-objectid';
+const NOT_FOUND_OBJECT_ID = new ObjectId().toString();
+
+const tempCategorias = [];
+const tempUsuarios = [];
+
+function nextId(prefix = 'item') {
+    sequence += 1;
+    return `${prefix}-${RUN_ID}-${sequence}`;
+}
+function asAutenticado() {
+    AuthMiddleware.mockImplementation((req, res, next) => {
+        req.user_id = usuarioAuthId;
+        next();
+    });
+}
+
+function autenticarComo(userId) {
+    AuthMiddleware.mockImplementation((req, res, next) => {
+        req.user_id = userId;
+        next();
+    });
+}
+
+function autenticarComoUmaVez(userId) {
+    AuthMiddleware.mockImplementationOnce((req, res, next) => {
+        req.user_id = userId;
+        next();
+    });
+}
+function asNaoAutenticado() {
+    AuthMiddleware.mockImplementationOnce((req, res) => {
+        res.status(401).json({
+            error: true,
+            code: 401,
+            message: 'Nao autorizado. Faca login para continuar.',
+            data: null,
+            errors: [],
+        });
+    });
+}
+
+async function criarUsuario(nome, extra = {}) {
+    const slug = nome.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const usuario = await Usuario.create({
+        nome,
+        email: `${slug}-${nextId('mail')}@test.local`,
+        senha: 'teste123',
+        ...extra,
+    });
+    tempUsuarios.push(usuario._id);
+    return usuario._id;
+}
+async function criarCategoria(extra = {}) {
+    const categoria = await Categoria.create({
+        nome: nextId('Categoria'),
+        icone_categoria: '',
+        ativo: true,
+        ...extra,
+    });
+    tempCategorias.push(categoria._id);
+    return categoria;
+}
+
+function payloadCategoria(extra = {}) {
+    return {
+        nome: nextId('CategoriaPayload'),
+        icone_categoria: 'http://test.com/icone.png',
+        ...extra,
+    };
+}
+beforeAll(async () => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    mongoServer = await MongoMemoryServer.create();
+    await mongoose.connect(mongoServer.getUri());
+
+    app = express();
+    app.use(express.json());
+    app.use(expressFileUpload());
+    app.use('/api', categoriaRoutes);
+    app.use(errorHandler);
+
+    adminId = await criarUsuario('Admin Categoria', { isAdmin: true });
+    usuarioAuthId = await criarUsuario('Usuario Categoria');
+
+    asAutenticado();
+}, 30000);
+
+afterEach(async () => {
+    if (tempCategorias.length > 0) {
+        await Categoria.deleteMany({ _id: { $in: tempCategorias } }).catch(() => {});
+        tempCategorias.length = 0;
+    }
+
+    asAutenticado();
+});
+
+afterAll(async () => {
+    if (tempCategorias.length > 0) {
+        await Categoria.deleteMany({ _id: { $in: tempCategorias } }).catch(() => {});
+    }
+
+    if (tempUsuarios.length > 0) {
+        await Usuario.deleteMany({ _id: { $in: tempUsuarios } }).catch(() => {});
+    }
+
+    await mongoose.disconnect();
+    if (mongoServer) {
+        await mongoServer.stop();
+    }
+
+    warnSpy?.mockRestore();
+    errorSpy?.mockRestore();
+    logSpy?.mockRestore();
+}, 30000);
+
+beforeEach(() => {
+    asAutenticado();
+});
+
+describe('GET /categorias', () => {
+    it('lista categorias em ordem alfabetica com paginacao padrao -> 200', async () => {
+        await criarCategoria({ nome: 'Z Massas' });
+        await criarCategoria({ nome: 'A Lanches' });
+
+        const res = await request(app).get('/api/categorias');
+
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body.data.docs)).toBe(true);
+        expect(res.body.data).toHaveProperty('totalDocs');
+        expect(res.body.data.page).toBe(1);
+        expect(res.body.data.limit).toBe(10);
+        expect(res.body.data.docs.map(categoria => categoria.nome)).toEqual(['A Lanches', 'Z Massas']);
+    });
+
+describe('GET /categorias', () => {
+    it('lista categorias em ordem alfabetica com paginacao padrao -> 200', async () => {
+        await criarCategoria({ nome: 'Z Massas' });
+        await criarCategoria({ nome: 'A Lanches' });
+
+        const res = await request(app).get('/api/categorias');
+
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body.data.docs)).toBe(true);
+        expect(res.body.data).toHaveProperty('totalDocs');
+        expect(res.body.data.page).toBe(1);
+        expect(res.body.data.limit).toBe(10);
+        expect(res.body.data.docs.map(categoria => categoria.nome)).toEqual(['A Lanches', 'Z Massas']);
+    });
+    it('filtra por nome ignorando acentos -> 200', async () => {
+        await criarCategoria({ nome: 'Açaí' });
+        await criarCategoria({ nome: 'Pizza' });
+
+        const res = await request(app).get('/api/categorias?nome=acai');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.docs).toHaveLength(1);
+        expect(res.body.data.docs[0].nome).toBe('Açaí');
+    });
+    it('filtra por ativo=false -> 200', async () => {
+        await criarCategoria({ nome: 'Ativa', ativo: true });
+        await criarCategoria({ nome: 'Inativa', ativo: false });
+
+        const res = await request(app).get('/api/categorias?ativo=false');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.docs).toHaveLength(1);
+        expect(res.body.data.docs[0].nome).toBe('Inativa');
+        expect(res.body.data.docs[0].ativo).toBe(false);
+    });
+    it('respeita customizacoes de paginacao page=2&limite=1 -> 200', async () => {
+        await criarCategoria({ nome: 'Categoria A' });
+        await criarCategoria({ nome: 'Categoria B' });
+
+        const res = await request(app).get('/api/categorias?page=2&limite=1');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.page).toBe(2);
+        expect(res.body.data.limit).toBe(1);
+        expect(res.body.data.docs).toHaveLength(1);
+    });
+   it('query invalida -> 400', async () => {
+        const res = await request(app).get('/api/categorias?page=0');
+
+        expect(res.status).toBe(400);
+    });
+
+    it('rota publica nao requer autenticacao -> 200', async () => {
+        await criarCategoria({ nome: 'Publica' });
+
+        const res = await request(app).get('/api/categorias');
+
+        expect(res.status).toBe(200);
+    });
+});
+    describe('GET /categorias/:id', () => {
+        it('busca categoria por id em rota publica -> 200', async () => {
+            const categoria = await criarCategoria({ nome: 'Japonesa' });
+
+            const res = await request(app).get(`/api/categorias/${categoria._id}`);
+
+            expect(res.status).toBe(200);
+            expect(res.body.data._id).toBe(categoria._id.toString());
+            expect(res.body.data.nome).toBe('Japonesa');
+        });
+     it('id invalido -> 400', async () => {
+        const res = await request(app).get(`/api/categorias/${INVALID_OBJECT_ID}`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('categoria inexistente -> 404', async () => {
+        const res = await request(app).get(`/api/categorias/${NOT_FOUND_OBJECT_ID}`);
+
+        expect(res.status).toBe(404);
+    });
+});
+    describe('POST /categorias', () => {
+    it('cria categoria como administrador -> 201', async () => {
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .post('/api/categorias')
+            .send(payloadCategoria({ nome: 'Bebidas' }));
+
+        expect(res.status).toBe(201);
+        expect(res.body.data.nome).toBe('Bebidas');
+        expect(res.body.data.icone_categoria).toBe('http://test.com/icone.png');
+        expect(res.body.data.ativo).toBe(true);
+
+        tempCategorias.push(res.body.data._id);
+    });
+     it('payload invalido -> 400', async () => {
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .post('/api/categorias')
+            .send(payloadCategoria({ nome: 'A' }));
+
+        expect(res.status).toBe(400);
+    });
+     it('sem autenticacao -> 401', async () => {
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .post('/api/categorias')
+            .send(payloadCategoria());
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const res = await request(app)
+            .post('/api/categorias')
+            .send(payloadCategoria());
+
+        expect(res.status).toBe(403);
+    });
+
+    it('nome duplicado -> 400', async () => {
+        await criarCategoria({ nome: 'Repetida' });
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .post('/api/categorias')
+            .send(payloadCategoria({ nome: 'Repetida' }));
+
+        expect(res.status).toBe(400);
+    });
+});
+
+describe('PATCH /categorias/:id', () => {
+    it('atualiza categoria como administrador -> 200', async () => {
+        const categoria = await criarCategoria({ nome: 'Doces' });
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .patch(`/api/categorias/${categoria._id}`)
+            .send({ nome: 'Sobremesas', ativo: false });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.nome).toBe('Sobremesas');
+        expect(res.body.data.ativo).toBe(false);
+    });
+
+    it('id invalido -> 400', async () => {
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .patch(`/api/categorias/${INVALID_OBJECT_ID}`)
+            .send({ nome: 'Novo Nome' });
+
+        expect(res.status).toBe(400);
+    });
+
+    it('payload invalido -> 400', async () => {
+        const categoria = await criarCategoria();
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .patch(`/api/categorias/${categoria._id}`)
+            .send({ icone_categoria: 'arquivo.txt' });
+
+        expect(res.status).toBe(400);
+    });
+    it('sem autenticacao -> 401', async () => {
+        const categoria = await criarCategoria();
+        asNaoAutenticado();
+
+        const res = await request(app)
+            .patch(`/api/categorias/${categoria._id}`)
+            .send({ nome: 'Nome Bloqueado' });
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const categoria = await criarCategoria();
+
+        const res = await request(app)
+            .patch(`/api/categorias/${categoria._id}`)
+            .send({ nome: 'Sem Permissao' });
+
+        expect(res.status).toBe(403);
+    });
+
+    it('categoria inexistente -> 404', async () => {
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .patch(`/api/categorias/${NOT_FOUND_OBJECT_ID}`)
+            .send({ nome: 'Nao Existe' });
+
+        expect(res.status).toBe(404);
+    });
+});
+
+describe('DELETE /categorias/:id', () => {
+    it('deleta categoria como administrador -> 200', async () => {
+        const categoria = await criarCategoria({ nome: 'Para Deletar' });
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).delete(`/api/categorias/${categoria._id}`);
+
+        expect(res.status).toBe(200);
+
+        const removida = await Categoria.findById(categoria._id);
+        expect(removida).toBeNull();
+    });
+
+    it('id invalido -> 400', async () => {
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).delete(`/api/categorias/${INVALID_OBJECT_ID}`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('sem autenticacao -> 401', async () => {
+        const categoria = await criarCategoria();
+        asNaoAutenticado();
+
+        const res = await request(app).delete(`/api/categorias/${categoria._id}`);
+
+        expect(res.status).toBe(401);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const categoria = await criarCategoria();
+
+        const res = await request(app).delete(`/api/categorias/${categoria._id}`);
+
+        expect(res.status).toBe(403);
+    });
+
+    it('categoria inexistente -> 404', async () => {
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).delete(`/api/categorias/${NOT_FOUND_OBJECT_ID}`);
+
+        expect(res.status).toBe(404);
+    });
+});
+
+describe('POST /categorias/:id/foto', () => {
+    it('atualiza icone da categoria como administrador -> 200', async () => {
+        const categoria = await criarCategoria({ nome: 'Com Icone' });
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app)
+            .post(`/api/categorias/${categoria._id}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'categoria.jpg');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.dados.icone_categoria).toBe('http://test.com/categoria.jpg');
+
+        const atualizada = await Categoria.findById(categoria._id);
+        expect(atualizada.icone_categoria).toBe('http://test.com/categoria.jpg');
+    });
+
+    it('sem arquivo -> 400', async () => {
+        const categoria = await criarCategoria();
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).post(`/api/categorias/${categoria._id}/foto`);
+
+        expect(res.status).toBe(400);
+    });
+
+    it('usuario sem permissao -> 403', async () => {
+        const categoria = await criarCategoria();
+
+        const res = await request(app)
+            .post(`/api/categorias/${categoria._id}/foto`)
+            .attach('file', Buffer.from('fake-image'), 'categoria.jpg');
+
+        expect(res.status).toBe(403);
+    });
+});
+
+describe('DELETE /categorias/:id/foto', () => {
+    it('remove icone da categoria como administrador -> 200', async () => {
+        const categoria = await criarCategoria({
+            nome: 'Icone Removivel',
+            icone_categoria: 'http://test.com/antiga.jpg',
+        });
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).delete(`/api/categorias/${categoria._id}/foto`);
+
+        expect(res.status).toBe(200);
+
+        const atualizada = await Categoria.findById(categoria._id);
+        expect(atualizada.icone_categoria).toBe('');
+    });
+
+    it('categoria sem icone -> 404', async () => {
+        const categoria = await criarCategoria({ icone_categoria: '' });
+        autenticarComoUmaVez(adminId);
+
+        const res = await request(app).delete(`/api/categorias/${categoria._id}/foto`);
+
+        expect(res.status).toBe(404);
+    });
+    it('usuario sem permissao -> 403', async () => {
+        const categoria = await criarCategoria({ icone_categoria: 'http://test.com/antiga.jpg' });
+
+        const res = await request(app).delete(`/api/categorias/${categoria._id}/foto`);
+
+        expect(res.status).toBe(403);
+    });
+  });
+});
+
+describe('CategoriaService e repository - ramos internos', () => {
+    it('ensureCategoriaExists retorna 404 quando repository devolve nulo', async () => {
+        const service = new CategoriaService();
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.ensureCategoriaExists(NOT_FOUND_OBJECT_ID))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('fotoUpload retorna 404 quando categoria nao existe', async () => {
+        const service = new CategoriaService();
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.fotoUpload(NOT_FOUND_OBJECT_ID, {}, { user_id: adminId }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('fotoDelete retorna 404 quando categoria nao existe', async () => {
+        const service = new CategoriaService();
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue(null),
+        };
+
+        await expect(service.fotoDelete(NOT_FOUND_OBJECT_ID, { user_id: adminId }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('fotoDelete registra falha de exclusao em background sem bloquear retorno', async () => {
+        const service = new CategoriaService();
+        service.repository = {
+            buscarPorID: jest.fn().mockResolvedValue({ icone_categoria: 'icone.jpg' }),
+            atualizar: jest.fn().mockResolvedValue({}),
+        };
+        service.usuarioRepository = {
+            buscarPorID: jest.fn().mockResolvedValue({ _id: adminId, isAdmin: true }),
+        };
+        service.uploadService = {
+            deleteImagemComRetry: jest.fn().mockRejectedValue(new Error('falha icone')),
+        };
+
+        await expect(service.fotoDelete(NOT_FOUND_OBJECT_ID, { user_id: adminId }))
+            .resolves
+            .toBe(true);
+        await new Promise(resolve => setImmediate(resolve));
+
+        expect(service.repository.atualizar).toHaveBeenCalledWith(NOT_FOUND_OBJECT_ID, { icone_categoria: '' });
+    });
+
+    it('deletar registra falha da limpeza em background sem bloquear retorno', async () => {
+        const categoria = { _id: NOT_FOUND_OBJECT_ID };
+        const service = new CategoriaService();
+        service.validarAdmin = jest.fn().mockResolvedValue();
+        service.ensureCategoriaExists = jest.fn().mockResolvedValue(categoria);
+        service.repository = {
+            deletar: jest.fn().mockResolvedValue(categoria),
+        };
+        const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+        const data = await service.deletar(NOT_FOUND_OBJECT_ID, { user_id: adminId });
+        await new Promise(resolve => setImmediate(resolve));
+
+        expect(data).toBe(categoria);
+        error.mockRestore();
+    });
+
+    it('repository.atualizar retorna 404 quando categoria nao existe', async () => {
+        const repository = new CategoriaRepository({
+            CategoriaModel: {
+                findByIdAndUpdate: jest.fn().mockResolvedValue(null),
+            },
+        });
+
+        await expect(repository.atualizar(NOT_FOUND_OBJECT_ID, { nome: 'Nova' }))
+            .rejects
+            .toMatchObject({
+                statusCode: 404,
+            });
+    });
+
+    it('CategoriaQuerySchema converte ativo true textual', () => {
+        const parsed = CategoriaQuerySchema.parse({ ativo: 'true' });
+
+        expect(parsed.ativo).toBe(true);
+    });
+});

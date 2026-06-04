@@ -9,12 +9,14 @@ import {
 import PratoRepository from '../repository/PratoRepository.js';
 import RestauranteRepository from '../repository/RestauranteRepository.js';
 import UsuarioRepository from '../repository/UsuarioRepository.js';
+import UploadService from './UploadService.js';
 
 class PratoService {
     constructor() {
         this.repository = new PratoRepository();
         this.restauranteRepository = new RestauranteRepository();
         this.usuarioRepository = new UsuarioRepository();
+        this.uploadService = new UploadService();
     }
 
     async listar(req) {
@@ -51,9 +53,15 @@ class PratoService {
         // Verificar se o restaurante existe
         const restaurante = await this.ensureRestauranteExists(parsedData.restaurante_id);
 
+        // Validar se a seção fornecida existe no cardápio do restaurante
+        if (parsedData.secao) {
+            this.ensureSecaoExistsInRestaurante(parsedData.secao, restaurante);
+        }
+
         // Verificar se o usuário é o dono ou admin
         const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
-        const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
+        const donoId = this.extractDonoId(restaurante);
+
         ensurePermission({
             usuarioLogado,
             targetId: donoId,
@@ -69,9 +77,15 @@ class PratoService {
         const prato = await this.ensurePratoExists(id);
         const restaurante = await this.ensureRestauranteExists(prato.restaurante_id);
 
+        // Validar se a nova seção fornecida existe no cardápio do restaurante
+        if (parsedData.secao) {
+            this.ensureSecaoExistsInRestaurante(parsedData.secao, restaurante);
+        }
+
         // Verificar se o usuário é o dono ou admin
         const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
-        const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
+        const donoId = this.extractDonoId(restaurante);
+
         ensurePermission({
             usuarioLogado,
             targetId: donoId,
@@ -92,7 +106,8 @@ class PratoService {
 
         // Verificar se o usuário é o dono ou admin
         const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
-        const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
+        const donoId = this.extractDonoId(restaurante);
+
         ensurePermission({
             usuarioLogado,
             targetId: donoId,
@@ -102,6 +117,93 @@ class PratoService {
 
         const data = await this.repository.deletar(id);
         return data;
+    }
+
+    // ================================
+    // UPLOAD DE FOTO
+    // ================================
+    async fotoUpload(id, file, req) {
+        const prato = await this.repository.buscarPorID(id);
+
+        if (!prato) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.NOT_FOUND.code,
+                errorType: 'resourceNotFound',
+                field: 'Prato',
+                details: [],
+                customMessage: 'Prato não encontrado.',
+            });
+        }
+
+        const restaurante = await this.ensureRestauranteExists(prato.restaurante_id);
+        const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
+        const donoId = this.extractDonoId(restaurante);
+
+        ensurePermission({
+            usuarioLogado,
+            targetId: donoId,
+            field: 'Prato',
+            customMessage: 'Você não tem permissões para alterar a foto deste prato.',
+        });
+
+        // O 'substituirImagem' já trata se 'prato.foto_prato' for null ou se não existir
+        const uploadResult = await this.uploadService.substituirImagem(
+            file,
+            prato.foto_prato,
+            { width: 800, height: 800, fit: 'cover', quality: 80 }
+        );
+
+        // Atualiza a URL no banco de dados
+        await this.repository.atualizar(id, { foto_prato: uploadResult.url });
+
+        return uploadResult;
+    }
+
+    async fotoDelete(id, req) {
+        const prato = await this.repository.buscarPorID(id);
+
+        if (!prato) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.NOT_FOUND.code,
+                errorType: 'resourceNotFound',
+                field: 'Prato',
+                details: [],
+                customMessage: 'Prato não encontrado.',
+            });
+        }
+
+        const restaurante = await this.ensureRestauranteExists(prato.restaurante_id);
+        const usuarioLogado = await this.ensureUsuarioExists(req.user_id);
+        const donoId = this.extractDonoId(restaurante);
+
+        ensurePermission({
+            usuarioLogado,
+            targetId: donoId,
+            field: 'Prato',
+            customMessage: 'Você não tem permissões para excluir a foto deste prato.',
+        });
+
+        if (!prato.foto_prato) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.NOT_FOUND.code,
+                errorType: 'resourceNotFound',
+                field: 'Prato',
+                details: [],
+                customMessage: 'Este prato não possui uma foto para remover.',
+            });
+        }
+
+        const urlAntiga = prato.foto_prato;
+
+        // 1. Remove a URL do banco de dados imediatamente
+        await this.repository.atualizar(id, { foto_prato: '' });
+
+        // 2. Deleta do Garage em background com retry
+        this.uploadService.deleteImagemComRetry(urlAntiga).catch(err => {
+            console.error(`Erro isolado na exclusão da foto em background: ${err.message}`);
+        });
+
+        return true;
     }
 
     // === Métodos auxiliares de validação ===
@@ -157,6 +259,39 @@ class PratoService {
                 customMessage: 'O usuário informado não foi encontrado.',
             });
         }
+    }
+
+    ensureSecaoExistsInRestaurante(secao, restaurante) {
+        if (!restaurante.secoes_cardapio || !restaurante.secoes_cardapio.includes(secao)) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                errorType: 'validationError',
+                field: 'secao',
+                details: [{ path: 'secao', message: `A seção '${secao}' não está cadastrada nas seções do restaurante.` }],
+                customMessage: `A seção '${secao}' não faz parte do cardápio deste restaurante. Adicione-a na configuração do restaurante primeiro.`,
+            });
+        }
+    }
+
+    /**
+     * MELHORIA-02: Extrai o donoId de forma segura, centralizando a lógica que
+     * antes estava duplicada 5 vezes neste arquivo (objeto populado vs ID puro).
+     */
+    extractDonoId(restaurante) {
+        const donoId = restaurante.dono_id?._id
+            ? String(restaurante.dono_id._id)
+            : String(restaurante.dono_id || '');
+
+        if (!donoId || donoId === 'null' || donoId === 'undefined') {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.FORBIDDEN.code,
+                errorType: 'forbidden',
+                field: 'dono_id',
+                customMessage: 'Este restaurante está órfão (sem dono vinculado). Entre em contato com o suporte.',
+            });
+        }
+
+        return donoId;
     }
 }
 

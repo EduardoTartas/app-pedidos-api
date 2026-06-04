@@ -29,7 +29,9 @@ class PratoController {
             await PratoQuerySchema.parseAsync(query);
         }
 
-        const data = await this.service.listar(req);
+        const data = req.query?.restaurante_id 
+            ? await this.service.listarPorRestaurante(req.query.restaurante_id, req)
+            : await this.service.listar(req);
 
         // Mensagem contextualizada para listagem
         if (id) {
@@ -168,6 +170,44 @@ class PratoController {
             HttpStatusCodes.OK.code,
             'Prato excluído com sucesso.',
         );
+    }
+
+    async fotoUpload(req, res) {
+      const { id } = req.params;
+      IdSchema.parse(id);
+
+      const file = req.files?.file || req.files?.imagem;
+      if(!file) {
+        throw new CustomError({
+          statusCode: HttpStatusCodes.BAD_REQUEST.code,
+          errorType: 'validationError',
+          field: 'file',
+          details: [{ path: 'file', message: 'Nenhum arquivo enviado.' }],
+          customMessage: 'A imagem é obrigatória para o upload.',
+        });
+      }
+
+      const { url, fileName, metadata } = await this.service.fotoUpload(id, file, req);
+
+      return CommonResponse.success( res, {
+        message: 'Foto processada e prato atualizado com sucesso.',
+        dados: { foto_prato: url },
+        metadados: metadata,
+      });
+    }
+
+    async fotoDelete(req, res) {
+      const { id } = req.params;
+      IdSchema.parse(id);
+
+      await this.service.fotoDelete(id, req);
+
+      return CommonResponse.success(
+        res,
+        null,
+        HttpStatusCodes.OK.code,
+        'Foto do prato excluída com sucesso.',
+      )
     }
 }
 

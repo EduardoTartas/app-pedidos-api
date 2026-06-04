@@ -63,8 +63,8 @@ const pedidoSchemas = {
                     }
                 }
             },
-            createdAt: { type: "string", format: "date-time", example: "16/01/2025 12:00:00" },
-            updatedAt: { type: "string", format: "date-time", example: "16/01/2025 12:00:00" }
+            createdAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" },
+            updatedAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" }
         },
         description: "Schema para listagem de pedidos"
     },
@@ -119,8 +119,8 @@ const pedidoSchemas = {
                     }
                 }
             },
-            createdAt: { type: "string", format: "date-time", example: "16/01/2025 12:00:00" },
-            updatedAt: { type: "string", format: "date-time", example: "16/01/2025 12:00:00" }
+            createdAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" },
+            updatedAt: { type: "string", format: "date-time", example: "2025-01-16T12:00:00.000Z" }
         },
         description: "Schema para detalhes de um pedido"
     },
@@ -128,22 +128,22 @@ const pedidoSchemas = {
     PedidoPost: {
         type: "object",
         properties: {
-            restaurante_id: { type: "string", description: "ID do restaurante", example: "674fa21d79969d2172e78711" },
+            restaurante_id: { type: "string", description: "Cole o ID do restaurante", example: "ID_DO_RESTAURANTE" },
             itens: {
                 type: "array",
-                description: "Lista de itens do pedido",
+                description: "Lista de pratos que você deseja pedir",
                 items: {
                     type: "object",
                     properties: {
-                        prato_id: { type: "string", description: "ID do prato", example: "674fa21d79969d2172e78712" },
-                        quantidade: { type: "number", description: "Quantidade", example: 2 },
+                        prato_id: { type: "string", description: "Cole o ID do prato", example: "ID_DO_PRATO" },
+                        quantidade: { type: "number", description: "Quantidade do prato", example: 1 },
                         adicionais: {
                             type: "array",
-                            description: "Lista de adicionais do item",
+                            description: "Opcional: Se quiser adicionar um opcional, coloque o ID. Se não, basta apagar este bloco.",
                             items: {
                                 type: "object",
                                 properties: {
-                                    opcao_id: { type: "string", description: "ID da opção de adicional", example: "674fa21d79969d2172e78720" },
+                                    opcao_id: { type: "string", description: "Cole o ID do adicional (opção) aqui", example: "ID_DA_OPCAO" },
                                     quantidade: { type: "number", description: "Quantidade do adicional", example: 1 }
                                 },
                                 required: ["opcao_id"]
@@ -155,15 +155,18 @@ const pedidoSchemas = {
             }
         },
         required: ["restaurante_id", "itens"],
-        description: "Schema para criação de um pedido",
+        description: "Schema para criar um pedido. Preencha os IDs abaixo. Apague o bloco de 'adicionais' se não quiser nenhum opcional.",
         example: {
-            restaurante_id: "674fa21d79969d2172e78711",
+            restaurante_id: "COLE_O_ID_DO_RESTAURANTE_AQUI",
             itens: [
                 {
-                    prato_id: "674fa21d79969d2172e78712",
-                    quantidade: 2,
+                    prato_id: "COLE_O_ID_DO_PRATO_AQUI",
+                    quantidade: 1,
                     adicionais: [
-                        { opcao_id: "674fa21d79969d2172e78720", quantidade: 1 }
+                        { 
+                            opcao_id: "SE_QUISER_OPCIONAL_COLE_O_ID_AQUI_SENAO_APAGUE_ESTE_BLOCO", 
+                            quantidade: 1 
+                        }
                     ]
                 }
             ]

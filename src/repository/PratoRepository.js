@@ -2,6 +2,7 @@
 
 import Prato from '../models/Prato.js';
 import '../models/AdicionalGrupo.js';
+import PratoFilterBuild from './filters/PratoFilterBuild.js';
 import {
     CustomError,
     messages
@@ -28,13 +29,16 @@ class PratoRepository {
     }
 
     async listar(req) {
-        const { nome, status, secao, page = 1 } = req.query;
+        const { nome, status, secao, page = 1, preco_min, preco_max } = req.query;
         const limite = Math.min(parseInt(req.query.limite, 10) || 10, 100);
 
-        const filtros = {};
-        if (nome) filtros.nome = { $regex: nome, $options: 'i' };
-        if (status) filtros.status = status;
-        if (secao) filtros.secao = { $regex: secao, $options: 'i' };
+        const filterBuilder = new PratoFilterBuild()
+            .comNome(nome)
+            .comStatus(status)
+            .comCategoriaSecao(secao)
+            .comPreco(preco_min, preco_max);
+
+        const filtros = filterBuilder.build();
 
         const options = {
             page: parseInt(page, 10),
@@ -51,13 +55,17 @@ class PratoRepository {
     }
 
     async listarPorRestaurante(restauranteId, req) {
-        const { nome, status, secao, page = 1 } = req.query;
+        const { nome, status, secao, page = 1, preco_min, preco_max } = req.query;
         const limite = Math.min(parseInt(req.query.limite, 10) || 10, 100);
 
-        const filtros = { restaurante_id: restauranteId };
-        if (nome) filtros.nome = { $regex: nome, $options: 'i' };
-        if (status) filtros.status = status;
-        if (secao) filtros.secao = { $regex: secao, $options: 'i' };
+        const filterBuilder = new PratoFilterBuild()
+            .comRestaurante(restauranteId)
+            .comNome(nome)
+            .comStatus(status)
+            .comCategoriaSecao(secao)
+            .comPreco(preco_min, preco_max);
+
+        const filtros = filterBuilder.build();
 
         const options = {
             page: parseInt(page, 10),
@@ -87,7 +95,7 @@ class PratoRepository {
     }
 
     async atualizar(id, parsedData) {
-        const prato = await this.modelPrato.findByIdAndUpdate(id, parsedData, { new: true })
+        const prato = await this.modelPrato.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' })
             .populate('adicionais_grupo_ids');
         if (!prato) {
             throw new CustomError({
@@ -113,6 +121,18 @@ class PratoRepository {
             });
         }
         return prato;
+    }
+
+    async removerGrupo(pratoId, grupoId) {
+        return await this.modelPrato.findByIdAndUpdate(
+            pratoId,
+            { $pull: { adicionais_grupo_ids: grupoId } },
+            { new: true }
+        );
+    }
+
+    async deletarPorRestaurante(restauranteId) {
+        return await this.modelPrato.deleteMany({ restaurante_id: restauranteId });
     }
 }
 

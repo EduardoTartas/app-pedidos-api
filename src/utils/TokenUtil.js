@@ -1,6 +1,7 @@
 // src/utils/TokenUtil.js
 
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 class TokenUtil {
     generateAccessToken(id) {
@@ -43,6 +44,15 @@ class TokenUtil {
                 }
             );
         });
+    }
+
+    /**
+     * Gera um token de recuperação criptograficamente seguro (SEC-03).
+     * Usa crypto.randomBytes: 256 bits de entropia, impossível de bruteforçar.
+     * Substituiu Math.random() que tinha apenas 900.000 combinações possíveis.
+     */
+    generateRecoveryCode() {
+        return crypto.randomBytes(32).toString('hex');
     }
 
     decodePasswordRecoveryToken(token, secret) {

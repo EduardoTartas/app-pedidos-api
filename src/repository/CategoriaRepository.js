@@ -1,6 +1,7 @@
 // src/repository/CategoriaRepository.js
 
 import Categoria from '../models/Categoria.js';
+import CategoriaFilterBuild from './filters/CategoriaFilterBuild.js';
 import {
     CustomError,
     messages
@@ -53,9 +54,11 @@ class CategoriaRepository {
         const { nome, ativo, page = 1 } = req.query;
         const limite = Math.min(parseInt(req.query.limite, 10) || 10, 100);
 
-        const filtros = {};
-        if (nome) filtros.nome = { $regex: nome, $options: 'i' };
-        if (ativo !== undefined) filtros.ativo = ativo === 'true';
+        const filterBuilder = new CategoriaFilterBuild()
+            .comNome(nome)
+            .comAtivo(ativo);
+
+        const filtros = filterBuilder.build();
 
         const options = {
             page: parseInt(page, 10),
@@ -76,7 +79,7 @@ class CategoriaRepository {
     }
 
     async atualizar(id, parsedData) {
-        const categoria = await this.modelCategoria.findByIdAndUpdate(id, parsedData, { new: true });
+        const categoria = await this.modelCategoria.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' });
         if (!categoria) {
             throw new CustomError({
                 statusCode: 404,

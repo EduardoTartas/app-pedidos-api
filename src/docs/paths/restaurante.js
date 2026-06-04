@@ -260,7 +260,7 @@ const restauranteRoutes = {
                     - \`file\` ou \`imagem\`: O arquivo da foto.
 
             + Regras de Negócio:
-                - Máximo 50MB (definido no serviço) e tipos restritos (jpg, png).
+                - Máximo 50MB (definido no serviço) e tipos restritos (jpg, png, jpeg, svg).
                 - A imagem antiga é apagada automaticamente.
                 - O próprio dono do restaurante pode realizar esta ação.
 
@@ -329,6 +329,29 @@ const restauranteRoutes = {
                 401: commonResponses[401](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
+                500: commonResponses[500]()
+            }
+        }
+    },
+    "/restaurantes/tarefas/inatividade": {
+        post: {
+            tags: ["Restaurantes"],
+            summary: "Executa a tarefa de inativação automática (30 dias)",
+            description: `
+            + Caso de uso: Disparar manualmente a rotina que inativa lojas sem pedidos há mais de 30 dias.
+
+            + Regras de Negócio:
+                - Requer privilégios administrativos.
+                - Varre todas as lojas ativas e verifica a data do último pedido.
+
+            + Resultado Esperado:
+                - HTTP 200 OK com contagem de processados e inativados.
+            `,
+            security: [{ bearerAuth: [] }],
+            responses: {
+                200: commonResponses[200](),
+                401: commonResponses[401](),
+                403: commonResponses[403](),
                 500: commonResponses[500]()
             }
         }

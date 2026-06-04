@@ -1,5 +1,3 @@
-// src/utils/validators/schemas/zod/AvaliacaoSchema.js
-
 import { z } from 'zod';
 import objectIdSchema from './ObjectIdSchema.js';
 

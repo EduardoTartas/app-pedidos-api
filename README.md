@@ -56,10 +56,6 @@ Plataforma de delivery que conecta clientes a restaurantes, permitindo realizar 
 - Logs estruturados
 - Containerização Docker
 
-## 🚀 Quick Start
-
-> **IMPORTANTE:** Execute os containers pelo **frontend**. Veja o [README do Frontend](../app-pedidos-front/README.md).
-
 ### Apenas para Desenvolvimento Local da API
 
 Se quiser rodar **apenas a API** isoladamente:
@@ -88,9 +84,14 @@ docker compose -f docker-compose-dev.yml exec api npm run seed
 docker compose -f docker-compose-dev.yml exec api npm test
 ```
 
-## 📚 Documentação da API
+## 📚 Documentação e Especificações
 
-### Acesso
+Para um aprofundamento técnico nas regras de negócio e arquitetura, consulte os diretórios oficiais de documentação:
+
+- 🛣️ [**Documentação de Rotas Completa**](./documentacao/rotas/rotas.md): Um guia exaustivo de todos os endpoints, roles, middlewares, fluxos em cascata e payloads.
+- 🎯 [**Levantamento de Requisitos e Regras**](./documentacao/requisitos.md): Mapeamento de Requisitos Funcionais (RF) e Não-Funcionais (RNF) atrelados à validação de domínio.
+
+### Acesso Local (Swagger e Monitoramento)
 - **Swagger UI:** http://localhost:5020/docs
 - **Health Check:** http://localhost:5020/health
 
@@ -114,46 +115,70 @@ GET    /usuarios/:id       - Buscar por ID
 PATCH  /usuarios/:id       - Atualizar
 DELETE /usuarios/:id       - Deletar
 PATCH  /usuarios/:id/status - Alterar status
+POST   /usuarios/:id/foto  - Upload de foto
+DELETE /usuarios/:id/foto  - Remover foto
 ```
 
 #### Categorias
 ```
-GET    /categorias         - Listar
-POST   /categorias         - Criar
-GET    /categorias/:id     - Buscar por ID
-PATCH  /categorias/:id     - Atualizar
-DELETE /categorias/:id     - Deletar
+GET    /categorias           - Listar
+POST   /categorias           - Criar
+GET    /categorias/:id       - Buscar por ID
+PATCH  /categorias/:id       - Atualizar
+DELETE /categorias/:id       - Deletar
+POST   /categorias/:id/foto  - Upload de foto
+DELETE /categorias/:id/foto  - Remover foto
 ```
 
 #### Restaurantes
 ```
-GET    /restaurantes       - Listar
-POST   /restaurantes       - Criar
-GET    /restaurantes/:id   - Buscar por ID
-PATCH  /restaurantes/:id   - Atualizar
-DELETE /restaurantes/:id   - Deletar
+GET    /restaurantes           - Listar
+GET    /restaurantes/meus      - Listar meus restaurantes
+POST   /restaurantes           - Criar
+GET    /restaurantes/:id       - Buscar por ID
+PATCH  /restaurantes/:id       - Atualizar status/dados
+DELETE /restaurantes/:id       - Deletar
+POST   /restaurantes/:id/foto  - Upload de logotipo/capa
+DELETE /restaurantes/:id/foto  - Remover foto
 ```
 
 #### Pratos
 ```
-GET    /pratos             - Listar
-POST   /pratos             - Criar
-GET    /pratos/:id         - Buscar por ID
-PATCH  /pratos/:id         - Atualizar
-DELETE /pratos/:id         - Deletar
+GET    /pratos                  - Listar
+POST   /pratos                  - Criar
+GET    /pratos/:id              - Buscar por ID
+PATCH  /pratos/:id              - Atualizar
+DELETE /pratos/:id              - Deletar
 GET    /cardapio/:restauranteId - Cardápio do restaurante
+POST   /pratos/:id/foto         - Upload de foto do prato
+DELETE /pratos/:id/foto         - Remover foto
 ```
 
 #### Adicionais
 ```
-GET    /adicionais/grupos/:restauranteId - Listar grupos
-POST   /adicionais/grupos               - Criar grupo
-PATCH  /adicionais/grupos/:id           - Atualizar grupo
-DELETE /adicionais/grupos/:id           - Deletar grupo
-GET    /adicionais/opcoes/:grupoId      - Listar opções
-POST   /adicionais/opcoes               - Criar opção
-PATCH  /adicionais/opcoes/:id           - Atualizar opção
-DELETE /adicionais/opcoes/:id           - Deletar opção
+GET    /adicionais/grupos/prato/:pratoId - Listar grupos de um prato
+GET    /adicionais/grupos/:id            - Buscar grupo
+POST   /adicionais/grupos                - Criar grupo
+PATCH  /adicionais/grupos/:id            - Atualizar grupo
+DELETE /adicionais/grupos/:id            - Deletar grupo
+GET    /adicionais/opcoes/:grupoId       - Listar opções
+POST   /adicionais/opcoes                - Criar opção
+PATCH  /adicionais/opcoes/:id            - Atualizar opção
+DELETE /adicionais/opcoes/:id            - Deletar opção
+POST   /adicionais/opcoes/:id/foto       - Upload de foto
+DELETE /adicionais/opcoes/:id/foto       - Remover foto
+```
+
+#### Endereços
+```
+GET    /usuarios/:usuarioId/enderecos                 - Listar endereços do usuário
+POST   /usuarios/:usuarioId/enderecos                 - Criar endereço de usuário
+PATCH  /usuarios/:usuarioId/enderecos/:enderecoId     - Atualizar endereço de usuário
+DELETE /usuarios/:usuarioId/enderecos/:enderecoId     - Excluir endereço de usuário
+GET    /restaurantes/:restauranteId/enderecos         - Buscar endereço operacional
+POST   /restaurantes/:restauranteId/enderecos         - Definir endereço de restaurante
+PATCH  /restaurantes/:restauranteId/enderecos/:id     - Atualizar localização
+DELETE /restaurantes/:restauranteId/enderecos/:id     - Desvincular local
 ```
 
 #### Pedidos
@@ -161,19 +186,22 @@ DELETE /adicionais/opcoes/:id           - Deletar opção
 GET    /pedidos/meus                     - Meus pedidos (cliente)
 GET    /pedidos/restaurante/:restauranteId - Pedidos do restaurante
 POST   /pedidos                          - Criar pedido
-PATCH  /pedidos/:id/status               - Atualizar status
+PATCH  /pedidos/:id/status               - Atualizar status (criado -> preparo -> a caminho -> entregue)
 ```
 
 #### Avaliações
 ```
 GET    /avaliacoes/restaurante/:restauranteId - Listar por restaurante
-POST   /avaliacoes                           - Criar avaliação
+POST   /avaliacoes                            - Criar avaliação
 ```
 
 #### Notificações
 ```
+POST   /notificacoes         - Gerar alerta (Sistema)
 GET    /notificacoes         - Listar minhas notificações
-PATCH  /notificacoes/:id/lida - Marcar como lida
+GET    /notificacoes/:id     - Buscar específica
+PATCH  /notificacoes/:id/lida - Marcar notificação como lida
+DELETE /notificacoes/:id     - Remover notificação
 ```
 
 ## 🔒 Segurança
@@ -287,7 +315,9 @@ src/
 
 | Nome | Função | E-mail |
 |------|--------|--------|
-| - | - | - |
+| Eduardo Santos Tartas | Desenvolvedor | eduardos.tartas@gmail.com |
+| Luis Felipe Lopes | Desenvolvedor | luis.felipe.lopes1275@gmail.com |
+| Geovanna Rocha da Silva | Desenvolvedora | rochageovanna3@gmail.com |
 
 ## 📄 Licença
 
