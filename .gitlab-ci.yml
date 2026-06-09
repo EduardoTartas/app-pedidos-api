@@ -1,0 +1,31 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  DOCKER_IMAGE: eduardotartas/app_pedidos_api:$CI_COMMIT_SHORT_SHA
+  KUBERNETES_NAMESPACE: "rango-prod"
+
+build_job:
+  stage: build
+  only:
+    - main
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  tags:
+    - k3s-runner-pedidos
+  script:
+    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(printf "%s:%s" "${DOCKERHUB_USER}" "${DOCKERHUB_PASS}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor --context "${CI_PROJECT_DIR}" --dockerfile "${CI_PROJECT_DIR}/Dockerfile" --destination "${DOCKER_IMAGE}"
+
+deploy_job:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  tags:
+    - k3s-runner-pedidos
+  script:
+    - kubectl set image deployment/app-pedidos-api app-pedidos-api=$DOCKER_IMAGE -n $KUBERNETES_NAMESPACE
+    - kubectl rollout status deployment/app-pedidos-api -n $KUBERNETES_NAMESPACE
+  only:
+    - main
