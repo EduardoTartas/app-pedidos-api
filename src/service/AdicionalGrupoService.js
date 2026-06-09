@@ -20,9 +20,18 @@ class AdicionalGrupoService {
         this.usuarioRepository = new UsuarioRepository();
     }
 
-    async criar(parsedData, pratoId, req) {
-        const prato = await this.pratoRepository.buscarPorID(pratoId);
-        const restaurante = await this.restauranteRepository.buscarPorID(prato.restaurante_id);
+    async criar(dadosGrupo, targetId, req, ePrato = true) {
+        let restauranteId;
+        let prato;
+
+        if (ePrato) {
+            prato = await this.pratoRepository.buscarPorID(targetId);
+            restauranteId = prato.restaurante_id;
+        } else {
+            restauranteId = targetId;
+        }
+
+        const restaurante = await this.restauranteRepository.buscarPorID(restauranteId);
 
         const usuarioLogado = await this.usuarioRepository.buscarPorID(req.user_id);
         const donoId = String(restaurante.dono_id._id || restaurante.dono_id);
@@ -33,24 +42,40 @@ class AdicionalGrupoService {
             customMessage: 'Você não tem permissões para gerenciar adicionais deste restaurante.',
         });
 
-        const nomeExistente = await this.grupoRepository.buscarPorNomeEntreIds(parsedData.nome, prato.adicionais_grupo_ids);
+        // Verificar duplicidade no restaurante (não apenas no prato)
+        const gruposExistentes = await this.grupoRepository.listarPorRestaurante(restauranteId);
+        const nomeExistente = gruposExistentes.find(g => g.nome.toLowerCase() === dadosGrupo.nome.toLowerCase());
+
         if (nomeExistente) {
             throw new CustomError({
                 statusCode: HttpStatusCodes.CONFLICT.code,
                 errorType: 'resourceAlreadyExists',
                 field: 'nome',
                 details: [],
-                customMessage: 'Já existe um grupo de adicionais com este nome neste prato.',
+                customMessage: 'Já existe um grupo de adicionais com este nome neste restaurante.',
             });
         }
 
-        parsedData.restaurante_id = prato.restaurante_id;
+        // Validar max >= min no service (defense in depth)
+        if (dadosGrupo.max !== undefined && dadosGrupo.min !== undefined && dadosGrupo.max < dadosGrupo.min) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                errorType: 'validationError',
+                field: 'max',
+                details: [],
+                customMessage: `O valor máximo (${dadosGrupo.max}) não pode ser menor que o mínimo (${dadosGrupo.min}).`,
+            });
+        }
 
-        const grupo = await this.grupoRepository.criar(parsedData);
+        dadosGrupo.restaurante_id = restauranteId;
 
-        // Vincular grupo ao prato
-        prato.adicionais_grupo_ids.push(grupo._id);
-        await this.pratoRepository.atualizar(pratoId, { adicionais_grupo_ids: prato.adicionais_grupo_ids });
+        const grupo = await this.grupoRepository.criar(dadosGrupo);
+
+        // Vincular grupo ao prato (apenas se foi criado via fluxo de prato)
+        if (ePrato && prato) {
+            prato.adicionais_grupo_ids.push(grupo._id);
+            await this.pratoRepository.atualizar(targetId, { adicionais_grupo_ids: prato.adicionais_grupo_ids });
+        }
 
         return grupo;
     }
@@ -62,7 +87,13 @@ class AdicionalGrupoService {
 
     async listarPorPrato(pratoId) {
         const prato = await this.pratoRepository.buscarPorID(pratoId);
-        const data = await this.grupoRepository.listarPorIds(prato.adicionais_grupo_ids);
+
+        // Se já vier populado (o que acontece no repository), extrai os IDs
+        const ids = (prato.adicionais_grupo_ids || []).map(g =>
+            typeof g === 'object' && g._id ? g._id : g
+        );
+
+        const data = await this.grupoRepository.listarPorIds(ids);
         return data;
     }
 
@@ -82,6 +113,19 @@ class AdicionalGrupoService {
             field: 'Adicional',
             customMessage: 'Você não tem permissões para editar adicionais deste restaurante.',
         });
+
+        // L-03: Validar max >= min considerando valores atuais do grupo
+        const novoMin = parsedData.min !== undefined ? parsedData.min : grupo.min;
+        const novoMax = parsedData.max !== undefined ? parsedData.max : grupo.max;
+        if (novoMax < novoMin) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                errorType: 'validationError',
+                field: 'max',
+                details: [],
+                customMessage: `O valor máximo (${novoMax}) não pode ser menor que o mínimo (${novoMin}).`,
+            });
+        }
 
         const data = await this.grupoRepository.atualizar(id, parsedData);
         return data;
@@ -103,17 +147,12 @@ class AdicionalGrupoService {
         await this.opcaoRepository.deletarPorGrupo(id);
         const data = await this.grupoRepository.deletar(id);
 
-        // Remover o vínculo do prato se existir
-        if (req.query.prato_id) {
-            await this.pratoRepository.removerGrupo(req.query.prato_id, id);
-        } else {
-            // Fallback: se não vier prato_id na query, buscar prato que contenha este grupo
-            const Prato = (await import('../models/Prato.js')).default;
-            await Prato.updateMany(
-                { adicionais_grupo_ids: id },
-                { $pull: { adicionais_grupo_ids: id } }
-            );
-        }
+        // L-10: Sempre buscar e desvincular o grupo de todos os pratos que o referenciam
+        const Prato = (await import('../models/Prato.js')).default;
+        await Prato.updateMany(
+            { adicionais_grupo_ids: id },
+            { $pull: { adicionais_grupo_ids: id } }
+        );
 
         return data;
     }

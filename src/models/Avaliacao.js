@@ -27,7 +27,11 @@ class Avaliacao {
                 type: Number,
                 required: [true, "A nota é obrigatória!"],
                 min: [1, "A nota mínima é 1!"],
-                max: [5, "A nota máxima é 5!"]
+                max: [5, "A nota máxima é 5!"],
+                validate: {
+                    validator: Number.isInteger,
+                    message: "A nota deve ser um número inteiro (1 a 5)."
+                }
             },
             descricao: {
                 type: String,

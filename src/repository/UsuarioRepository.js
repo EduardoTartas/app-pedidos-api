@@ -12,7 +12,12 @@ class UsuarioRepository {
         this.modelUsuario = usuarioModel;
     }
 
-    async armazenarTokens(id, accesstoken, refreshtoken) {
+    /**
+     * Armazena o refreshtoken do usuário no banco.
+     * SEC-04: O accesstoken NÃO é persistido — ele é stateless (verificado via assinatura JWT).
+     * Manter accesstoken no banco não agrega segurança e aumenta a superfície de ataque.
+     */
+    async armazenarTokens(id, _accesstoken, refreshtoken) {
         const document = await this.modelUsuario.findById(id);
         if (!document) {
             throw new CustomError({
@@ -23,7 +28,6 @@ class UsuarioRepository {
                 customMessage: messages.error.resourceNotFound("Usuário")
             });
         }
-        document.accesstoken = accesstoken;
         document.refreshtoken = refreshtoken;
         const data = await document.save();
         return data;
@@ -79,12 +83,14 @@ class UsuarioRepository {
         return documento;
     }
 
+    // BUG-05: Removido .select('+senha') — a busca por CPF serve apenas para verificar
+    // unicidade, não há motivo para carregar o hash da senha em memória.
     async buscarPorCpf(cpfValue, idIgnorado = null) {
         const filtro = { cpf: cpfValue };
         if (idIgnorado) {
             filtro._id = { $ne: idIgnorado };
         }
-        const documento = await this.modelUsuario.findOne(filtro).select('+senha');
+        const documento = await this.modelUsuario.findOne(filtro);
         return documento;
     }
 

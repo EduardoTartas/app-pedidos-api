@@ -48,7 +48,28 @@ const itemPedidoSchema = new mongoose.Schema({
         min: 1,
         default: 1
     },
+    observacao: {
+        type: String,
+        trim: true,
+        default: ""
+    },
     adicionais: [adicionalItemSchema]
+}, { _id: false });
+
+/**
+ * Snapshot do endereço de entrega no momento do pedido.
+ * Armazenado como objeto embutido (não referência) para preservar dados históricos
+ * mesmo que o usuário altere ou remova o endereço posteriormente.
+ */
+const enderecoEntregaSchema = new mongoose.Schema({
+    logradouro: { type: String, required: true },
+    numero:     { type: String, required: true },
+    bairro:     { type: String, required: true },
+    cidade:     { type: String, required: true },
+    estado:     { type: String, required: true },
+    cep:        { type: String, required: true },
+    complemento:{ type: String, default: '' },
+    label:      { type: String, default: '' }
 }, { _id: false });
 
 class Pedido {
@@ -98,6 +119,16 @@ class Pedido {
                     min: 0,
                     default: 0
                 }
+            },
+            // Endereço de entrega obrigatório no pedido
+            endereco_entrega: {
+                type: enderecoEntregaSchema,
+                required: [true, "O endereço de entrega é obrigatório!"]
+            },
+            forma_pagamento: {
+                type: String,
+                enum: ["dinheiro", "cartao_credito", "cartao_debito", "pix"],
+                default: "pix"
             },
             avaliacao_id: {
                 type: mongoose.Schema.Types.ObjectId,

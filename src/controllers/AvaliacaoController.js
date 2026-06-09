@@ -40,6 +40,32 @@ class AvaliacaoController {
         const data = await this.service.criar(parsedData, req);
         return CommonResponse.created(res, data);
     }
+
+    async buscarPorId(req, res) {
+        const { id } = req.params;
+        IdSchema.parse(id);
+
+        const data = await this.service.buscarPorId(id);
+        return CommonResponse.success(
+            res,
+            data,
+            HttpStatusCodes.OK.code,
+            'Avaliação encontrada com sucesso.',
+        );
+    }
+
+    async deletar(req, res) {
+        const { id } = req.params;
+        IdSchema.parse(id);
+
+        await this.service.deletar(id, req);
+        return CommonResponse.success(
+            res,
+            null,
+            HttpStatusCodes.OK.code,
+            'Avaliação excluída com sucesso.',
+        );
+    }
 }
 
 export default AvaliacaoController;

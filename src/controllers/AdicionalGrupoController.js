@@ -1,16 +1,13 @@
 // src/controllers/AdicionalGrupoController.js
 
-import AdicionalGrupoService from '../service/AdicionalGrupoService.js';
 import {
     AdicionalGrupoSchema,
     AdicionalGrupoUpdateSchema
 } from '../utils/validators/schemas/zod/AdicionalSchema.js';
-import { IdSchema } from '../utils/validators/schemas/zod/querys/CommonQuerySchema.js';
-import {
-    CommonResponse,
-    CustomError,
-    HttpStatusCodes
-} from '../utils/helpers/index.js';
+import IdSchema from '../utils/validators/schemas/zod/ObjectIdSchema.js';
+import AdicionalGrupoService from '../service/AdicionalGrupoService.js';
+import CommonResponse from '../utils/helpers/CommonResponse.js';
+import { HttpStatusCodes, CustomError } from '../utils/helpers/index.js';
 
 class AdicionalGrupoController {
     constructor() {
@@ -55,8 +52,10 @@ class AdicionalGrupoController {
 
     async criar(req, res) {
         const parsedData = AdicionalGrupoSchema.parse(req.body);
-        const { prato_id: pratoId, ...grupoData } = parsedData;
-        const data = await this.service.criar(grupoData, pratoId, req);
+        const { prato_id: pratoId, restaurante_id: restauranteId, ...grupoData } = parsedData;
+
+        // Passa restauranteId se pratoId não for fornecido
+        const data = await this.service.criar(grupoData, pratoId || restauranteId, req, !!pratoId);
         return CommonResponse.created(res, data);
     }
 

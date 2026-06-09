@@ -17,9 +17,13 @@ class CategoriaService {
         this.uploadService = new UploadService();
     }
 
-    //TODO: VALIDAÇÃO DE PERMISSÃO PARA SOMENTE ADMINISTRADORES PODEREM GERENCIAR CATEGORIAS!!!
     async listar(req) {
         const data = await this.repository.listar(req);
+        return data;
+    }
+
+    async buscarPorId(id) {
+        const data = await this.ensureCategoriaExists(id);
         return data;
     }
 
@@ -86,8 +90,8 @@ class CategoriaService {
         const categoriaExistente = await this.repository.buscarPorNome(nome, id);
         if (categoriaExistente) {
             throw new CustomError({
-                statusCode: HttpStatusCodes.BAD_REQUEST.code,
-                errorType: 'validationError',
+                statusCode: HttpStatusCodes.CONFLICT.code,
+                errorType: 'duplicateEntry',
                 field: 'nome',
                 details: [{ path: 'nome', message: 'Nome já está em uso.' }],
                 customMessage: 'O nome informado já está sendo utilizado por outra categoria.',

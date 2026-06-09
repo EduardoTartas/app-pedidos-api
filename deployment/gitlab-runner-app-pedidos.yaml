@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitlab-runner-app-pedidos
+  namespace: tools
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitlab-runner-app-pedidos
+  template:
+    metadata:
+      labels:
+        app: gitlab-runner-app-pedidos
+    spec:
+      serviceAccountName: gitlab-runner-app-pedidos-sa
+      containers:
+      - name: gitlab-runner
+        image: gitlab/gitlab-runner:latest
+        env:
+        - name: RUNNER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: gitlab-runner-secret-app-pedidos
+              key: runner-token
+        command:
+        - /bin/bash
+        - -c
+        - |
+          gitlab-runner register \
+            --non-interactive \
+            --url "https://gitlab.fslab.dev" \
+            --token "$RUNNER_TOKEN" \
+            --executor "kubernetes" \
+            --docker-image alpine:latest \
+            --kubernetes-namespace "tools" \
+            --kubernetes-helper-image "gitlab/gitlab-runner-helper:arm64-latest" \
+            --kubernetes-service-account "gitlab-runner-app-pedidos-sa"
+          
+          gitlab-runner run

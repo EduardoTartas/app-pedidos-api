@@ -45,6 +45,13 @@ class AdicionalGrupo {
             versionKey: false
         });
 
+        // L-03/E-06: Validar que max >= min
+        adicionalGrupoSchema.pre('validate', function () {
+            if (this.max < this.min) {
+                this.invalidate('max', `O valor máximo (${this.max}) não pode ser menor que o mínimo (${this.min}).`);
+            }
+        });
+
         adicionalGrupoSchema.plugin(mongoosePaginate);
         adicionalGrupoSchema.plugin(brazilianDatePlugin);
 

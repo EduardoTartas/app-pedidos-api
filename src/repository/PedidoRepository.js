@@ -43,7 +43,8 @@ class PedidoRepository {
             page: parseInt(page, 10),
             limit: parseInt(limite, 10),
             populate: [
-                { path: 'restaurante_id', select: 'nome foto_restaurante' }
+                { path: 'restaurante_id', select: 'nome foto_restaurante' },
+                { path: 'cliente_id', select: 'nome email telefone' }
             ],
             sort: { createdAt: -1 },
         };
@@ -107,6 +108,18 @@ class PedidoRepository {
         return await this.modelPedido.updateMany(
             { cliente_id: clienteId },
             { $set: { cliente_id: null } }
+        );
+    }
+
+    /**
+     * BUG-06: Anonimiza pedidos quando um restaurante é excluído.
+     * Zera o restaurante_id mas preserva o histórico (itens, totais, status) no pedido.
+     * O nome do restaurante já é snapshot em cada item, então o histórico do cliente permanece legível.
+     */
+    async anonimizarPorRestaurante(restauranteId) {
+        return await this.modelPedido.updateMany(
+            { restaurante_id: restauranteId },
+            { $set: { restaurante_id: null } }
         );
     }
 

@@ -68,10 +68,10 @@ class AvaliacaoService {
         // Vincular avaliação ao pedido
         await this.pedidoRepository.atualizar(pedidoId, { avaliacao_id: avaliacao._id });
 
-        // Recalcular média do restaurante
+        // Recalcular média do restaurante (o repository já arredonda para 1 decimal)
         const novaMedia = await this.repository.calcularMediaRestaurante(restauranteId);
         await this.restauranteRepository.atualizar(restauranteId, {
-            avaliacao_media: Math.round(novaMedia * 10) / 10
+            avaliacao_media: novaMedia
         });
 
         // Notificar o dono do restaurante
@@ -92,6 +92,53 @@ class AvaliacaoService {
         await this.restauranteRepository.buscarPorID(restauranteId);
         const data = await this.repository.listarPorRestaurante(restauranteId, req);
         return data;
-   }
+    }
+
+    async buscarPorId(id) {
+        const data = await this.repository.buscarPorID(id);
+        return data;
+    }
+
+    async deletar(id, req) {
+        const avaliacao = await this.repository.buscarPorID(id);
+
+        // Verificar se o usuário é o autor da avaliação ou admin
+        const UsuarioRepository = (await import('../repository/UsuarioRepository.js')).default;
+        const usuarioRepository = new UsuarioRepository();
+        const usuarioLogado = await usuarioRepository.buscarPorID(req.user_id);
+
+        const clienteId = String(avaliacao.cliente_id._id || avaliacao.cliente_id);
+        const isAdmin = usuarioLogado?.isAdmin || false;
+        const isAutor = String(usuarioLogado._id) === clienteId;
+
+        if (!isAdmin && !isAutor) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.FORBIDDEN.code,
+                errorType: 'permissionError',
+                field: 'Avaliação',
+                details: [],
+                customMessage: 'Você não tem permissão para excluir esta avaliação.',
+            });
+        }
+
+        const restauranteId = avaliacao.restaurante_id._id || avaliacao.restaurante_id;
+
+        // Remover vínculo do pedido
+        await this.pedidoRepository.atualizar(
+            avaliacao.pedido_id._id || avaliacao.pedido_id,
+            { avaliacao_id: null }
+        );
+
+        // Deletar avaliação
+        await this.repository.deletar(id);
+
+        // Recalcular média do restaurante (o repository já arredonda para 1 decimal)
+        const novaMedia = await this.repository.calcularMediaRestaurante(restauranteId);
+        await this.restauranteRepository.atualizar(restauranteId, {
+            avaliacao_media: novaMedia,
+        });
+
+        return true;
+    }
 }
 export default AvaliacaoService;

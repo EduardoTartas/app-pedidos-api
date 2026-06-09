@@ -19,18 +19,26 @@ class CategoriaController {
     }
 
     async listar(req, res) {
-        const id = req?.params?.id;
-        if (id) {
-            IdSchema.parse(id);
-        } else {
-            const query = req?.query;
-            if (query && Object.keys(query).length !== 0) {
-                await CategoriaQuerySchema.parseAsync(query);
-            }
+        const query = req?.query;
+        if (query && Object.keys(query).length !== 0) {
+            await CategoriaQuerySchema.parseAsync(query);
         }
 
         const data = await this.service.listar(req);
         return CommonResponse.success(res, data);
+    }
+
+    async buscarPorId(req, res) {
+        const { id } = req.params;
+        IdSchema.parse(id);
+
+        const data = await this.service.buscarPorId(id);
+        return CommonResponse.success(
+            res,
+            data,
+            HttpStatusCodes.OK.code,
+            'Categoria encontrada com sucesso.',
+        );
     }
 
     async criar(req, res) {

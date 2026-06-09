@@ -147,6 +147,7 @@ Esta documentação descreve o mapeamento dos endpoints da API de Delivery, incl
 | Método | Endpoint | Permissão | Resumo / Propósito |
 |--------|----------|-----------|--------------------|
 | GET | `/pedidos/meus` | Obrigatória (Auth) | Histórico do cliente. |
+| GET | `/pedidos/:id` | Obrigatória (Auth) | Detalhes específicos de um pedido. |
 | GET | `/pedidos/restaurante/:restauranteId` | Proprietário | Gestão da cozinha. |
 | POST | `/pedidos` | Obrigatória (Auth) | Checkout (calculado no server). |
 | PATCH | `/pedidos/:id/status` | Obrigatória (Auth) | Avança fluxo logístico. |
