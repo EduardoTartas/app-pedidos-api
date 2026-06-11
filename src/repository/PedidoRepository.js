@@ -15,7 +15,8 @@ class PedidoRepository {
     async buscarPorID(id) {
         const pedido = await this.modelPedido.findById(id)
             .populate('cliente_id', 'nome email telefone')
-            .populate('restaurante_id', 'nome foto_restaurante');
+            .populate('restaurante_id', 'nome foto_restaurante')
+            .populate('avaliacao_id');
         if (!pedido) {
             throw new CustomError({
                 statusCode: 404,
@@ -44,7 +45,8 @@ class PedidoRepository {
             limit: parseInt(limite, 10),
             populate: [
                 { path: 'restaurante_id', select: 'nome foto_restaurante' },
-                { path: 'cliente_id', select: 'nome email telefone' }
+                { path: 'cliente_id', select: 'nome email telefone' },
+                { path: 'avaliacao_id' }
             ],
             sort: { createdAt: -1 },
         };
@@ -91,7 +93,8 @@ class PedidoRepository {
     async atualizar(id, parsedData) {
         const pedido = await this.modelPedido.findByIdAndUpdate(id, parsedData, { returnDocument: 'after' })
             .populate('cliente_id', 'nome email telefone')
-            .populate('restaurante_id', 'nome foto_restaurante');
+            .populate('restaurante_id', 'nome foto_restaurante')
+            .populate('avaliacao_id');
         if (!pedido) {
             throw new CustomError({
                 statusCode: 404,
