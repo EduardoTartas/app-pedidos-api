@@ -323,12 +323,22 @@ class AuthService {
     async recuperaSenha(body) {
         const userEncontrado = await this.repository.buscarPorEmail(body.email);
 
-        // Retornar mensagem genérica independentemente de o email existir ou não
-        // (anti-user-enumeration — OWASP A07)
+        // Retornar mensagem genérica se não encontrar (anti-enumeration)
         if (!userEncontrado) {
             return {
                 message: 'Se o email informado estiver cadastrado, você receberá um link de recuperação.'
             };
+        }
+
+        // Se o usuário for do Google, ele não tem senha local para recuperar
+        if (userEncontrado.authProvider === 'google') {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                errorType: 'invalidOperation',
+                field: 'email',
+                details: [],
+                customMessage: 'Esta conta está vinculada ao Google. Por favor, acesse usando o botão "Continuar com Google".'
+            });
         }
 
         const tokenUnico = this.TokenUtil.generateRecoveryCode();
