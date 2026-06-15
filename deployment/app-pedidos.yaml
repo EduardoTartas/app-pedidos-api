@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
       - name: mongodb
-        image: mongo:8
+        image: docker.io/library/mongo:8
         envFrom:
         - secretRef:
             name: app-pedidos-secrets
@@ -86,7 +86,7 @@ spec:
     spec:
       containers:
       - name: app-pedidos-api
-        image: eduardotartas/app_pedidos_api:latest
+        image: docker.io/eduardotartas/app_pedidos_api:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 5020
