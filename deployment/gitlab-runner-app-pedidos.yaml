@@ -16,7 +16,7 @@ spec:
       serviceAccountName: gitlab-runner-app-pedidos-sa
       containers:
       - name: gitlab-runner
-        image: gitlab/gitlab-runner:latest
+        image: docker.io/gitlab/gitlab-runner:latest
         env:
         - name: RUNNER_TOKEN
           valueFrom:
@@ -32,9 +32,9 @@ spec:
             --url "https://gitlab.fslab.dev" \
             --token "$RUNNER_TOKEN" \
             --executor "kubernetes" \
-            --docker-image alpine:latest \
+            --docker-image docker.io/library/alpine:latest \
             --kubernetes-namespace "tools" \
-            --kubernetes-helper-image "gitlab/gitlab-runner-helper:arm64-latest" \
+            --kubernetes-helper-image "docker.io/gitlab/gitlab-runner-helper:arm64-latest" \
             --kubernetes-service-account "gitlab-runner-app-pedidos-sa"
           
           gitlab-runner run

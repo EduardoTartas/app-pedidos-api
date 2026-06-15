@@ -13,7 +13,8 @@
     "seed:local": "node src/seeds/seeds.js",
     "test": "jest --coverage --detectOpenHandles",
     "start:local": "node server.js",
-    "start": "docker compose -f docker-compose.yml up --build"
+    "start": "node server.js",
+    "docker:start": "docker compose -f docker-compose.yml up --build"
   },
   "dependencies": {
     "@faker-js/faker": "^10.3.0",
