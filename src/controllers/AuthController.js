@@ -191,6 +191,21 @@ class AuthController {
         return CommonResponse.created(res, usuarioLimpo);
     }
 
+    verificarEmailApp = async (req, res) => {
+        const { token } = req.query;
+        if (!token) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                errorType: 'validation',
+                field: 'token',
+                details: [],
+                customMessage: 'Token de verificação é obrigatório.'
+            });
+        }
+        await this.service.verificarEmail(token);
+        return CommonResponse.success(res, null, HttpStatusCodes.OK.code, 'E-mail verificado com sucesso.');
+    }
+
     /**
      * Verificar email do usuário
      */

@@ -20,11 +20,12 @@ class EmailService {
             });
         }
 
+        const linkRecuperacao = `rango://auth/recover?token=${token}`;
         const mailOptions = {
             from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
             to: email,
             subject: 'Recuperação de Senha - RanGo',
-            html: emailRecuperacaoSenha(token, nomeUsuario),
+            html: emailRecuperacaoSenha(linkRecuperacao, nomeUsuario),
             attachments
         };
 
@@ -50,7 +51,7 @@ class EmailService {
             });
         }
 
-        const linkVerificacao = `${process.env.API_BASE_URL || 'http://localhost:5020'}/verificar-email?token=${token}`;
+        const linkVerificacao = `rango://auth/verify?token=${token}`;
 
         const mailOptions = {
             from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
