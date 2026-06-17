@@ -20,7 +20,7 @@ class EmailService {
             });
         }
 
-        const linkRecuperacao = `rango://auth/recover?token=${token}`;
+        const linkRecuperacao = `${process.env.API_BASE_URL || 'http://localhost:5020'}/auth/app-redirect/recover?token=${token}`;
         const mailOptions = {
             from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
             to: email,
@@ -51,7 +51,7 @@ class EmailService {
             });
         }
 
-        const linkVerificacao = `rango://auth/verify?token=${token}`;
+        const linkVerificacao = `${process.env.API_BASE_URL || 'http://localhost:5020'}/auth/app-redirect/verify?token=${token}`;
 
         const mailOptions = {
             from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
