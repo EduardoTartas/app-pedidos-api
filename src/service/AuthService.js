@@ -65,12 +65,29 @@ class AuthService {
 
         // Verificar se o email foi confirmado
         if (!userEncontrado.email_verificado) {
+            let mensagemExtra = "Confira sua caixa de entrada.";
+            
+            try {
+                const dataExpiracao = userEncontrado.get('exp_token_verificacao_email', null, { getters: false });
+                const dataAtual = new Date();
+
+                if (!dataExpiracao || dataExpiracao < dataAtual) {
+                    const novoToken = await AuthHelper.generateRandomToken();
+                    const novaExpiracao = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+                    await this.repository.atualizarTokenVerificacao(userEncontrado._id, novoToken, novaExpiracao);
+                    await EmailService.enviarEmailVerificacao(userEncontrado.email, novoToken, userEncontrado.nome);
+                    mensagemExtra = "Um novo link de verificação foi enviado para o seu e-mail.";
+                }
+            } catch (err) {
+                console.error("Erro ao tentar reenviar email de verificação no login:", err);
+            }
+
             throw new CustomError({
                 statusCode: 403,
-                errorType: 'forbidden',
+                errorType: 'emailNaoVerificado',
                 field: 'Email',
                 details: [],
-                customMessage: 'Por favor, verifique seu email antes de fazer o login. Confira sua caixa de entrada.'
+                customMessage: `Por favor, verifique seu e-mail antes de fazer o login. ${mensagemExtra}`
             });
         }
 

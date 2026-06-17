@@ -13,6 +13,8 @@ import { UsuarioSchema } from '../utils/validators/schemas/zod/UsuarioSchema.js'
 import { GoogleLoginSchema } from '../utils/validators/schemas/zod/GoogleLoginSchema.js';
 import { UsuarioIdSchema } from '../utils/validators/schemas/zod/querys/UsuarioQuerySchema.js';
 import { templateSucessoVerificacao, templateErroVerificacao } from '../utils/templates/paginaVerificacao.js';
+import appRedirectRecover from '../utils/templates/appRedirectRecover.js';
+import appRedirectVerify from '../utils/templates/appRedirectVerify.js';
 import AuthService from '../service/AuthService.js';
 
 class AuthController {
@@ -223,58 +225,16 @@ class AuthController {
         return CommonResponse.success(res, null, HttpStatusCodes.OK.code, 'E-mail verificado com sucesso.');
     }
 
-        redirectAppRecover = (req, res) => {
+    redirectAppRecover = (req, res) => {
         const { token } = req.query;
-        const customSchemeUrl = `rango://auth/recover?token=${token}`;
         const intentUrl = `intent://auth/recover?token=${token}#Intent;scheme=rango;package=dev.fslab.pedidos;end`;
-        return res.send(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Redirecionando para o RanGo...</title>
-            </head>
-            <body style="background-color: #0A0E1A; color: white; text-align: center; font-family: sans-serif; padding-top: 50px;">
-                <h2 style="color: #14B822;">Abrindo o aplicativo RanGo...</h2>
-                <p style="color: #B0B8C1;">Se não abrir automaticamente, clique no botão abaixo:</p>
-                <a href="${intentUrl}" style="display: inline-block; padding: 15px 30px; background-color: #14B822; color: #0A0E1A; font-weight: bold; text-decoration: none; border-radius: 8px; margin-top: 20px;">
-                    Abrir Aplicativo
-                </a>
-                <script>
-                    setTimeout(() => {
-                        window.location.href = "${intentUrl}";
-                    }, 100);
-                </script>
-            </body>
-            </html>
-        `);
+        return res.send(appRedirectRecover(intentUrl));
     }
 
-        redirectAppVerify = (req, res) => {
+    redirectAppVerify = (req, res) => {
         const { token } = req.query;
-        const customSchemeUrl = `rango://auth/verify?token=${token}`;
         const intentUrl = `intent://auth/verify?token=${token}#Intent;scheme=rango;package=dev.fslab.pedidos;end`;
-        return res.send(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Redirecionando para o RanGo...</title>
-            </head>
-            <body style="background-color: #0A0E1A; color: white; text-align: center; font-family: sans-serif; padding-top: 50px;">
-                <h2 style="color: #14B822;">Abrindo o aplicativo RanGo...</h2>
-                <p style="color: #B0B8C1;">Se não abrir automaticamente, clique no botão abaixo:</p>
-                <a href="${intentUrl}" style="display: inline-block; padding: 15px 30px; background-color: #14B822; color: #0A0E1A; font-weight: bold; text-decoration: none; border-radius: 8px; margin-top: 20px;">
-                    Abrir Aplicativo
-                </a>
-                <script>
-                    setTimeout(() => {
-                        window.location.href = "${intentUrl}";
-                    }, 100);
-                </script>
-            </body>
-            </html>
-        `);
+        return res.send(appRedirectVerify(intentUrl));
     }
 
     /**
