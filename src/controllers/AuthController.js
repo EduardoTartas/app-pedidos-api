@@ -175,6 +175,23 @@ class AuthController {
         return CommonResponse.success(res, data, HttpStatusCodes.OK.code, 'Senha atualizada com sucesso.');
     }
 
+    validarTokenRecuperacao = async (req, res) => {
+        const tokenRecuperacao = req.query.token || req.params.token || null;
+
+        if (!tokenRecuperacao) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.UNAUTHORIZED.code,
+                errorType: 'validation',
+                field: 'token',
+                details: [],
+                customMessage: 'Token de recuperação é obrigatório.'
+            });
+        }
+
+        await this.service.validarTokenRecuperacao(tokenRecuperacao);
+        return CommonResponse.success(res, { valid: true }, HttpStatusCodes.OK.code, 'Token válido.');
+    }
+
     signup = async (req, res) => {
         const parsedData = UsuarioSchema.parse(req.body || {});
 

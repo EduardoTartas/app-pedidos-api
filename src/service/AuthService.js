@@ -396,6 +396,29 @@ class AuthService {
         return { message: 'Senha atualizada com sucesso.' };
     }
 
+    async validarTokenRecuperacao(tokenRecuperacao) {
+        const usuario = await this.repository.buscarPorTokenUnico(tokenRecuperacao);
+        if (!usuario) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.NOT_FOUND.code,
+                field: 'Token',
+                details: [],
+                customMessage: "Token de recuperação já foi utilizado ou é inválido."
+            });
+        }
+
+        if (usuario.exp_codigo_recupera_senha && usuario.exp_codigo_recupera_senha < new Date()) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.UNAUTHORIZED.code,
+                field: 'Token de Recuperação',
+                details: [],
+                customMessage: 'Token de recuperação expirado.'
+            });
+        }
+
+        return true;
+    }
+
     // Verificar email do usuário usando token
     async verificarEmail(token) {
         // Buscar usuário pelo token de verificação
