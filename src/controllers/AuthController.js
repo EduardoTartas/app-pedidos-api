@@ -206,9 +206,10 @@ class AuthController {
         return CommonResponse.success(res, null, HttpStatusCodes.OK.code, 'E-mail verificado com sucesso.');
     }
 
-    redirectAppRecover = (req, res) => {
+        redirectAppRecover = (req, res) => {
         const { token } = req.query;
-        const appSchemeUrl = `rango://auth/recover?token=${token}`;
+        const customSchemeUrl = `rango://auth/recover?token=${token}`;
+        const intentUrl = `intent://auth/recover?token=${token}#Intent;scheme=rango;package=dev.fslab.pedidos;end`;
         return res.send(`
             <!DOCTYPE html>
             <html>
@@ -219,22 +220,23 @@ class AuthController {
             <body style="background-color: #0A0E1A; color: white; text-align: center; font-family: sans-serif; padding-top: 50px;">
                 <h2 style="color: #14B822;">Abrindo o aplicativo RanGo...</h2>
                 <p style="color: #B0B8C1;">Se não abrir automaticamente, clique no botão abaixo:</p>
-                <a href="${appSchemeUrl}" style="display: inline-block; padding: 15px 30px; background-color: #14B822; color: #0A0E1A; font-weight: bold; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+                <a href="${intentUrl}" style="display: inline-block; padding: 15px 30px; background-color: #14B822; color: #0A0E1A; font-weight: bold; text-decoration: none; border-radius: 8px; margin-top: 20px;">
                     Abrir Aplicativo
                 </a>
                 <script>
                     setTimeout(() => {
-                        window.location.href = "${appSchemeUrl}";
-                    }, 500);
+                        window.location.href = "${intentUrl}";
+                    }, 100);
                 </script>
             </body>
             </html>
         `);
     }
 
-    redirectAppVerify = (req, res) => {
+        redirectAppVerify = (req, res) => {
         const { token } = req.query;
-        const appSchemeUrl = `rango://auth/verify?token=${token}`;
+        const customSchemeUrl = `rango://auth/verify?token=${token}`;
+        const intentUrl = `intent://auth/verify?token=${token}#Intent;scheme=rango;package=dev.fslab.pedidos;end`;
         return res.send(`
             <!DOCTYPE html>
             <html>
@@ -245,13 +247,13 @@ class AuthController {
             <body style="background-color: #0A0E1A; color: white; text-align: center; font-family: sans-serif; padding-top: 50px;">
                 <h2 style="color: #14B822;">Abrindo o aplicativo RanGo...</h2>
                 <p style="color: #B0B8C1;">Se não abrir automaticamente, clique no botão abaixo:</p>
-                <a href="${appSchemeUrl}" style="display: inline-block; padding: 15px 30px; background-color: #14B822; color: #0A0E1A; font-weight: bold; text-decoration: none; border-radius: 8px; margin-top: 20px;">
+                <a href="${intentUrl}" style="display: inline-block; padding: 15px 30px; background-color: #14B822; color: #0A0E1A; font-weight: bold; text-decoration: none; border-radius: 8px; margin-top: 20px;">
                     Abrir Aplicativo
                 </a>
                 <script>
                     setTimeout(() => {
-                        window.location.href = "${appSchemeUrl}";
-                    }, 500);
+                        window.location.href = "${intentUrl}";
+                    }, 100);
                 </script>
             </body>
             </html>
