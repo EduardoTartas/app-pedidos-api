@@ -1,0 +1,25 @@
+# Role no namespace que o runner PRECISA ACESSAR (rango-qa)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gitlab-runner-deployer-qa
+  namespace: rango-qa
+rules:
+  - apiGroups: ["", "apps", "extensions"]
+    resources: ["deployments", "replicasets", "pods", "services", "secrets", "configmaps", "persistentvolumeclaims", "ingresses", "persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+# RoleBinding amarrando o SA (do tools) à Role (no rango-qa)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gitlab-runner-deployer-binding-qa
+  namespace: rango-qa
+subjects:
+  - kind: ServiceAccount
+    name: gitlab-runner-app-pedidos-sa
+    namespace: tools
+roleRef:
+  kind: Role
+  name: gitlab-runner-deployer-qa
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,129 @@
+---
+# VOLUME PARA O MONGODB
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-pvc
+  namespace: rango-qa
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi
+
+---
+# BANCO DE DADOS (MONGODB)
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongodb
+  namespace: rango-qa
+spec:
+  serviceName: "mongodb-app-pedidos"
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+      - name: mongodb
+        image: docker.io/library/mongo:8
+        envFrom:
+        - secretRef:
+            name: app-pedidos-secrets
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - name: db-data
+          mountPath: /data/db
+        livenessProbe:
+          exec:
+            command:
+              - mongosh
+              - --eval
+              - db.adminCommand('ping')
+          failureThreshold: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+      volumes:
+      - name: db-data
+        persistentVolumeClaim:
+          claimName: mongodb-pvc
+
+---
+# SERVIÇO DO BANCO (O DNS INTERNO)
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-app-pedidos
+  namespace: rango-qa
+spec:
+  selector:
+    app: mongodb
+  ports:
+    - port: 27017
+      targetPort: 27017
+
+---
+# API
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-pedidos-api
+  namespace: rango-qa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-pedidos-api
+  template:
+    metadata:
+      labels:
+        app: app-pedidos-api
+    spec:
+      containers:
+      - name: app-pedidos-api
+        image: docker.io/eduardotartas/app_pedidos_api:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5020
+        envFrom:
+        - secretRef:
+            name: app-pedidos-secrets
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5020
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5020
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+          successThreshold: 1
+
+---
+# SERVIÇO DA API
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-pedidos-api-service
+  namespace: rango-qa
+spec:
+  selector:
+    app: app-pedidos-api
+  ports:
+    - port: 80
+      targetPort: 5020
