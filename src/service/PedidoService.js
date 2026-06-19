@@ -523,6 +523,15 @@ class PedidoService {
             historico_status: historicoAtualizado
         });
 
+        // Disparar evento WebSocket para o Mobile atualizar a tela em tempo real
+        const io = req.app.get('io');
+        if (io) {
+            io.to(pedidoId).emit("orderStatusUpdated", {
+                orderId: pedidoId,
+                status: novoStatus
+            });
+        }
+
         // Disparar notificação para o cliente
         const notifData = MENSAGENS_NOTIFICACAO[novoStatus];
         if (notifData) {

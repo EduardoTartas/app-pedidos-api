@@ -1,10 +1,31 @@
 // server.js
 
 import "dotenv/config";
+import http from "http";
+import { Server } from "socket.io";
 import app from "./src/app.js";
+
 const port = process.env.APP_PORT || process.env.API_PORT || 5020;
 
-app.listen(port, (error) => {
+const server = http.createServer(app);
+
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST", "PATCH", "PUT", "DELETE"]
+    }
+});
+
+// Compartilha o io com as rotas/controllers
+app.set('io', io);
+
+io.on("connection", (socket) => {
+    socket.on("joinOrderRoom", (orderId) => {
+        socket.join(orderId);
+    });
+});
+
+server.listen(port, (error) => {
     if (error) {
         console.error('Erro ao iniciar o servidor:', error);
         process.exit(1);
