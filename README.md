@@ -1,55 +1,55 @@
-# 🚀 App Pedidos - API
+# App Pedidos - API
 
 [![Node.js](https://img.shields.io/badge/Node.js-22+-green.svg)](https://nodejs.org/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-8.0+-blue.svg)](https://www.mongodb.com/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
-[![Tests](https://img.shields.io/badge/Tests-✅-brightgreen.svg)](https://jestjs.io/)
+[![Tests](https://img.shields.io/badge/Tests-Passed-brightgreen.svg)](https://jestjs.io/)
 
 API REST para gerenciamento de pedidos de delivery desenvolvida com Node.js, Express e MongoDB.
 
-## 📋 Sobre o Projeto
+## Sobre o Projeto
 
 Plataforma de delivery que conecta clientes a restaurantes, permitindo realizar pedidos, acompanhar status em tempo real e avaliar a experiência.
 
 **Objetivos:**
-- ✅ Facilitar pedidos de delivery online
-- ✅ Gerenciamento completo de restaurantes e cardápios
-- ✅ Acompanhamento de pedidos em tempo real
-- ✅ Sistema de avaliações e notificações
+- Facilitar pedidos de delivery online
+- Gerenciamento completo de restaurantes e cardápios
+- Acompanhamento de pedidos em tempo real
+- Sistema de avaliações e notificações
 
-## 🎯 Funcionalidades
+## Funcionalidades
 
-### 👥 Gestão de Usuários
+### Gestão de Usuários
 - Cadastro e autenticação (JWT)
 - Perfis: Cliente, Dono de Restaurante, Admin
 - Recuperação de senha via email
 - Ativação/desativação de contas
 
-### 🍽️ Gestão de Restaurantes
+### Gestão de Restaurantes
 - CRUD completo de restaurantes
 - Categorização por tipo de culinária
 - Gerenciamento de cardápio (pratos)
 - Adicionais com grupos e opções (min/max por grupo)
 - Cálculo automático de nota média
 
-### 📦 Gestão de Pedidos
+### Gestão de Pedidos
 - Criação de pedidos com itens e adicionais
 - Cálculo automático de subtotal, taxa de entrega e total
-- Esteira de status: Criado → Em Preparo → A Caminho → Entregue
+- Esteira de status: Criado -> Em Preparo -> A Caminho -> Entregue
 - Cancelamento com regras de negócio
 - Histórico de pedidos por cliente e restaurante
 
-### ⭐ Avaliações
+### Avaliações
 - Avaliação de pedidos entregues (nota 1-5 + comentário)
 - Recálculo automático de nota média do restaurante
 - Uma avaliação por pedido
 
-### 🔔 Notificações
+### Notificações
 - Notificação automática ao dono do restaurante (novo pedido)
 - Notificação ao cliente a cada mudança de status
 - Marcação de leitura
 
-### 🛡️ Segurança
+### Segurança
 - Rate limiting (7 req/min)
 - Autenticação JWT com refresh tokens
 - Validação rigorosa (Zod)
@@ -84,12 +84,12 @@ docker compose -f docker-compose-dev.yml exec api npm run seed
 docker compose -f docker-compose-dev.yml exec api npm test
 ```
 
-## 📚 Documentação e Especificações
+## Documentação e Especificações
 
 Para um aprofundamento técnico nas regras de negócio e arquitetura, consulte os diretórios oficiais de documentação:
 
-- 🛣️ [**Documentação de Rotas Completa**](./documentacao/rotas/rotas.md): Um guia exaustivo de todos os endpoints, roles, middlewares, fluxos em cascata e payloads.
-- 🎯 [**Levantamento de Requisitos e Regras**](./documentacao/requisitos.md): Mapeamento de Requisitos Funcionais (RF) e Não-Funcionais (RNF) atrelados à validação de domínio.
+- [**Documentação de Rotas Completa**](./documentacao/rotas/rotas.md): Um guia exaustivo de todos os endpoints, roles, middlewares, fluxos em cascata e payloads.
+- [**Levantamento de Requisitos e Regras**](./documentacao/requisitos.md): Mapeamento de Requisitos Funcionais (RF) e Não-Funcionais (RNF) atrelados à validação de domínio.
 
 ### Acesso Local (Swagger e Monitoramento)
 - **Swagger UI:** http://localhost:5020/docs
@@ -204,7 +204,7 @@ PATCH  /notificacoes/:id/lida - Marcar notificação como lida
 DELETE /notificacoes/:id     - Remover notificação
 ```
 
-## 🔒 Segurança
+## Segurança
 
 ### Rate Limiting
 - **Limite:** 7 requisições/minuto por IP
@@ -230,7 +230,7 @@ DELETE /notificacoes/:id     - Remover notificação
 - 1 número
 - 1 caractere especial (@, $, !, %, *, ?, &)
 
-## 📊 Monitoramento
+## Monitoramento
 
 ### Logs Estruturados
 - Níveis: info, warn, error
@@ -252,7 +252,7 @@ Resposta:
 }
 ```
 
-## 🧪 Testes
+## Testes
 
 ```bash
 # Todos os testes
@@ -265,7 +265,7 @@ docker compose -f docker-compose-dev.yml exec api npm run test:coverage
 docker compose -f docker-compose-dev.yml exec api npm run test:watch
 ```
 
-## 🏗️ Arquitetura
+## Arquitetura
 
 ```
 src/
@@ -284,7 +284,7 @@ src/
 └── docs/               # Swagger
 ```
 
-## 📜 Scripts NPM
+## Scripts NPM
 
 ```json
 {
@@ -299,7 +299,7 @@ src/
 }
 ```
 
-## 🛠️ Stack Tecnológica
+## Stack Tecnológica
 
 - **Runtime:** Node.js 22+
 - **Framework:** Express.js 5
@@ -311,7 +311,7 @@ src/
 - **Container:** Docker & Docker Compose
 - **Email:** Mailsender (custom service)
 
-## 👥 Equipe
+## Equipe
 
 | Nome | Função | E-mail |
 |------|--------|--------|
@@ -319,6 +319,6 @@ src/
 | Luis Felipe Lopes | Desenvolvedor | luis.felipe.lopes1275@gmail.com |
 | Geovanna Rocha da Silva | Desenvolvedora | rochageovanna3@gmail.com |
 
-## 📄 Licença
+## Licença
 
-> ### Este projeto está licenciado sob a [Licença MIT](./LICENSE).
+> Este projeto está licenciado sob a [Licença MIT](./LICENSE).
