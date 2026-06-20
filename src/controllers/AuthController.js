@@ -13,6 +13,8 @@ import { UsuarioSchema } from '../utils/validators/schemas/zod/UsuarioSchema.js'
 import { GoogleLoginSchema } from '../utils/validators/schemas/zod/GoogleLoginSchema.js';
 import { UsuarioIdSchema } from '../utils/validators/schemas/zod/querys/UsuarioQuerySchema.js';
 import { templateSucessoVerificacao, templateErroVerificacao } from '../utils/templates/paginaVerificacao.js';
+import appRedirectRecover from '../utils/templates/appRedirectRecover.js';
+import appRedirectVerify from '../utils/templates/appRedirectVerify.js';
 import AuthService from '../service/AuthService.js';
 
 class AuthController {
@@ -175,6 +177,23 @@ class AuthController {
         return CommonResponse.success(res, data, HttpStatusCodes.OK.code, 'Senha atualizada com sucesso.');
     }
 
+    validarTokenRecuperacao = async (req, res) => {
+        const tokenRecuperacao = req.query.token || req.params.token || null;
+
+        if (!tokenRecuperacao) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.UNAUTHORIZED.code,
+                errorType: 'validation',
+                field: 'token',
+                details: [],
+                customMessage: 'Token de recuperação é obrigatório.'
+            });
+        }
+
+        await this.service.validarTokenRecuperacao(tokenRecuperacao);
+        return CommonResponse.success(res, { valid: true }, HttpStatusCodes.OK.code, 'Token válido.');
+    }
+
     signup = async (req, res) => {
         const parsedData = UsuarioSchema.parse(req.body || {});
 
@@ -189,6 +208,33 @@ class AuthController {
         delete usuarioLimpo.senha;
 
         return CommonResponse.created(res, usuarioLimpo);
+    }
+
+    verificarEmailApp = async (req, res) => {
+        const { token } = req.query;
+        if (!token) {
+            throw new CustomError({
+                statusCode: HttpStatusCodes.BAD_REQUEST.code,
+                errorType: 'validation',
+                field: 'token',
+                details: [],
+                customMessage: 'Token de verificação é obrigatório.'
+            });
+        }
+        await this.service.verificarEmail(token);
+        return CommonResponse.success(res, null, HttpStatusCodes.OK.code, 'E-mail verificado com sucesso.');
+    }
+
+    redirectAppRecover = (req, res) => {
+        const { token } = req.query;
+        const intentUrl = `intent://auth/recover?token=${token}#Intent;scheme=rango;package=dev.fslab.pedidos;end`;
+        return res.send(appRedirectRecover(intentUrl));
+    }
+
+    redirectAppVerify = (req, res) => {
+        const { token } = req.query;
+        const intentUrl = `intent://auth/verify?token=${token}#Intent;scheme=rango;package=dev.fslab.pedidos;end`;
+        return res.send(appRedirectVerify(intentUrl));
     }
 
     /**

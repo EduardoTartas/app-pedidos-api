@@ -51,6 +51,20 @@ app.use(express.urlencoded({ extended: true }));
 // Servindo arquivos estáticos da pasta public
 app.use('/public', express.static('public'));
 
+// Servindo arquivo assetlinks.json para Android App Links
+app.get('/.well-known/assetlinks.json', (req, res) => {
+    res.json([{
+        "relation": ["delegate_permission/common.handle_all_urls"],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "dev.fslab.pedidos",
+            "sha256_cert_fingerprints": [
+                "F1:2E:B8:1B:61:37:FC:84:4F:C1:EB:E8:DE:BC:54:C2:41:E6:4E:3C:89:20:F2:C7:39:E2:F3:D1:59:AB:D2:45"
+            ]
+        }
+    }]);
+});
+
 // Passando para o arquivo de rotas o app
 routes(app);
 

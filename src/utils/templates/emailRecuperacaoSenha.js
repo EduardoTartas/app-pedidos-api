@@ -8,7 +8,7 @@
  *   - Light Gray:     #B0B8C1 (texto secundário)
  */
 
-const emailRecuperacaoSenha = (token, nomeUsuario) => {
+const emailRecuperacaoSenha = (linkRecuperacao, nomeUsuario) => {
     return `
     <!DOCTYPE html>
     <html lang="pt-BR">
@@ -37,21 +37,20 @@ const emailRecuperacaoSenha = (token, nomeUsuario) => {
                                 </p>
                                 <p style="color: #B0B8C1; font-size: 14px; line-height: 1.7; margin: 0 0 28px;">
                                     Recebemos uma solicitação para redefinir a senha da sua conta.
-                                    Use o código abaixo no aplicativo para concluir o processo:
+                                    Clique no botão abaixo para abrir o aplicativo e criar uma nova senha:
                                 </p>
 
-                                <!-- Token Box -->
-                                <div style="background-color: #0A0E1A; border: 1px solid #14B822; border-radius: 8px; padding: 24px; text-align: center; margin: 0 0 28px;">
-                                    <p style="color: #14B822; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 12px; font-weight: 600;">
-                                        Seu código de recuperação
-                                    </p>
-                                    <p style="color: #FFFFFF; font-size: 32px; font-family: 'Courier New', monospace; letter-spacing: 8px; margin: 0; line-height: 1.2; font-weight: 700; background-color: #161B2E; padding: 16px; border-radius: 6px;">
-                                        ${token}
-                                    </p>
+                                <!-- Button -->
+                                <div style="text-align: center; margin: 0 0 28px;">
+                                    <a href="${linkRecuperacao}" style="background-color: #14B822; color: #0A0E1A; font-size: 16px; font-weight: bold; text-decoration: none; padding: 14px 28px; border-radius: 6px; display: inline-block; letter-spacing: 1px;">
+                                        Redefinir Senha
+                                    </a>
                                 </div>
-
                                 <p style="color: #B0B8C1; font-size: 14px; line-height: 1.7; margin: 0 0 8px;">
-                                    <strong style="color: #FFFFFF;">Copie o código acima</strong> e cole no campo de recuperação do aplicativo.
+                                    Ou copie e cole o link abaixo no seu navegador (caso esteja no celular):
+                                </p>
+                                <p style="color: #6B7280; font-size: 12px; line-height: 1.6; word-break: break-all; background-color: #0A0E1A; padding: 12px; border-radius: 6px; margin: 0 0 24px;">
+                                    ${linkRecuperacao}
                                 </p>
                                 <p style="color: #6B7280; font-size: 13px; line-height: 1.6; margin: 0 0 24px;">
                                     Este código expira em <strong style="color: #B0B8C1;">1 hora</strong>.<br>
