@@ -20,7 +20,7 @@ class DispositivoController {
                 });
             }
 
-            await npaas.post('/api/v1/dispositivos', {
+            await npaas.post('/dispositivos', {
                 tokenFcm,
                 plataforma,
                 versaoApp: versaoApp ?? 'desconhecida',
@@ -51,7 +51,7 @@ class DispositivoController {
                 });
             }
 
-            await npaas.post('/api/v1/dispositivos/desativar-token', { tokenFcm });
+            await npaas.post('/dispositivos/desativar-token', { tokenFcm });
             logger.info(`[NPaaS] Token FCM desativado`);
 
             return res.status(200).json({
