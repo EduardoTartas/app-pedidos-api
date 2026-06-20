@@ -19,6 +19,11 @@ class NotificacaoService {
             titulo: dadosNotificacao.titulo,
             corpo: dadosNotificacao.mensagem,
             dados: { notificacaoId: String(notificacao._id) },
+            slugModelo: 'status-pedido',
+            variaveis: {
+                titulo: dadosNotificacao.titulo,
+                mensagem: dadosNotificacao.mensagem
+            },
             alvo: dadosNotificacao.alvo || 'mobile'
         }).catch(err => console.warn('[NPaaS Push Error]', err.message));
 
