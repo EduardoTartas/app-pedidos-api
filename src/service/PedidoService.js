@@ -187,6 +187,11 @@ class PedidoService {
             });
         }
 
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`restaurante_${restauranteId}`).emit('newOrder', pedido);
+        }
+
         // Retorna o pedido populado para o checkout do mobile/front
         return await this.repository.buscarPorID(pedido._id);
     }
@@ -527,6 +532,11 @@ class PedidoService {
         const io = req.app.get('io');
         if (io) {
             io.to(pedidoId).emit("orderStatusUpdated", {
+                orderId: pedidoId,
+                status: novoStatus
+            });
+            const restId = pedido.restaurante_id?._id || pedido.restaurante_id;
+            io.to(`restaurante_${restId}`).emit("orderStatusUpdated", {
                 orderId: pedidoId,
                 status: novoStatus
             });

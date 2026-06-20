@@ -23,6 +23,10 @@ io.on("connection", (socket) => {
     socket.on("joinOrderRoom", (orderId) => {
         socket.join(orderId);
     });
+
+    socket.on("joinRestaurantRoom", (restauranteId) => {
+        socket.join(`restaurante_${restauranteId}`);
+    });
 });
 
 server.listen(port, (error) => {
