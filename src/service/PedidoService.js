@@ -61,19 +61,8 @@ class PedidoService {
             });
         }
 
-        // MELHORIA-03: Verificar horário de funcionamento se configurado
-        if (restaurante.horario_funcionamento && restaurante.horario_funcionamento.length > 0) {
-            const dentroDHorario = this.isRestauranteAbertoPorHorario(restaurante.horario_funcionamento);
-            if (!dentroDHorario) {
-                throw new CustomError({
-                    statusCode: HttpStatusCodes.BAD_REQUEST.code,
-                    errorType: 'validationError',
-                    field: 'Restaurante',
-                    details: [],
-                    customMessage: 'O restaurante está fora do horário de funcionamento.'
-                });
-            }
-        }
+        // A validação se o restaurante está aberto agora é baseada apenas no `status`.
+        // O `horario_funcionamento` é usado apenas visualmente pelo aplicativo mobile.
 
         // Validar que há itens e que as quantidades são válidas
         if (!parsedData.itens || parsedData.itens.length === 0) {
