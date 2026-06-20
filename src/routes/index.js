@@ -20,6 +20,7 @@ import adicionalOpcaoRoutes from './adicionalOpcaoRoutes.js';
 import pedidoRoutes from './pedidoRoutes.js';
 import avaliacaoRoutes from './avaliacaoRoutes.js';
 import notificacaoRoutes from './notificacaoRoutes.js';
+import dispositivoRoutes from './dispositivoRoutes.js';
 
 dotenv.config();
 
@@ -65,7 +66,8 @@ const routes = (app) => {
         adicionalOpcaoRoutes,
         pedidoRoutes,
         avaliacaoRoutes,
-        notificacaoRoutes
+        notificacaoRoutes,
+        dispositivoRoutes
     );
 };
 

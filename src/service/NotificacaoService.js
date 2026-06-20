@@ -4,6 +4,7 @@ import {
     messages
 } from '../utils/helpers/index.js';
 import NotificacaoRepository from '../repository/NotificacaoRepository.js';
+import NpaasNotification from '../utils/NpaasNotification.js';
 
 class NotificacaoService {
     constructor() {
@@ -11,7 +12,17 @@ class NotificacaoService {
     }
 
     async criar(dadosNotificacao) {
-        return await this.repository.criar(dadosNotificacao);
+        const notificacao = await this.repository.criar(dadosNotificacao);
+
+        // Disparar Push Notification via NPaaS assincronamente (fire and forget)
+        NpaasNotification.notificarUsuario(dadosNotificacao.usuario_id, {
+            titulo: dadosNotificacao.titulo,
+            corpo: dadosNotificacao.mensagem,
+            dados: { notificacaoId: String(notificacao._id) },
+            alvo: dadosNotificacao.alvo || 'mobile'
+        }).catch(err => console.warn('[NPaaS Push Error]', err.message));
+
+        return notificacao;
     }
 
     /**
