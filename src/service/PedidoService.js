@@ -11,7 +11,7 @@ import RestauranteRepository from '../repository/RestauranteRepository.js';
 import PratoRepository from '../repository/PratoRepository.js';
 import AdicionalGrupoRepository from '../repository/AdicionalGrupoRepository.js';
 import AdicionalOpcaoRepository from '../repository/AdicionalOpcaoRepository.js';
-import NotificacaoRepository from '../repository/NotificacaoRepository.js';
+import NotificacaoService from './NotificacaoService.js';
 import UsuarioRepository from '../repository/UsuarioRepository.js';
 import EnderecoRepository from '../repository/EnderecoRepository.js';
 
@@ -36,7 +36,7 @@ class PedidoService {
         this.pratoRepository = new PratoRepository();
         this.grupoRepository = new AdicionalGrupoRepository();
         this.opcaoRepository = new AdicionalOpcaoRepository();
-        this.notificacaoRepository = new NotificacaoRepository();
+        this.notificacaoService = new NotificacaoService();
         this.usuarioRepository = new UsuarioRepository();
         this.enderecoRepository = new EnderecoRepository();
     }
@@ -178,12 +178,13 @@ class PedidoService {
 
         // Notificar o dono do restaurante
         if (restaurante.dono_id) {
-            await this.notificacaoRepository.criar({
+            await this.notificacaoService.criar({
                 usuario_id: restaurante.dono_id?._id || restaurante.dono_id,
                 pedido_id: pedido._id,
                 tipo: 'pedido_confirmado',
                 titulo: 'Novo pedido recebido',
-                mensagem: `Novo pedido #${pedido._id} recebido!`
+                mensagem: `Novo pedido #${pedido._id} recebido!`,
+                alvo: 'web'
             });
         }
 
@@ -545,13 +546,29 @@ class PedidoService {
         // Disparar notificação para o cliente
         const notifData = MENSAGENS_NOTIFICACAO[novoStatus];
         if (notifData) {
-            await this.notificacaoRepository.criar({
+            await this.notificacaoService.criar({
                 usuario_id: pedido.cliente_id?._id || pedido.cliente_id,
                 pedido_id: pedido._id,
                 tipo: notifData.tipo,
                 titulo: notifData.titulo,
-                mensagem: notifData.mensagem
+                mensagem: notifData.mensagem,
+                alvo: 'mobile'
             });
+        }
+
+        // Se o pedido foi cancelado, notifica também o dono do restaurante (especialmente se o cancelamento partiu do cliente)
+        if (novoStatus === 'cancelado') {
+            const restauranteAtualizado = await this.restauranteRepository.buscarPorID(pedido.restaurante_id?._id || pedido.restaurante_id);
+            if (restauranteAtualizado.dono_id) {
+                await this.notificacaoService.criar({
+                    usuario_id: restauranteAtualizado.dono_id?._id || restauranteAtualizado.dono_id,
+                    pedido_id: pedido._id,
+                    tipo: 'cancelado',
+                    titulo: 'Pedido Cancelado',
+                    mensagem: `O pedido #${pedido._id} foi cancelado.`,
+                    alvo: 'web'
+                });
+            }
         }
 
         return pedidoAtualizado;

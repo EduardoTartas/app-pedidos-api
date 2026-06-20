@@ -6,14 +6,14 @@ import {
 import AvaliacaoRepository from '../repository/AvaliacaoRepository.js';
 import PedidoRepository from '../repository/PedidoRepository.js';
 import RestauranteRepository from '../repository/RestauranteRepository.js';
-import NotificacaoRepository from '../repository/NotificacaoRepository.js';
+import NotificacaoService from './NotificacaoService.js';
 
 class AvaliacaoService {
     constructor() {
         this.repository = new AvaliacaoRepository();
         this.pedidoRepository = new PedidoRepository();
         this.restauranteRepository = new RestauranteRepository();
-        this.notificacaoRepository = new NotificacaoRepository();
+        this.notificacaoService = new NotificacaoService();
     }
 
     async criar(parsedData, req) {
@@ -76,12 +76,13 @@ class AvaliacaoService {
 
         // Notificar o dono do restaurante
         const restaurante = await this.restauranteRepository.buscarPorID(restauranteId);
-        await this.notificacaoRepository.criar({
+        await this.notificacaoService.criar({
             usuario_id: restaurante.dono_id._id || restaurante.dono_id,
             pedido_id: pedidoId,
             tipo: 'avaliacao',
             titulo: 'Nova avaliação recebida',
-            mensagem: `Você recebeu uma avaliação de ${parsedData.nota} estrela(s).`
+            mensagem: `Você recebeu uma avaliação de ${parsedData.nota} estrela(s).`,
+            alvo: 'web'
         });
 
         return avaliacao;
