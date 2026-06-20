@@ -17,7 +17,7 @@ class NpaasNotification {
                 slugModelo,
                 variaveis
             };
-            const { data } = await npaas.post('/api/v1/notificacoes/enviar', payload);
+            const { data } = await npaas.post('/notificacoes/enviar', payload);
             logger.info(`[NPaaS] Notificação enviada para usuário ${usuarioId}`);
             return data.dados?._id ?? null;
         } catch (error) {
