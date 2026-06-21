@@ -40,3 +40,15 @@ server.listen(port, (error) => {
         console.log(`Servidor escutando em http://localhost:${port}`);
     }
 });
+
+// Graceful Shutdown - Intercepta sinais do sistema operativo (SIGINT/SIGTERM) para desligar a API com segurança
+const gracefulShutdown = (signal) => {
+    console.log(`\nSinal ${signal} recebido. Fechando o servidor HTTP e Socket.io...`);
+    server.close(() => {
+        console.log('Servidor HTTP e conexões encerradas com segurança.');
+        process.exit(0);
+    });
+};
+
+process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);
