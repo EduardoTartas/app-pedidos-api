@@ -227,8 +227,9 @@ class AuthController {
 
     redirectAppRecover = (req, res) => {
         const { token } = req.query;
+        const frontendUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/redefinir-senha?token=${token}`;
         const intentUrl = `intent://auth/recover?token=${token}#Intent;scheme=rango;package=dev.fslab.pedidos;end`;
-        return res.send(appRedirectRecover(intentUrl));
+        return res.send(appRedirectRecover(intentUrl, frontendUrl));
     }
 
     redirectAppVerify = (req, res) => {
