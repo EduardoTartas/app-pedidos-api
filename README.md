@@ -61,27 +61,23 @@ Plataforma de delivery que conecta clientes a restaurantes, permitindo realizar 
 Se quiser rodar **apenas a API** isoladamente:
 
 ```bash
-# 1. Configure credenciais de email
-# 1.1 Gere senha de aplicativo Gmail: https://myaccount.google.com/apppasswords
-# 1.2 Cadastre no Mailsender: https://mailsender.app.fslab.dev/cadastro
-#     - Nome: Nome do projeto
-#     - Email: Seu email Gmail
-#     - Senha: Senha de aplicativo gerada
-# 1.3 Copie a API Key gerada
-
-# 2. Configure variáveis de ambiente
+# 1. Configure as variáveis de ambiente
+cp .env.example .env
 nano .env
-# URL_MAIL_SERVICE="https://mailsender.app.fslab.dev/api/emails/send"
-# MAIL_API_KEY="sua-api-key-copiada-do-mailsender"
+# No arquivo .env, configure os dados de envio de e-mail (SMTP):
+# EMAIL_HOST="smtp.gmail.com"
+# EMAIL_PORT=587
+# EMAIL_USER="seu_email@gmail.com"
+# EMAIL_PASS="sua_senha_de_app_do_gmail"
 
-# 3. Inicie
-docker compose -f docker-compose-dev.yml up --build
+# 2. Inicie
+docker compose -f docker-compose.dev.yml up --build
 
-# 4. Popule banco
-docker compose -f docker-compose-dev.yml exec api npm run seed
+# 3. Popule o banco
+docker compose -f docker-compose.dev.yml exec api npm run seed
 
-# 5. Teste
-docker compose -f docker-compose-dev.yml exec api npm test
+# 4. Teste
+docker compose -f docker-compose.dev.yml exec api npm test
 ```
 
 ## Documentação e Especificações
@@ -94,6 +90,14 @@ Para um aprofundamento técnico nas regras de negócio e arquitetura, consulte o
 ### Acesso Local (Swagger e Monitoramento)
 - **Swagger UI:** http://localhost:5020/docs
 - **Health Check:** http://localhost:5020/health
+
+### Endereço de Deploy (Ambientes)
+- **Produção (Branch `main`):**
+  - **API / Swagger UI:** [https://rango-api.eduardotartas.dpdns.org/docs](https://rango-api.eduardotartas.dpdns.org/docs)
+  - **Health Check:** [https://rango-api.eduardotartas.dpdns.org/health](https://rango-api.eduardotartas.dpdns.org/health)
+- **Homologação/QA (Branch `develop`):**
+  - **API / Swagger UI:** [https://rango-api-qa.eduardotartas.dpdns.org/docs](https://rango-api-qa.eduardotartas.dpdns.org/docs)
+  - **Health Check:** [https://rango-api-qa.eduardotartas.dpdns.org/health](https://rango-api-qa.eduardotartas.dpdns.org/health)
 
 ### Endpoints Principais
 
@@ -256,13 +260,13 @@ Resposta:
 
 ```bash
 # Todos os testes
-docker compose -f docker-compose-dev.yml exec api npm test
+docker compose -f docker-compose.dev.yml exec api npm test
 
 # Com cobertura
-docker compose -f docker-compose-dev.yml exec api npm run test:coverage
+docker compose -f docker-compose.dev.yml exec api npm run test:coverage
 
 # Watch mode
-docker compose -f docker-compose-dev.yml exec api npm run test:watch
+docker compose -f docker-compose.dev.yml exec api npm run test:watch
 ```
 
 ## Arquitetura
@@ -309,7 +313,7 @@ src/
 - **Docs:** Swagger/OpenAPI
 - **Testes:** Jest + Supertest
 - **Container:** Docker & Docker Compose
-- **Email:** Mailsender (custom service)
+- **Email:** SMTP (Nodemailer)
 
 ## Equipe
 
